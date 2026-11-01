@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#b4531a">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<title>Sing From Home</title>
+<style>
+:root{--bg:#fbf7f0;--fg:#2a2118;--card:#fff;--ac:#b4531a;--mut:#7a6a5a;--bd:#e4d9c9}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1612;--fg:#f2e9dc;--card:#26201a;--ac:#f0914f;--mut:#a89885;--bd:#3b3229;color-scheme:dark}}
+html,body{margin:0}body{background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+header{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--bd)}
+h1{font-size:18px;margin:0;color:var(--ac)}h2{margin:4px 0 8px;font-size:18px}
+main{padding:12px;max-width:760px;margin:auto}
+.c{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;margin-bottom:10px}
+button,.zm,.up{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--fg);border-radius:8px;padding:7px 11px;cursor:pointer;text-decoration:none;display:inline-block}
+button.on,button.pri{background:var(--ac);color:#fff;border-color:var(--ac)}
+.zm{background:#2d8cff;color:#fff;border-color:#2d8cff}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+input,select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:6px;box-sizing:border-box;min-width:0;max-width:100%}
+.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin:8px 0}.f label,label.m{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--mut)}
+.m{color:var(--mut);font-size:13px}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.ph{width:90px;height:90px;border:1px solid var(--bd);border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:var(--bg);flex:none}.ph img{width:100%;height:100%;object-fit:cover}
+.big{font-size:20px;font-weight:bold;color:var(--ac)}
+</style></head><body>
+<header><h1>🎤 SING FROM HOME</h1><div id="hb"></div></header>
+<main id="app"><p class="m">Loading…</p></main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script type="module">
+
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// ===== SETTINGS: paste your Firebase values and the host Google email(s) here =====
+const CFG = {
+  firebase: {
+    apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
+    authDomain: "sing-from-home.firebaseapp.com",
+    projectId: "sing-from-home",
+    appId: "1:848212321051:web:bb26a98a842eb16f21e9be"
+  },
+  admins: ["musicsnsounds@gmail.com"]
+};
+// ===== end of settings =====
+// ABOUT US page content. Edit the text between the quotes, save, and upload this file to GitHub.
+// Any field left empty ("" or []) is simply hidden on the page.
+// Lines marked CONFIRM are drafts that need your check before going public.
+const ABOUT = {
+  foundation: {
+    name: "B. S. Tikariya Cultural Foundation",
+    cin: "U88900MH2025NPL454435",
+    since: "2025",
+    tagline: "Educating people in music",                                           // CONFIRM
+    about: [
+      "B. S. Tikariya Cultural Foundation is a not-for-profit NGO, registered as a company limited by guarantee under Section 8 of the Companies Act, 2013. It was incorporated on 14 August 2025.",
+      "The Foundation is run in honour of Shree B. S. Tikariya.",                      // CONFIRM
+      "Its objects extend to the whole of India."
+    ],
+    address: "CTS No-4662/2 NR, Madhuban Htl Ishita Cmplx, Jalna - 431203, Maharashtra",
+    director: { name: "MANOJ TIKARIYA", role: "Director" }
+  },
+  agenda: "Our agenda is to educate music to people. The Foundation's objects in cultural music are:",
+  agendaPoints: [
+    "To promote, preserve and propagate cultural music: traditional, folk, classical and indigenous.",
+    "To organise cultural music events, festivals, concerts, workshops and awareness programmes.",
+    "To provide education, training and capacity-building in cultural music.",
+    "To document, archive and publish rare and traditional musical forms, instruments and artists.",
+    "To raise awareness of the importance of cultural music in education and social development."
+  ],
+  how: [
+    "So far the Foundation has been working without any financial support. It does not ask anyone for money.",   // CONFIRM (public statement)
+    "Its objects also include education and scholarships for meritorious and underprivileged children, healthcare support, women empowerment, sports and other welfare programmes."
+  ],
+  howPoints: [
+    "SING FROM HOME is a project of the Foundation, conducted by TIKARIYA'S SCHOOL OF MUSIC.",
+    "Sessions are held online on Zoom, so participants can join from their own homes."
+  ],
+  // Voluntary support. Shown only when "upi" is filled. Switch to the Foundation's own account for public events.
+  support: {
+    intro: "If you wish to support our work, you may contribute voluntarily. It is entirely your choice and there is no obligation.",
+    upi: "tikariyas@sbi",
+    payeeName: "Manoj Tikariya",
+    qrImage: "data:image/png;base64,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",
+    note: "For now, contributions are received in the personal UPI account of the Director, Manoj Tikariya."   // CONFIRM
+  },
+  registrations: [
+    "Company limited by guarantee under Section 8 of the Companies Act, 2013 (not for profit).",
+    "Income and property are applied only for the Foundation's objects and are not distributed to members.",
+    "Provisional registration under Section 12A of the Income Tax Act, 1961 (charitable), for AY 2026-27 to 2028-29.",
+    "Provisional approval under Section 80G of the Income Tax Act, 1961, for AY 2026-27 to 2028-29."   // CONFIRM
+  ],
+  program: {
+    intro: [
+      "SING FROM HOME is an online singing session on Zoom. Participants sing one by one, first come first perform, in two rounds.",
+      "At the end of the session a Singer of the Day is declared, who earns a star. A singer who collects 4 stars in a month becomes eligible for the Singer of the Month round."
+    ],
+    schedule: "Monday to Friday, from 8:30 pm",
+    rules: [
+      "Join at least 3 sessions in a week to keep your stars. Joining fewer reduces one star.",        // CONFIRM
+      "Singers who enter after 8:45 pm can still sing, but are not eligible for Singer of the Day."   // CONFIRM
+    ],
+    // Sing From Home core committee (not the Foundation's board)
+    committee: ["RAJESH GARJE","SANTOSH BHAROTE","VIJAY SUTRAVE","SUREKHA TIKARIYA","MANOJ TIKARIYA","NITIN POL","SURESH GHADSING","SHILA RAITHATHA"]
+  },
+  message: "",        // optional message from the Director
+  faq: [
+    // { q: "How do I join?", a: "Sign in with Google and wait for the host to approve you." }
+  ],
+  contact: {
+    email: "", phone: "", whatsapp: "", address: "", website: "",
+    social: [ /* { label: "YouTube", url: "https://..." } */ ]
+  }
+};
+
+const app=initializeApp(CFG.firebase),auth=getAuth(app),fs=getFirestore(app);
+const $=s=>document.querySelector(s);
+const e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fd=k=>k.slice(8)+'/'+k.slice(5,7)+'/'+k.slice(0,4);
+const fm=m=>new Date(m+'-01T00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+const nowM=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
+const okImg=s=>typeof s=='string'&&s.startsWith('data:image/');
+let U=null,P=null,PUB=null,SONGS=[],CONF={},AU=[],tab='home',ADM=false,loadErr='',showAbout=location.hash=='#about',MSGS=[],AM=[],seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
+
+async function load(){
+  loadErr='';PUB=null;SONGS=[];CONF={};
+  try{
+    const r=doc(fs,'users',U.uid);let s=await getDoc(r);
+    if(!s.exists()&&!ADM){
+      await setDoc(r,{email:U.email||'',name:U.displayName||'',status:'pending',photo:'',phone:'',city:'',note:'',updatedAt:Date.now()});
+      s=await getDoc(r);
+    }
+    P=s.exists()?s.data():{status:'approved',name:U.displayName||'',singer:''};
+    if(ADM||P.status=='approved'){
+      const [a,b,c]=await Promise.all([getDoc(doc(fs,'pub','data')),getDoc(doc(fs,'pub','songs')),getDoc(doc(fs,'config','app'))]);
+      PUB=a.exists()?a.data():null;SONGS=b.exists()?(b.data().list||[]):[];CONF=c.exists()?c.data():{};
+      if(!ADM)await loadMsgs();
+    }
+  }catch(x){loadErr=x.code||x.message}
+}
+onAuthStateChanged(auth,async u=>{
+  U=u;
+  if(!u){P=null;draw();return}
+  ADM=(CFG.admins||[]).map(x=>x.toLowerCase()).includes((u.email||'').toLowerCase());
+  await load();draw();
+});
+
+window.login=async()=>{
+  if(!$('#cs')||!$('#cs').checked){alert('Please tick the consent box first.');return}
+  try{await signInWithPopup(auth,new GoogleAuthProvider())}
+  catch(x){alert('Sign-in failed ('+(x.code||'error')+'). Please open this page in Chrome (not inside WhatsApp) and try again.')}
+};
+window.out=()=>signOut(auth);
+window.refresh=async()=>{await load();if(tab=='adm')await loadAdm();draw()};
+window.go=async t=>{tab=t;if(t=='adm')await loadAdm();if(t=='msg'){seenPrev=seen;seen=Date.now();try{localStorage.setItem('sfh_seen',String(seen))}catch(x){}}draw()};
+
+function draw(){
+  $('#hb').innerHTML=U?'<button onclick="refresh()">↻</button> <button onclick="out()">Sign out</button>':'';
+  if(showAbout){$('#app').innerHTML=vAbout(true);return}
+  if(!U){$('#app').innerHTML=vLogin();return}
+  if(loadErr){$('#app').innerHTML='<div class="c"><b>Could not load data</b><p class="m">'+e(loadErr)+'</p><p class="m">Check your internet and tap ↻.</p></div>';return}
+  if(!ADM&&P.status!='approved'){$('#app').innerHTML=vWait();return}
+  $('#app').innerHTML=tabs()+(tab=='home'?vHome():tab=='prof'?vProf():tab=='pdf'?vPdf():tab=='msg'?vMsg():tab=='about'?vAbout(false):vAdm());
+}
+const vLogin=()=>`<div class="c"><h2>Welcome</h2><p>Sign in with your Google account to see the Singer of the Day, edit your profile and join the session.</p>
+<label class="m" style="flex-direction:row;gap:8px;align-items:flex-start"><input type="checkbox" id="cs"><span>I agree that my name, email, photo, phone, city and notes are stored online by Tikariya’s School of Music for this app, and that my songs and stars may be shown to other approved participants.</span></label>
+<p><button class="pri" onclick="login()">Sign in with Google</button> <button onclick="about()">ℹ About us</button></p></div>`;
+const vWait=()=>`<div class="c"><h2>${P.status=='pending'?'Waiting for approval':'Access not active'}</h2>
+<p>${P.status=='pending'?'Your request has been sent to the host. You will get access once the host approves you. Tap ↻ above to check.':'Your access is not active. Please contact the host.'}</p><p class="m">Signed in as ${e(U.email)}</p><p><button onclick="about()">ℹ About us</button></p></div>`;
+const tabs=()=>`<nav>${(ADM?[['home','Home'],['pdf','PDF'],['about','About'],['adm','Admin']]:[['home','Home'],['msg','Messages'+unread()],['prof','My profile'],['pdf','PDF'],['about','About']]).map(([k,t])=>`<button class="${tab==k?'on':''}" onclick="go('${k}')">${t}</button>`).join('')}${CONF.zoom?`<a class="zm" href="${e(CONF.zoom)}" target="_blank" rel="noopener">▶ Start Zoom</a>`:''}</nav>`;
+
+function vHome(){
+  if(!PUB)return '<div class="c"><p class="m">No data has been published yet.</p></div>';
+  const L=PUB.sotd||[],last=L[L.length-1],sk=(P.singer||'').toUpperCase(),s=(PUB.stars||{})[sk],mo=nowM();
+  const nm=l=>l.map(x=>'<b>'+e(x.n)+'</b>'+(x.h=='Special'?' (special)':x.h=='Quiz'?' (quiz)':'')).join(', ');
+  const som=Object.entries(PUB.som||{}).sort().reverse();
+  let h='';
+  const un=MSGS.filter(m=>m.ts>seen).length;if(!ADM&&un)h+=`<div class="c">📩 You have <b>${un}</b> new message${un>1?'s':''} <button onclick="go('msg')">Read</button></div>`;
+  if(!ADM)h+=`<div class="c"><b>Your position</b>`+(sk?`<p class="big">${e(sk)}</p>
+<p>⭐ This month: <b>${(s&&s.m&&s.m[mo])||0}</b> of 4 ${((s&&s.m&&s.m[mo])||0)>=4?'– eligible for the Singer of the Month round':''}<br>⭐ Total stars: <b>${s?s.t:0}</b>${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>🏆 Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m">Your name is not linked yet. Please ask the host.</p>')+'</div>';
+  h+=`<div class="c"><b>⭐ Singer of the Day</b>${last?`<p class="m">${fd(last.d)}</p><p class="big">${nm(last.l)}</p>`:'<p class="m">Not declared yet.</p>'}</div>`;
+  if(som.length)h+=`<div class="c"><b>🏆 Singer of the Month</b>${som.slice(0,6).map(([m,n])=>`<p style="margin:4px 0">${fm(m)}: <b>${e(n)}</b></p>`).join('')}</div>`;
+  if(L.length>1)h+=`<div class="c"><b>Recent Singers of the Day</b>${L.slice(-31,-1).reverse().map(x=>`<p style="margin:4px 0"><span class="m">${fd(x.d)}</span> &nbsp;${nm(x.l)}</p>`).join('')}</div>`;
+  return h;
+}
+
+function grab(){if($('#pp')){P.phone=$('#pp').value;P.city=$('#pc').value;P.note=$('#pn').value}}
+function vProf(){const p=P;return`<div class="c"><div class="row"><div class="ph">${okImg(p.photo)?`<img src="${p.photo}">`:'<span class="m">No photo</span>'}</div>
+<div><h2>${e(p.singer||p.name||'')}</h2><label class="up">📷 ${p.photo?'Change':'Add'} photo<input type="file" accept="image/*" hidden onchange="pic(this)"></label></div></div>
+<div class="f"><label>Phone / WhatsApp<input id="pp" value="${e(p.phone||'')}"></label><label>City<input id="pc" value="${e(p.city||'')}"></label></div>
+<label class="m">Notes<textarea id="pn" rows="3">${e(p.note||'')}</textarea></label>
+<p><button class="pri" onclick="saveP()">Save profile</button></p><p class="m">Only you and the host can see your profile.</p></div>`}
+window.pic=el=>{const f=el.files[0];if(!f)return;grab();const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const S=240,c=document.createElement('canvas');c.width=c.height=S;const m=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)*0.2,m,m,0,0,S,S);P.photo=c.toDataURL('image/jpeg',0.75);draw()};im.src=r.result};r.readAsDataURL(f)};
+window.saveP=async()=>{grab();try{await updateDoc(doc(fs,'users',U.uid),{phone:P.phone||'',city:P.city||'',note:P.note||'',photo:P.photo||'',updatedAt:Date.now()});alert('Saved')}catch(x){alert('Could not save ('+(x.code||'error')+')')}};
+
+const vPdf=()=>`<div class="c"><b>PDF downloads</b><p class="m">Both PDFs show your position (Singer of the Day, Singer of the Month and stars).</p>
+<p><button class="pri" onclick="pdf('all')">⬇ All songs list till now</button></p><p><button class="pri" onclick="pdf('my')">⬇ My songs till now</button></p></div>`;
+window.pdf=kind=>{
+  if(!PUB||!window.jspdf){alert('Data or PDF tool not ready. Check your internet and try again.');return}
+  const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'}),a=s=>String(s==null?'':s).replace(/[^\x20-\xff]/g,'?');
+  const sk=(P.singer||'').toUpperCase(),s=(PUB.stars||{})[sk]||{t:0,m:{},d:[]},mo=nowM();
+  const som=Object.entries(PUB.som||{}).filter(x=>x[1]==sk).map(x=>fm(x[0]));
+  const rows=SONGS.filter(r=>kind=='all'||r[2]==sk);
+  d.setFontSize(20);d.text('SING FROM HOME',105,14,{align:'center'});
+  d.setFontSize(9);d.text('Online Singing Session on Zoom',105,19,{align:'center'});
+  d.text("Conducted by TIKARIYA'S SCHOOL OF MUSIC - Director: Manoj Tikariya",105,23.5,{align:'center'});
+  const cc=d.splitTextToSize('Core Committee: RAJESH GARJE, SANTOSH BHAROTE, VIJAY SUTRAVE, SUREKHA TIKARIYA, MANOJ TIKARIYA, NITIN POL, SURESH GHADSING, SHILA RAITHATHA',182);
+  d.setFontSize(8);d.text(cc,105,28,{align:'center'});d.setFontSize(9);
+  const yp=28+cc.length*3.4+1.5;
+  d.text('A Project of B. S. Tikariya Cultural Foundation \xAE - CIN: U88900MH2025NPL454435',105,yp,{align:'center'});
+  d.setFontSize(13);d.text(kind=='all'?'All Songs List':'My Songs',14,yp+9);
+  d.setFontSize(9);
+  const info=[sk?'Singer: '+sk:'',sk?'Stars: '+s.t+' (this month '+((s.m&&s.m[mo])||0)+'/4)':'',sk?'Singer of the Day: '+((s.d&&s.d.length)||0)+' time(s)'+(s.d&&s.d.length?' - '+s.d.map(fd).join(', '):''):'',sk?'Singer of the Month: '+(som.length?som.join(', '):'-'):'','Total songs: '+rows.length+'   Date: '+fd(new Date().toISOString().slice(0,10))].filter(Boolean);
+  let y=yp+15;info.forEach(t=>{const ls=d.splitTextToSize(a(t),182);d.text(ls,14,y);y+=ls.length*4.5});
+  d.autoTable({startY:y+2,head:[['Song ID','Date','Singer','Song']],body:rows.map(r=>[r[0],fd(r[1]),r[2],r[3]].map(a)),styles:{fontSize:8,cellPadding:1.5,minCellHeight:7,valign:'middle'},headStyles:{fillColor:[180,83,26]},didDrawPage:()=>{d.setFontSize(8);d.text('Page '+d.internal.getNumberOfPages(),105,291,{align:'center'})}});
+  d.save('sing-from-home-'+(kind=='all'?'all-songs':'my-songs')+'.pdf');
+};
+
+/* ---------------- Messages ---------------- */
+const fdt=ts=>new Date(ts).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
+const unread=()=>{const n=MSGS.filter(m=>m.ts>seen).length;return n?' ('+n+')':''};
+async function loadMsgs(){try{
+  const a=await getDocs(query(collection(fs,'msgs'),where('to','==','all')));
+  const b=await getDocs(query(collection(fs,'msgs'),where('to','==',U.uid)));
+  MSGS=[...a.docs,...b.docs].map(d=>({id:d.id,...d.data()})).sort((x,y)=>y.ts-x.ts);
+}catch(x){MSGS=[]}}
+function vMsg(){return `<div class="c"><b>Messages from the host</b><p class="m">You can only read messages here.</p></div>`+(MSGS.length?MSGS.map(m=>`<div class="c"><div class="row" style="justify-content:space-between"><b>${e(m.title)}</b>${m.ts>seenPrev?'<span class="zm" style="padding:2px 8px;font-size:12px">NEW</span>':''}</div><p class="m" style="margin:2px 0 6px">${fdt(m.ts)}</p><div style="white-space:pre-wrap">${e(m.body)}</div></div>`).join(''):'<div class="c"><p class="m">No messages yet.</p></div>')}
+window.sendMsg=async()=>{const t=$('#mt').value.trim(),b=$('#mb').value.trim(),to=$('#mto').value;
+  if(!t||!b){alert('Write a title and a message');return}
+  const nm=to=='all'?'All participants':$('#mto').selectedOptions[0].text;
+  if(!confirm('Send this message to '+nm+'?'))return;
+  try{await addDoc(collection(fs,'msgs'),{title:t,body:b,to,toName:nm,ts:Date.now()});await loadAdm();draw();alert('Sent')}
+  catch(x){alert('Failed ('+(x.code||'error')+'). Check that the latest rules are published in Firebase.')}};
+window.delMsg=async id=>{if(!confirm('Delete this message for everyone?'))return;try{await deleteDoc(doc(fs,'msgs',id));await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
+
+/* ---------------- About us (public) ---------------- */
+const PP=x=>(Array.isArray(x)?x:[x]).filter(Boolean).map(t=>'<p>'+e(t)+'</p>').join('');
+const UL=a=>a&&a.length?'<ul style="margin:6px 0;padding-left:18px">'+a.map(x=>'<li style="margin:3px 0">'+e(x)+'</li>').join('')+'</ul>':'';
+const sec=(t,txt,pts)=>((txt&&txt.length)||(pts&&pts.length))?`<div class="c"><b>${e(t)}</b>${PP(txt)}${UL(pts)}</div>`:'';
+function vAbout(pub){
+  const A=ABOUT,F=A.foundation||{},S=A.program||{},C=A.contact||{},SP=A.support||{};
+  const link=(h,t)=>`<a href="${e(h)}" target="_blank" rel="noopener" style="color:var(--ac)">${e(t)}</a>`;
+  const ct=[C.email&&'Email: '+link('mailto:'+C.email,C.email),C.phone&&'Phone: '+link('tel:'+C.phone,C.phone),C.whatsapp&&'WhatsApp: '+e(C.whatsapp),C.address&&'Address: '+e(C.address),C.website&&'Website: '+link(C.website,C.website)].concat((C.social||[]).map(x=>link(x.url,x.label))).filter(Boolean);
+  return (pub?'<div class="c"><button onclick="closeAbout()">← Back</button></div>':'')
+  +`<div class="c" style="text-align:center"><img src="data:image/png;base64,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" alt="" style="width:72px;height:72px;border-radius:14px"><h2 style="margin-top:8px">${e(F.name)}</h2><p class="m">CIN: ${e(F.cin)}${F.since?' · Since '+e(F.since):''}</p>${F.tagline?`<p><b>${e(F.tagline)}</b></p>`:''}</div>`
+  +sec('About the Foundation',F.about)
+  +((F.director||F.address)?`<div class="c">${F.director?`<b>${e(F.director.role||'Director')}</b><p style="margin:4px 0 10px">${e(F.director.name)}</p>`:''}${F.address?`<b>Registered office</b><p style="margin:4px 0">${e(F.address)}</p>`:''}</div>`:'')
+  +sec('Our agenda',A.agenda,A.agendaPoints)+sec('How we work',A.how,A.howPoints)+sec('Registrations',null,A.registrations)
+  +((S.intro||S.schedule||(S.rules&&S.rules.length)||(S.committee&&S.committee.length))?`<div class="c"><b>SING FROM HOME</b>${PP(S.intro)}${S.schedule?'<p><b>When:</b> '+e(S.schedule)+'</p>':''}${UL(S.rules)}${(S.committee&&S.committee.length)?`<p style="font-size:11.5px;line-height:1.5;margin:10px 0 0"><b>Core Committee:</b> ${S.committee.map(x=>e(x)).join(' · ')}</p>`:''}</div>`:'')
+  +(SP.upi?`<div class="c"><b>Support our work (voluntary)</b>${PP(SP.intro)}<p style="margin:6px 0"><b>UPI ID:</b> ${e(SP.upi)}</p>${SP.qrImage?`<p><img src="${e(SP.qrImage)}" alt="UPI QR code" style="width:200px;max-width:100%;border:1px solid var(--bd);border-radius:8px;background:#fff"></p>`:''}<p><a class="zm" style="background:var(--ac);border-color:var(--ac)" href="upi://pay?pa=${encodeURIComponent(SP.upi)}&amp;pn=${encodeURIComponent(SP.payeeName||F.name)}&amp;cu=INR">Pay with a UPI app</a></p>${SP.note?'<p class="m">'+e(SP.note)+'</p>':''}</div>`:'')
+  +sec('Message from the Director',A.message)
+  +((A.faq&&A.faq.length)?`<div class="c"><b>Questions</b>${A.faq.map(x=>`<p><b>${e(x.q)}</b><br>${e(x.a)}</p>`).join('')}</div>`:'')
+  +(ct.length?`<div class="c"><b>Contact</b>${ct.map(x=>'<p style="margin:4px 0">'+x+'</p>').join('')}</div>`:'')
+  +'<p class="m" style="text-align:center">Conducted by TIKARIYA’S SCHOOL OF MUSIC · Director: Manoj Tikariya</p>';
+}
+window.about=()=>{showAbout=true;try{location.hash='about'}catch(x){}draw();scrollTo(0,0)};
+window.closeAbout=()=>{showAbout=false;try{history.replaceState(null,'',location.pathname+location.search)}catch(x){}draw()};
+window.addEventListener('hashchange',()=>{showAbout=location.hash=='#about';draw()});
+
+/* ---------------- Admin ---------------- */
+async function loadAdm(){try{const q=await getDocs(collection(fs,'users'));AU=q.docs.map(x=>({id:x.id,...x.data()}));try{const mq=await getDocs(collection(fs,'msgs'));AM=mq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AM=[]}}catch(x){AU=[];alert('Could not load participants ('+(x.code||'error')+'). Check the admin email in firestore.rules.')}}
+function vAdm(){
+  const names=(PUB&&PUB.singers)||[],opt='<option value="">Link to singer…</option>'+names.map(n=>`<option>${e(n)}</option>`).join('');
+  const pend=AU.filter(u=>u.status!='approved'),ok=AU.filter(u=>u.status=='approved');
+  const img=u=>okImg(u.photo)?`<div class="ph" style="width:44px;height:44px"><img src="${u.photo}"></div>`:'';
+  return `<div class="c"><b>1. Publish data</b><p class="m">${PUB?'Last published: '+e(PUB.ts||''):'Nothing published yet.'} (${SONGS.length} songs)</p>
+<label class="up">⬆ Choose the file from the host app<input type="file" accept=".json,application/json" hidden onchange="pubUp(this)"></label></div>
+<div class="c"><b>2. Zoom link</b><input id="zl" style="width:100%" value="${e(CONF.zoom||'')}"><p><button onclick="saveZ()">Save link</button></p></div>
+<div class="c"><b>Send a message</b><input id="mt" placeholder="Title" style="width:100%;margin-top:6px"><textarea id="mb" rows="4" placeholder="Message" style="width:100%;margin-top:6px"></textarea><div class="f"><select id="mto"><option value="all">All approved participants</option>${ok.map(u=>`<option value="${e(u.id)}">${e(u.singer||u.name)}</option>`).join('')}</select></div><button class="pri" onclick="sendMsg()">Send</button><p class="m">Participants can only read it. ${AM.length} sent so far.</p></div>
+${AM.length?`<div class="c"><b>Sent messages</b>${AM.slice(0,20).map(m=>`<p style="margin:8px 0"><b>${e(m.title)}</b> <span class="m">→ ${e(m.toName||m.to)} · ${fdt(m.ts)}</span> <button onclick="delMsg('${e(m.id)}')">Delete</button></p>`).join('')}</div>`:''}
+<div class="c"><b>3. Waiting for approval (${pend.length})</b></div>
+${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b><br><span class="m">${e(u.email)} · ${e(u.status||'')}</span></div></div>
+<div class="f"><select id="lk_${e(u.id)}">${opt}</select><input id="lt_${e(u.id)}" placeholder="or type singer name"></div>
+<button class="pri" onclick="appr('${e(u.id)}')">Approve</button> <button onclick="rej('${e(u.id)}')">Reject</button></div>`).join('')}
+<div class="c"><b>4. Approved (${ok.length})</b>${ok.map(u=>`<p style="margin:6px 0">${e(u.singer||'(not linked)')} <span class="m">${e(u.email)}</span> <button onclick="rej('${e(u.id)}')">Revoke</button></p>`).join('')}</div>`;
+}
+window.appr=async id=>{const v=(($('#lt_'+id).value||'').trim()||$('#lk_'+id).value||'').toUpperCase();if(!v){alert('Choose or type the singer name to link');return}
+  try{await updateDoc(doc(fs,'users',id),{status:'approved',singer:v});await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
+window.rej=async id=>{if(!confirm('Remove access for this person?'))return;try{await updateDoc(doc(fs,'users',id),{status:'rejected'});await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
+window.saveZ=async()=>{try{await setDoc(doc(fs,'config','app'),{zoom:$('#zl').value.trim()});CONF.zoom=$('#zl').value.trim();alert('Zoom link saved');draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
+window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=async()=>{
+  try{const x=JSON.parse(r.result);if(x.kind!='sfh-pub'||!Array.isArray(x.songs))throw 0;
+    if(JSON.stringify(x.songs).length>900000)throw 'size';
+    if(!confirm('Publish '+x.songs.length+' songs, '+(x.sotd||[]).length+' Singer of the Day dates and '+(x.singers||[]).length+' singers to participants?'))return;
+    await setDoc(doc(fs,'pub','data'),{singers:x.singers||[],sotd:x.sotd||[],som:x.som||{},stars:x.stars||{},ts:x.ts||''});
+    await setDoc(doc(fs,'pub','songs'),{list:x.songs,ts:x.ts||''});
+    await load();draw();alert('Published');
+  }catch(z){alert(z=='size'?'The songs list is too large for one document. Tell Claude to split it.':'That is not a valid participants file, or publishing failed.')}};r.readAsText(f)};
+
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script></body></html>
