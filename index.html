@@ -23,6 +23,7 @@ input,select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1
 .m{color:var(--mut);font-size:13px}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .ph{width:90px;height:90px;border:1px solid var(--bd);border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:var(--bg);flex:none}.ph img{width:100%;height:100%;object-fit:cover}
 .big{font-size:20px;font-weight:bold;color:var(--ac)}
+.chk{width:30px;height:30px;flex:none;accent-color:var(--ac);margin:0}
 </style></head><body>
 <header><h1>🎤 SING FROM HOME</h1><div id="hb"></div></header>
 <main id="app"><p class="m">Loading…</p></main>
@@ -31,7 +32,7 @@ input,select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1
 <script type="module">
 
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // ===== SETTINGS: paste your Firebase values and the host Google email(s) here =====
@@ -122,28 +123,28 @@ const fd=k=>k.slice(8)+'/'+k.slice(5,7)+'/'+k.slice(0,4);
 const fm=m=>new Date(m+'-01T00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
 const nowM=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
 const okImg=s=>typeof s=='string'&&s.startsWith('data:image/');
-let U=null,P=null,PUB=null,SONGS=[],CONF={},AU=[],tab='home',ADM=false,loadErr='',showAbout=location.hash=='#about',MSGS=[],AM=[],seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
+let U=null,P=null,PUB=null,SONGS=[],CONF={},AU=[],tab='home',ADM=false,loadErr='',showAbout=location.hash=='#about',MSGS=[],AM=[],AIN=[],PL=[],PD='',PLAN=null,pendingName='',seenAdm=(()=>{try{return +localStorage.getItem('sfh_seen_adm')||0}catch(x){return 0}})(),seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
 
 async function load(){
   loadErr='';PUB=null;SONGS=[];CONF={};
   try{
     const r=doc(fs,'users',U.uid);let s=await getDoc(r);
     if(!s.exists()&&!ADM){
-      await setDoc(r,{email:U.email||'',name:U.displayName||'',status:'pending',photo:'',phone:'',city:'',note:'',updatedAt:Date.now()});
+      await setDoc(r,{email:U.email||'',name:U.displayName||pendingName||'',status:'pending',photo:'',phone:'',city:'',note:'',updatedAt:Date.now()});
       s=await getDoc(r);
     }
     P=s.exists()?s.data():{status:'approved',name:U.displayName||'',singer:''};
     if(ADM||P.status=='approved'){
       const [a,b,c]=await Promise.all([getDoc(doc(fs,'pub','data')),getDoc(doc(fs,'pub','songs')),getDoc(doc(fs,'config','app'))]);
-      PUB=a.exists()?a.data():null;SONGS=b.exists()?(b.data().list||[]):[];CONF=c.exists()?c.data():{};
-      if(!ADM)await loadMsgs();
+      PUB=a.exists()?a.data():null;SONGS=b.exists()?(b.data().json?JSON.parse(b.data().json):(b.data().list||[])):[];CONF=c.exists()?c.data():{};
+      if(!ADM){await loadMsgs();await loadPlan()}
     }
   }catch(x){loadErr=x.code||x.message}
 }
 onAuthStateChanged(auth,async u=>{
   U=u;
   if(!u){P=null;draw();return}
-  ADM=(CFG.admins||[]).map(x=>x.toLowerCase()).includes((u.email||'').toLowerCase());
+  ADM=(CFG.admins||[]).map(x=>x.toLowerCase()).includes((u.email||'').toLowerCase())&&u.emailVerified===true;
   await load();draw();
 });
 
@@ -154,7 +155,7 @@ window.login=async()=>{
 };
 window.out=()=>signOut(auth);
 window.refresh=async()=>{await load();if(tab=='adm')await loadAdm();draw()};
-window.go=async t=>{tab=t;if(t=='adm')await loadAdm();if(t=='msg'){seenPrev=seen;seen=Date.now();try{localStorage.setItem('sfh_seen',String(seen))}catch(x){}}draw()};
+window.go=async t=>{tab=t;if(t=='adm')await loadAdm();if(t=='adm')setTimeout(()=>{seenAdm=Date.now();try{localStorage.setItem('sfh_seen_adm',String(seenAdm))}catch(x){}},500);if(t=='msg'){seenPrev=seen;seen=Date.now();try{localStorage.setItem('sfh_seen',String(seen))}catch(x){}}draw()};
 
 function draw(){
   $('#hb').innerHTML=U?'<button onclick="refresh()">↻</button> <button onclick="out()">Sign out</button>':'';
@@ -162,14 +163,20 @@ function draw(){
   if(!U){$('#app').innerHTML=vLogin();return}
   if(loadErr){$('#app').innerHTML='<div class="c"><b>Could not load data</b><p class="m">'+e(loadErr)+'</p><p class="m">Check your internet and tap ↻.</p></div>';return}
   if(!ADM&&P.status!='approved'){$('#app').innerHTML=vWait();return}
-  $('#app').innerHTML=tabs()+(tab=='home'?vHome():tab=='prof'?vProf():tab=='pdf'?vPdf():tab=='msg'?vMsg():tab=='about'?vAbout(false):vAdm());
+  $('#app').innerHTML=tabs()+(tab=='home'?vHome():tab=='prof'?vProf():tab=='pdf'?vPdf():tab=='today'?vToday():tab=='msg'?vMsg():tab=='about'?vAbout(false):vAdm());
 }
-const vLogin=()=>`<div class="c"><h2>Welcome</h2><p>Sign in with your Google account to see the Singer of the Day, edit your profile and join the session.</p>
-<label class="m" style="flex-direction:row;gap:8px;align-items:flex-start"><input type="checkbox" id="cs"><span>I agree that my name, email, photo, phone, city and notes are stored online by Tikariya’s School of Music for this app, and that my songs and stars may be shown to other approved participants.</span></label>
-<p><button class="pri" onclick="login()">Sign in with Google</button> <button onclick="about()">ℹ About us</button></p></div>`;
+const idOf=em=>(em||'').endsWith('@singfromhome-phone.app')?'📱 '+em.split('@')[0]:(em||'');
+const vLogin=()=>`<div class="c"><h2>Welcome</h2><p>Sign in to see the Singer of the Day, declare your songs, message the host and join the session.</p>
+<label style="display:flex;gap:12px;align-items:flex-start;border:2px solid var(--ac);border-radius:10px;padding:10px;font-size:14px;cursor:pointer"><input type="checkbox" id="cs" class="chk"><span>I agree that my name, email or phone number, photo, city and notes are stored online by Tikariya’s School of Music for this app, and that my songs and stars may be shown to other approved participants.</span></label>
+<p style="margin-top:12px"><button class="pri" style="width:100%;padding:12px" onclick="login()">Sign in with Google</button></p>
+<p class="m" style="text-align:center;margin:8px 0">or use a phone number / email and a password</p>
+<input id="lnm" placeholder="Your name (only for a new account)" style="width:100%;margin-bottom:6px"><input id="lid" placeholder="Phone number (10 digits) or email" inputmode="email" autocapitalize="none" style="width:100%;margin-bottom:6px"><input id="lpw" type="password" placeholder="Password (at least 6 characters)" style="width:100%">
+<p><button class="pri" onclick="loginPw()">Sign in</button> <button onclick="signupPw()">Create account</button> <button onclick="forgotPw()">Forgot password</button></p>
+<p class="m">New here? Type your name, phone or email and a password, tick the box and tap Create account. The host must approve you before you get access.</p>
+<p><button onclick="about()">ℹ About us</button></p></div>`;
 const vWait=()=>`<div class="c"><h2>${P.status=='pending'?'Waiting for approval':'Access not active'}</h2>
-<p>${P.status=='pending'?'Your request has been sent to the host. You will get access once the host approves you. Tap ↻ above to check.':'Your access is not active. Please contact the host.'}</p><p class="m">Signed in as ${e(U.email)}</p><p><button onclick="about()">ℹ About us</button></p></div>`;
-const tabs=()=>`<nav>${(ADM?[['home','Home'],['pdf','PDF'],['about','About'],['adm','Admin']]:[['home','Home'],['msg','Messages'+unread()],['prof','My profile'],['pdf','PDF'],['about','About']]).map(([k,t])=>`<button class="${tab==k?'on':''}" onclick="go('${k}')">${t}</button>`).join('')}${CONF.zoom?`<a class="zm" href="${e(CONF.zoom)}" target="_blank" rel="noopener">▶ Start Zoom</a>`:''}</nav>`;
+<p>${P.status=='pending'?'Your request has been sent to the host. You will get access once the host approves you. Tap ↻ above to check.':'Your access is not active. Please contact the host.'}</p><p class="m">Signed in as ${e(idOf(U.email))}</p><p><button onclick="about()">ℹ About us</button></p></div>`;
+const tabs=()=>`<nav>${(ADM?[['home','Home'],['pdf','PDF'],['about','About'],['adm','Admin']]:[['home','Home'],['today','Today'],['msg','Messages'+unread()],['prof','My profile'],['pdf','PDF'],['about','About']]).map(([k,t])=>`<button class="${tab==k?'on':''}" onclick="go('${k}')">${t}</button>`).join('')}${CONF.zoom?`<a class="zm" href="${e(CONF.zoom)}" target="_blank" rel="noopener">▶ Start Zoom</a>`:''}</nav>`;
 
 function vHome(){
   if(!PUB)return '<div class="c"><p class="m">No data has been published yet.</p></div>';
@@ -181,6 +188,8 @@ function vHome(){
   if(!ADM)h+=`<div class="c"><b>Your position</b>`+(sk?`<p class="big">${e(sk)}</p>
 <p>⭐ This month: <b>${(s&&s.m&&s.m[mo])||0}</b> of 4 ${((s&&s.m&&s.m[mo])||0)>=4?'– eligible for the Singer of the Month round':''}<br>⭐ Total stars: <b>${s?s.t:0}</b>${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>🏆 Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m">Your name is not linked yet. Please ask the host.</p>')+'</div>';
   h+=`<div class="c"><b>⭐ Singer of the Day</b>${last?`<p class="m">${fd(last.d)}</p><p class="big">${nm(last.l)}</p>`:'<p class="m">Not declared yet.</p>'}</div>`;
+  const ld=SONGS.reduce((a,r)=>r[1]>a?r[1]:a,''),ls=SONGS.filter(r=>r[1]==ld);
+  if(ld)h+=`<div class="c"><b>🎤 Songs performed – ${fd(ld)}</b><p class="m" style="margin:2px 0 6px">${ls.length} songs (last session published by the host)</p>${ls.map((r,i)=>`<p style="margin:5px 0"><span class="m">${i+1}.</span> <b>${e(r[2])}</b> – ${e(r[3])} <span class="m">${e(r[0])}</span></p>`).join('')}</div>`;
   if(som.length)h+=`<div class="c"><b>🏆 Singer of the Month</b>${som.slice(0,6).map(([m,n])=>`<p style="margin:4px 0">${fm(m)}: <b>${e(n)}</b></p>`).join('')}</div>`;
   if(L.length>1)h+=`<div class="c"><b>Recent Singers of the Day</b>${L.slice(-31,-1).reverse().map(x=>`<p style="margin:4px 0"><span class="m">${fd(x.d)}</span> &nbsp;${nm(x.l)}</p>`).join('')}</div>`;
   return h;
@@ -218,6 +227,47 @@ window.pdf=kind=>{
   d.save('sing-from-home-'+(kind=='all'?'all-songs':'my-songs')+'.pdf');
 };
 
+/* ---------------- Login with password, songs of the day, message to host ---------------- */
+const toEmail=id=>{id=(id||'').trim();if(id.includes('@'))return id.toLowerCase();const dg=id.replace(/\D/g,'').slice(-10);return dg.length==10?dg+'@singfromhome-phone.app':''};
+const authMsg=x=>({'auth/invalid-credential':'Wrong phone/email or password.','auth/wrong-password':'Wrong password.','auth/user-not-found':'No account found. Tap Create account.','auth/email-already-in-use':'This phone number or email already has an account. Tap Sign in.','auth/weak-password':'The password must have at least 6 characters.','auth/operation-not-allowed':'Email/password login is not turned on in Firebase yet.','auth/invalid-email':'Enter a valid 10-digit phone number or an email.','auth/network-request-failed':'No internet. Please try again.'}[x.code]||('Failed ('+(x.code||'error')+')'));
+const needConsent=()=>{if(!$('#cs')||!$('#cs').checked){alert('Please tick the consent box first.');return true}return false};
+window.loginPw=async()=>{if(needConsent())return;const em=toEmail($('#lid').value),pw=$('#lpw').value;
+  if(!em||pw.length<6){alert('Enter a 10-digit phone number or an email, and a password of at least 6 characters.');return}
+  try{await signInWithEmailAndPassword(auth,em,pw)}catch(x){alert(authMsg(x))}};
+window.signupPw=async()=>{if(needConsent())return;const nm=$('#lnm').value.trim(),em=toEmail($('#lid').value),pw=$('#lpw').value;
+  if(!nm){alert('Please type your name.');return}
+  if(!em||pw.length<6){alert('Enter a 10-digit phone number or an email, and a password of at least 6 characters.');return}
+  pendingName=nm;
+  try{const c=await createUserWithEmailAndPassword(auth,em,pw);try{await updateProfile(c.user,{displayName:nm})}catch(y){}}
+  catch(x){alert(authMsg(x))}};
+window.forgotPw=async()=>{const id=($('#lid').value||'').trim();
+  if(!id.includes('@')){alert('A reset link can be sent only to an email account. For a phone number account, please ask the host.');return}
+  try{await sendPasswordResetEmail(auth,id);alert('A reset link has been sent to '+id+'. Check your inbox and spam folder.')}catch(x){alert(authMsg(x))}};
+
+const tdy=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+async function loadPlan(){try{const s=await getDoc(doc(fs,'plans',tdy()+'_'+U.uid));PLAN=s.exists()?s.data():null}catch(x){PLAN=null}}
+function vToday(){const pl=(PLAN&&PLAN.songs)||[];
+  return `<div class="c"><b>Songs for today – ${fd(tdy())}</b><p class="m">Tell the host which songs you plan to sing today, up to 3. You can change them until the session starts.</p>
+${[0,1,2].map(i=>`<input id="ps${i}" placeholder="Song ${i+1}" value="${e(pl[i]||'')}" style="width:100%;margin-top:6px;text-transform:uppercase">`).join('')}
+<p><button class="pri" onclick="savePlan()">${PLAN?'Update':'Save'} my songs</button> ${PLAN?'<button onclick="clearPlan()">Remove</button>':''}</p>
+${PLAN?`<p class="m">First saved at ${fdt(PLAN.ts)}. The host sees the list in the order people saved it.</p>`:''}</div>`}
+window.savePlan=async()=>{const sg=[0,1,2].map(i=>$('#ps'+i).value.trim().toUpperCase()).filter(Boolean);
+  if(!sg.length){alert('Enter at least one song.');return}
+  if(!P.singer){alert('Your name is not linked yet. Please ask the host.');return}
+  try{const d=tdy(),now=Date.now();await setDoc(doc(fs,'plans',d+'_'+U.uid),{uid:U.uid,date:d,singer:P.singer,songs:sg,note:'',ts:PLAN?PLAN.ts:now,upd:now});await loadPlan();draw();alert('Saved')}
+  catch(x){alert('Could not save ('+(x.code||'error')+'). Check that the latest rules are published.')}};
+window.clearPlan=async()=>{if(!confirm('Remove your songs for today?'))return;try{await deleteDoc(doc(fs,'plans',tdy()+'_'+U.uid));PLAN=null;draw()}catch(x){alert('Could not remove ('+(x.code||'error')+')')}};
+window.sendHost=async()=>{const t=($('#hm').value||'').trim();if(!t){alert('Write your message first.');return}
+  try{await addDoc(collection(fs,'inbox'),{uid:U.uid,name:P.singer||P.name||'',text:t.slice(0,500),ts:Date.now()});$('#hm').value='';alert('Sent to the host')}
+  catch(x){alert('Could not send ('+(x.code||'error')+'). Check that the latest rules are published.')}};
+async function loadPlans(){PD=PD||tdy();try{const q=await getDocs(query(collection(fs,'plans'),where('date','==',PD)));PL=q.docs.map(x=>x.data()).sort((a,b)=>a.ts-b.ts)}catch(x){PL=[]}}
+window.setPD=v=>{PD=v||tdy();loadPlans().then(draw)};
+window.copyPlans=()=>{const t='SING FROM HOME - songs declared for '+fd(PD||tdy())+'\n'+(PL.length?PL.map((p,i)=>(i+1)+'. '+p.singer+' - '+(p.songs||[]).join(' / ')).join('\n'):'(none)');
+  const done=()=>alert('List copied');
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(done,()=>alert(t));else{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');done()}catch(x){alert(t)}a.remove()}};
+window.replyTo=uid=>{const sl=$('#mto');if(sl&&[...sl.options].some(o=>o.value==uid)){sl.value=uid;$('#mt').focus();$('#mt').scrollIntoView({block:'center'})}else alert('That person is not approved yet, so you cannot reply.')};
+window.delIn=async id=>{if(!confirm('Delete this message?'))return;try{await deleteDoc(doc(fs,'inbox',id));await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
+
 /* ---------------- Messages ---------------- */
 const fdt=ts=>new Date(ts).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
 const unread=()=>{const n=MSGS.filter(m=>m.ts>seen).length;return n?' ('+n+')':''};
@@ -226,7 +276,7 @@ async function loadMsgs(){try{
   const b=await getDocs(query(collection(fs,'msgs'),where('to','==',U.uid)));
   MSGS=[...a.docs,...b.docs].map(d=>({id:d.id,...d.data()})).sort((x,y)=>y.ts-x.ts);
 }catch(x){MSGS=[]}}
-function vMsg(){return `<div class="c"><b>Messages from the host</b><p class="m">You can only read messages here.</p></div>`+(MSGS.length?MSGS.map(m=>`<div class="c"><div class="row" style="justify-content:space-between"><b>${e(m.title)}</b>${m.ts>seenPrev?'<span class="zm" style="padding:2px 8px;font-size:12px">NEW</span>':''}</div><p class="m" style="margin:2px 0 6px">${fdt(m.ts)}</p><div style="white-space:pre-wrap">${e(m.body)}</div></div>`).join(''):'<div class="c"><p class="m">No messages yet.</p></div>')}
+function vMsg(){return `<div class="c"><b>Message to the host</b><textarea id="hm" rows="3" maxlength="500" placeholder="Write your message to the host" style="width:100%;margin-top:6px"></textarea><p><button class="pri" onclick="sendHost()">Send to host</button></p><p class="m">The host can reply here in your Messages.</p></div><div class="c"><b>Messages from the host</b></div>`+(MSGS.length?MSGS.map(m=>`<div class="c"><div class="row" style="justify-content:space-between"><b>${e(m.title)}</b>${m.ts>seenPrev?'<span class="zm" style="padding:2px 8px;font-size:12px">NEW</span>':''}</div><p class="m" style="margin:2px 0 6px">${fdt(m.ts)}</p><div style="white-space:pre-wrap">${e(m.body)}</div></div>`).join(''):'<div class="c"><p class="m">No messages yet.</p></div>')}
 window.sendMsg=async()=>{const t=$('#mt').value.trim(),b=$('#mb').value.trim(),to=$('#mto').value;
   if(!t||!b){alert('Write a title and a message');return}
   const nm=to=='all'?'All participants':$('#mto').selectedOptions[0].text;
@@ -260,7 +310,7 @@ window.closeAbout=()=>{showAbout=false;try{history.replaceState(null,'',location
 window.addEventListener('hashchange',()=>{showAbout=location.hash=='#about';draw()});
 
 /* ---------------- Admin ---------------- */
-async function loadAdm(){try{const q=await getDocs(collection(fs,'users'));AU=q.docs.map(x=>({id:x.id,...x.data()}));try{const mq=await getDocs(collection(fs,'msgs'));AM=mq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AM=[]}}catch(x){AU=[];alert('Could not load participants ('+(x.code||'error')+'). Check the admin email in firestore.rules.')}}
+async function loadAdm(){try{const q=await getDocs(collection(fs,'users'));AU=q.docs.map(x=>({id:x.id,...x.data()}));try{const mq=await getDocs(collection(fs,'msgs'));AM=mq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AM=[]}try{const iq=await getDocs(collection(fs,'inbox'));AIN=iq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AIN=[]}await loadPlans()}catch(x){AU=[];alert('Could not load participants ('+(x.code||'error')+'). Check the admin email in firestore.rules.')}}
 function vAdm(){
   const names=(PUB&&PUB.singers)||[],opt='<option value="">Link to singer…</option>'+names.map(n=>`<option>${e(n)}</option>`).join('');
   const pend=AU.filter(u=>u.status!='approved'),ok=AU.filter(u=>u.status=='approved');
@@ -268,13 +318,15 @@ function vAdm(){
   return `<div class="c"><b>1. Publish data</b><p class="m">${PUB?'Last published: '+e(PUB.ts||''):'Nothing published yet.'} (${SONGS.length} songs)</p>
 <label class="up">⬆ Choose the file from the host app<input type="file" accept=".json,application/json" hidden onchange="pubUp(this)"></label></div>
 <div class="c"><b>2. Zoom link</b><input id="zl" style="width:100%" value="${e(CONF.zoom||'')}"><p><button onclick="saveZ()">Save link</button></p></div>
+<div class="c"><b>Songs declared by participants</b><div class="f"><input type="date" value="${PD||tdy()}" onchange="setPD(this.value)"></div>${PL.length?PL.map((p,i)=>`<p style="margin:6px 0"><b>${i+1}. ${e(p.singer)}</b> <span class="m">${fdt(p.ts)}</span><br>${(p.songs||[]).map(x=>e(x)).join(' / ')}</p>`).join(''):'<p class="m">Nothing declared for this date.</p>'}<button onclick="copyPlans()">Copy list</button></div>
+<div class="c"><b>Messages from participants (${AIN.length})</b>${AIN.slice(0,30).map(m=>`<div style="margin:8px 0;border-top:1px solid var(--bd);padding-top:6px"><b>${e(m.name||'?')}</b> <span class="m">${fdt(m.ts)}</span>${m.ts>seenAdm?' <span class="zm" style="padding:1px 6px;font-size:11px">NEW</span>':''}<div style="white-space:pre-wrap">${e(m.text)}</div><button onclick="replyTo('${e(m.uid)}')">Reply</button> <button onclick="delIn('${e(m.id)}')">Delete</button></div>`).join('')||'<p class="m">No messages yet.</p>'}</div>
 <div class="c"><b>Send a message</b><input id="mt" placeholder="Title" style="width:100%;margin-top:6px"><textarea id="mb" rows="4" placeholder="Message" style="width:100%;margin-top:6px"></textarea><div class="f"><select id="mto"><option value="all">All approved participants</option>${ok.map(u=>`<option value="${e(u.id)}">${e(u.singer||u.name)}</option>`).join('')}</select></div><button class="pri" onclick="sendMsg()">Send</button><p class="m">Participants can only read it. ${AM.length} sent so far.</p></div>
 ${AM.length?`<div class="c"><b>Sent messages</b>${AM.slice(0,20).map(m=>`<p style="margin:8px 0"><b>${e(m.title)}</b> <span class="m">→ ${e(m.toName||m.to)} · ${fdt(m.ts)}</span> <button onclick="delMsg('${e(m.id)}')">Delete</button></p>`).join('')}</div>`:''}
 <div class="c"><b>3. Waiting for approval (${pend.length})</b></div>
-${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b><br><span class="m">${e(u.email)} · ${e(u.status||'')}</span></div></div>
+${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b><br><span class="m">${e(idOf(u.email))} · ${e(u.status||'')}</span></div></div>
 <div class="f"><select id="lk_${e(u.id)}">${opt}</select><input id="lt_${e(u.id)}" placeholder="or type singer name"></div>
 <button class="pri" onclick="appr('${e(u.id)}')">Approve</button> <button onclick="rej('${e(u.id)}')">Reject</button></div>`).join('')}
-<div class="c"><b>4. Approved (${ok.length})</b>${ok.map(u=>`<p style="margin:6px 0">${e(u.singer||'(not linked)')} <span class="m">${e(u.email)}</span> <button onclick="rej('${e(u.id)}')">Revoke</button></p>`).join('')}</div>`;
+<div class="c"><b>4. Approved (${ok.length})</b>${ok.map(u=>`<p style="margin:6px 0">${e(u.singer||'(not linked)')} <span class="m">${e(idOf(u.email))}</span> <button onclick="rej('${e(u.id)}')">Revoke</button></p>`).join('')}</div>`;
 }
 window.appr=async id=>{const v=(($('#lt_'+id).value||'').trim()||$('#lk_'+id).value||'').toUpperCase();if(!v){alert('Choose or type the singer name to link');return}
   try{await updateDoc(doc(fs,'users',id),{status:'approved',singer:v});await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
@@ -285,9 +337,9 @@ window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.on
     if(JSON.stringify(x.songs).length>900000)throw 'size';
     if(!confirm('Publish '+x.songs.length+' songs, '+(x.sotd||[]).length+' Singer of the Day dates and '+(x.singers||[]).length+' singers to participants?'))return;
     await setDoc(doc(fs,'pub','data'),{singers:x.singers||[],sotd:x.sotd||[],som:x.som||{},stars:x.stars||{},ts:x.ts||''});
-    await setDoc(doc(fs,'pub','songs'),{list:x.songs,ts:x.ts||''});
+    await setDoc(doc(fs,'pub','songs'),{json:JSON.stringify(x.songs),n:x.songs.length,ts:x.ts||''});
     await load();draw();alert('Published');
-  }catch(z){alert(z=='size'?'The songs list is too large for one document. Tell Claude to split it.':'That is not a valid participants file, or publishing failed.')}};r.readAsText(f)};
+  }catch(z){alert(z=='size'?'The songs list is too large for one document. Tell Claude to split it.':(z&&z.code?'Publishing failed ('+z.code+'). Check the Firebase rules and the admin email.':'That is not a valid participants file.'))}};r.readAsText(f)};
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script></body></html>
