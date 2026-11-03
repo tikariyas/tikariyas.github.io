@@ -25,7 +25,7 @@ input,select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1
 .big{font-size:20px;font-weight:bold;color:var(--ac)}
 .chk{width:30px;height:30px;flex:none;accent-color:var(--ac);margin:0}
 </style></head><body>
-<header><h1>🎤 SING FROM HOME</h1><div id="hb"></div></header>
+<header><h1>🎤 SING FROM HOME <small id="ver" style="font-size:10px;color:var(--mut);font-weight:normal"></small></h1><div id="hb"></div></header>
 <main id="app"><p class="m">Loading…</p></main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
@@ -35,6 +35,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
+const VER='2026-11-02 b3';
 // ===== SETTINGS: paste your Firebase values and the host Google email(s) here =====
 const CFG = {
   firebase: {
@@ -117,13 +118,14 @@ const ABOUT = {
 };
 
 const app=initializeApp(CFG.firebase),auth=getAuth(app),fs=getFirestore(app);
+document.getElementById('ver').textContent='v'+VER;
 const $=s=>document.querySelector(s);
 const e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fd=k=>k.slice(8)+'/'+k.slice(5,7)+'/'+k.slice(0,4);
 const fm=m=>new Date(m+'-01T00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
 const nowM=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
 const okImg=s=>typeof s=='string'&&s.startsWith('data:image/');
-let U=null,P=null,PUB=null,SONGS=[],CONF={},AU=[],tab='home',ADM=false,loadErr='',showAbout=location.hash=='#about',MSGS=[],AM=[],AIN=[],PL=[],PD='',PLAN=null,pendingName='',seenAdm=(()=>{try{return +localStorage.getItem('sfh_seen_adm')||0}catch(x){return 0}})(),seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
+let U=null,P=null,PUB=null,SONGS=[],CONF={},AU=[],tab='home',ADM=false,loadErr='',HDATE='',showAbout=location.hash=='#about',MSGS=[],AM=[],AIN=[],PL=[],PD='',PLAN=null,pendingName='',seenAdm=(()=>{try{return +localStorage.getItem('sfh_seen_adm')||0}catch(x){return 0}})(),seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
 
 async function load(){
   loadErr='';PUB=null;SONGS=[];CONF={};
@@ -163,7 +165,7 @@ function draw(){
   if(!U){$('#app').innerHTML=vLogin();return}
   if(loadErr){$('#app').innerHTML='<div class="c"><b>Could not load data</b><p class="m">'+e(loadErr)+'</p><p class="m">Check your internet and tap ↻.</p></div>';return}
   if(!ADM&&P.status!='approved'){$('#app').innerHTML=vWait();return}
-  $('#app').innerHTML=tabs()+(tab=='home'?vHome():tab=='prof'?vProf():tab=='pdf'?vPdf():tab=='today'?vToday():tab=='msg'?vMsg():tab=='about'?vAbout(false):vAdm());
+  $('#app').innerHTML=tabs()+(tab=='home'?vHome():tab=='sotd'?vSotd():tab=='prof'?vProf():tab=='pdf'?vPdf():tab=='today'?vToday():tab=='msg'?vMsg():tab=='about'?vAbout(false):vAdm());
 }
 const idOf=em=>(em||'').endsWith('@singfromhome-phone.app')?'📱 '+em.split('@')[0]:(em||'');
 const vLogin=()=>`<div class="c"><h2>Welcome</h2><p>Sign in to see the Singer of the Day, declare your songs, message the host and join the session.</p>
@@ -176,25 +178,36 @@ const vLogin=()=>`<div class="c"><h2>Welcome</h2><p>Sign in to see the Singer of
 <p><button onclick="about()">ℹ About us</button></p></div>`;
 const vWait=()=>`<div class="c"><h2>${P.status=='pending'?'Waiting for approval':'Access not active'}</h2>
 <p>${P.status=='pending'?'Your request has been sent to the host. You will get access once the host approves you. Tap ↻ above to check.':'Your access is not active. Please contact the host.'}</p><p class="m">Signed in as ${e(idOf(U.email))}</p><p><button onclick="about()">ℹ About us</button></p></div>`;
-const tabs=()=>`<nav>${(ADM?[['home','Home'],['pdf','PDF'],['about','About'],['adm','Admin']]:[['home','Home'],['today','Today'],['msg','Messages'+unread()],['prof','My profile'],['pdf','PDF'],['about','About']]).map(([k,t])=>`<button class="${tab==k?'on':''}" onclick="go('${k}')">${t}</button>`).join('')}${CONF.zoom?`<a class="zm" href="${e(CONF.zoom)}" target="_blank" rel="noopener">▶ Start Zoom</a>`:''}</nav>`;
+const tabs=()=>`<nav>${(ADM?[['home','Home'],['sotd','Singer of the Day'],['pdf','PDF'],['about','About'],['adm','Admin']]:[['home','Home'],['sotd','Singer of the Day'],['today','Today'],['msg','Messages'+unread()],['prof','My profile'],['pdf','PDF'],['about','About']]).map(([k,t])=>`<button class="${tab==k?'on':''}" onclick="go('${k}')">${t}</button>`).join('')}${CONF.zoom?`<a class="zm" href="${e(CONF.zoom)}" target="_blank" rel="noopener">▶ Start Zoom</a>`:''}</nav>`;
 
+const nmL=l=>(l||[]).map(x=>'<b>'+e(x.n)+'</b>'+(x.h=='Special'?' (special)':x.h=='Quiz'?' (quiz)':'')).join(', ');
+function sdates(){const st=new Set();SONGS.forEach(r=>st.add(r[1]));((PUB&&PUB.sotd)||[]).forEach(x=>st.add(x.d));return [...st].sort()}
+window.setHD=v=>{HDATE=v||'';draw()};
+window.stepHD=n=>{const ds=sdates(),cur=HDATE||ds[ds.length-1]||'';const c=n<0?ds.filter(x=>x<cur).pop():ds.find(x=>x>cur);if(c){HDATE=c;draw()}};
 function vHome(){
   if(!PUB)return '<div class="c"><p class="m">No data has been published yet.</p></div>';
-  const L=PUB.sotd||[],last=L[L.length-1],sk=(P.singer||'').toUpperCase(),s=(PUB.stars||{})[sk],mo=nowM();
-  const nm=l=>l.map(x=>'<b>'+e(x.n)+'</b>'+(x.h=='Special'?' (special)':x.h=='Quiz'?' (quiz)':'')).join(', ');
+  const ds=sdates(),d=HDATE||ds[ds.length-1]||tdy(),sk=(P.singer||'').toUpperCase(),s=(PUB.stars||{})[sk],mo=nowM();
   const som=Object.entries(PUB.som||{}).sort().reverse();
   let h='';
   const un=MSGS.filter(m=>m.ts>seen).length;if(!ADM&&un)h+=`<div class="c">📩 You have <b>${un}</b> new message${un>1?'s':''} <button onclick="go('msg')">Read</button></div>`;
   if(!ADM)h+=`<div class="c"><b>Your position</b>`+(sk?`<p class="big">${e(sk)}</p>
 <p>⭐ This month: <b>${(s&&s.m&&s.m[mo])||0}</b> of 4 ${((s&&s.m&&s.m[mo])||0)>=4?'– eligible for the Singer of the Month round':''}<br>⭐ Total stars: <b>${s?s.t:0}</b>${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>🏆 Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m">Your name is not linked yet. Please ask the host.</p>')+'</div>';
-  h+=`<div class="c"><b>⭐ Singer of the Day</b>${last?`<p class="m">${fd(last.d)}</p><p class="big">${nm(last.l)}</p>`:'<p class="m">Not declared yet.</p>'}</div>`;
-  const ld=SONGS.reduce((a,r)=>r[1]>a?r[1]:a,''),ls=SONGS.filter(r=>r[1]==ld);
-  if(ld)h+=`<div class="c"><b>🎤 Songs performed – ${fd(ld)}</b><p class="m" style="margin:2px 0 6px">${ls.length} songs (last session published by the host)</p>${ls.map((r,i)=>`<p style="margin:5px 0"><span class="m">${i+1}.</span> <b>${e(r[2])}</b> – ${e(r[3])} <span class="m">${e(r[0])}</span></p>`).join('')}</div>`;
-  if(som.length)h+=`<div class="c"><b>🏆 Singer of the Month</b>${som.slice(0,6).map(([m,n])=>`<p style="margin:4px 0">${fm(m)}: <b>${e(n)}</b></p>`).join('')}</div>`;
-  if(L.length>1)h+=`<div class="c"><b>Recent Singers of the Day</b>${L.slice(-31,-1).reverse().map(x=>`<p style="margin:4px 0"><span class="m">${fd(x.d)}</span> &nbsp;${nm(x.l)}</p>`).join('')}</div>`;
+  h+=`<div class="c"><div class="row" style="justify-content:center;flex-wrap:nowrap"><button onclick="stepHD(-1)">◀</button><input type="date" value="${e(d)}" min="${e(ds[0]||'')}" max="${e(ds[ds.length-1]||'')}" onchange="setHD(this.value)"><button onclick="stepHD(1)">▶</button><button onclick="setHD('')">Latest</button></div><p class="m" style="text-align:center;margin:6px 0 0">${fd(d)}</p></div>`;
+  const ls=SONGS.filter(r=>r[1]==d),mine=ls.filter(r=>r[2]==sk),sd=(PUB.sotd||[]).find(x=>x.d==d);
+  h+=`<div class="c"><b>⭐ Singer of the Day</b><p class="big" style="margin:6px 0">${sd?nmL(sd.l):'<span class="m" style="font-weight:normal;font-size:15px">Not declared</span>'}</p></div>`;
+  if(!ADM)h+=`<div class="c"><b>Your songs on this day</b>${mine.length?mine.map(r=>`<p style="margin:5px 0">${e(r[3])} <span class="m">${e(r[0])}</span></p>`).join(''):'<p class="m">No songs of yours in the published data for this day.</p>'}</div>`;
+  h+=`<div class="c"><b>🎤 All songs performed</b><p class="m" style="margin:2px 0 6px">${ls.length} songs</p>${ls.length?ls.map((r,i)=>`<p style="margin:3px 0;padding:2px 4px;border-radius:6px;${!ADM&&r[2]==sk?'background:rgba(180,83,26,.15)':''}"><span class="m">${i+1}.</span> <b>${e(r[2])}</b> – ${e(r[3])} <span class="m">${e(r[0])}</span></p>`).join(''):'<p class="m">No songs published for this day.</p>'}</div>`;
   return h;
 }
-
+function vSotd(){
+  if(!PUB)return '<div class="c"><p class="m">No data has been published yet.</p></div>';
+  const L=PUB.sotd||[],last=L[L.length-1],somE=Object.entries(PUB.som||{}).sort().reverse(),lm=somE.length?somE[0][0]:'';
+  const cyc=L.filter(x=>!lm||x.d.slice(0,7)>lm).slice().reverse();
+  let h=`<div class="c"><b>⭐ Latest Singer of the Day</b>${last?`<p class="m" style="margin:2px 0">${fd(last.d)}</p><p class="big" style="margin:4px 0">${nmL(last.l)}</p>`:'<p class="m">Not declared yet.</p>'}</div>`;
+  h+=`<div class="c"><b>Singers of the Day${lm?' since the Singer of the Month '+e(fm(lm)):''}</b><p class="m" style="margin:2px 0 6px">This list stays until the next Singer of the Month is declared.</p>${cyc.length?cyc.map(x=>`<p style="margin:5px 0"><span class="m">${fd(x.d)}</span> &nbsp;${nmL(x.l)}</p>`).join(''):'<p class="m">None yet in this round.</p>'}</div>`;
+  h+=`<div class="c"><b>🏆 Singer of the Month</b>${somE.length?somE.slice(0,6).map(([m,n])=>`<p style="margin:4px 0">${e(fm(m))}: <b>${e(n)}</b></p>`).join(''):'<p class="m">Not declared yet.</p>'}</div>`;
+  return h;
+}
 function grab(){if($('#pp')){P.phone=$('#pp').value;P.city=$('#pc').value;P.note=$('#pn').value}}
 function vProf(){const p=P;return`<div class="c"><div class="row"><div class="ph">${okImg(p.photo)?`<img src="${p.photo}">`:'<span class="m">No photo</span>'}</div>
 <div><h2>${e(p.singer||p.name||'')}</h2><label class="up">📷 ${p.photo?'Change':'Add'} photo<input type="file" accept="image/*" hidden onchange="pic(this)"></label></div></div>
@@ -224,7 +237,9 @@ window.pdf=kind=>{
   const info=[sk?'Singer: '+sk:'',sk?'Stars: '+s.t+' (this month '+((s.m&&s.m[mo])||0)+'/4)':'',sk?'Singer of the Day: '+((s.d&&s.d.length)||0)+' time(s)'+(s.d&&s.d.length?' - '+s.d.map(fd).join(', '):''):'',sk?'Singer of the Month: '+(som.length?som.join(', '):'-'):'','Total songs: '+rows.length+'   Date: '+fd(new Date().toISOString().slice(0,10))].filter(Boolean);
   let y=yp+15;info.forEach(t=>{const ls=d.splitTextToSize(a(t),182);d.text(ls,14,y);y+=ls.length*4.5});
   d.autoTable({startY:y+2,head:[['Song ID','Date','Singer','Song']],body:rows.map(r=>[r[0],fd(r[1]),r[2],r[3]].map(a)),styles:{fontSize:8,cellPadding:1.5,minCellHeight:7,valign:'middle'},headStyles:{fillColor:[180,83,26]},didDrawPage:()=>{d.setFontSize(8);d.text('Page '+d.internal.getNumberOfPages(),105,291,{align:'center'})}});
-  d.save('sing-from-home-'+(kind=='all'?'all-songs':'my-songs')+'.pdf');
+  const nw=new Date(),pd=n=>String(n).padStart(2,'0'),stamp=nw.getFullYear()+'-'+pd(nw.getMonth()+1)+'-'+pd(nw.getDate())+'_'+pd(nw.getHours())+pd(nw.getMinutes())+pd(nw.getSeconds());
+  const who=(P.singer||'').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  d.save('sing-from-home-'+(kind=='all'?'all-songs':'my-songs'+(who?'-'+who:''))+'_'+stamp+'.pdf');
 };
 
 /* ---------------- Login with password, songs of the day, message to host ---------------- */
