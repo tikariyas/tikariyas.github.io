@@ -36,7 +36,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-02 b4';
+const VER='2026-11-02 b5';
 // ===== SETTINGS: paste your Firebase values and the host Google email(s) here =====
 const CFG = {
   firebase: {
@@ -204,11 +204,11 @@ function vHome(){
 }
 function vSotd(){
   if(!PUB)return '<div class="c"><p class="m">No data has been published yet.</p></div>';
-  const L=PUB.sotd||[],last=L[L.length-1],somE=Object.entries(PUB.som||{}).sort().reverse(),lm=somE.length?somE[0][0]:'';
-  const cyc=L.filter(x=>!lm||x.d.slice(0,7)>lm).slice().reverse();
+  const L=PUB.sotd||[],last=L[L.length-1],somd=PUB.somd||{},somE=Object.entries(PUB.som||{}).sort().reverse(),lm=somE.length?somE[0][0]:'',ld=somd[lm]||'';
+  const cyc=L.filter(x=>ld?x.d>ld:(!lm||x.d.slice(0,7)>lm)).slice().reverse();
   let h=`<div class="c"><b>⭐ Latest Singer of the Day</b>${last?`<p class="m" style="margin:2px 0">${fd(last.d)}</p><p class="big" style="margin:4px 0">${nmL(last.l)}</p>`:'<p class="m">Not declared yet.</p>'}</div>`;
-  h+=`<div class="c"><b>Singers of the Day${lm?' since the Singer of the Month '+e(fm(lm)):''}</b><p class="m" style="margin:2px 0 6px">This list stays until the next Singer of the Month is declared.</p>${cyc.length?cyc.map(x=>`<p style="margin:5px 0"><span class="m">${fd(x.d)}</span> &nbsp;${nmL(x.l)}</p>`).join(''):'<p class="m">None yet in this round.</p>'}</div>`;
-  h+=`<div class="c"><b>🏆 Singer of the Month</b>${somE.length?somE.slice(0,6).map(([m,n])=>`<p style="margin:4px 0">${e(fm(m))}: <b>${e(n)}</b></p>`).join(''):'<p class="m">Not declared yet.</p>'}</div>`;
+  h+=`<div class="c"><b>Singers of the Day${lm?' since the Singer of the Month '+e(fm(lm))+(ld?' ('+fd(ld)+')':''):''}</b><p class="m" style="margin:2px 0 6px">This list stays until the next Singer of the Month is declared.</p>${cyc.length?cyc.map(x=>`<p style="margin:5px 0"><span class="m">${fd(x.d)}</span> &nbsp;${nmL(x.l)}</p>`).join(''):'<p class="m">None yet in this round.</p>'}</div>`;
+  h+=`<div class="c"><b>🏆 Singer of the Month</b>${somE.length?somE.slice(0,6).map(([m,n])=>`<p style="margin:4px 0">${e(fm(m))}: <b>${e(n)}</b>${somd[m]?' <span class="m">(declared '+fd(somd[m])+')</span>':''}</p>`).join(''):'<p class="m">Not declared yet.</p>'}</div>`;
   return h;
 }
 function grab(){if($('#pp')){P.phone=$('#pp').value;P.city=$('#pc').value;P.note=$('#pn').value}}
@@ -240,9 +240,9 @@ window.pdf=kind=>{
   const info=[sk?'Singer: '+sk:'',sk?'Stars: '+s.t+' (this month '+((s.m&&s.m[mo])||0)+'/4)':'',sk?'Singer of the Day: '+((s.d&&s.d.length)||0)+' time(s)'+(s.d&&s.d.length?' - '+s.d.map(fd).join(', '):''):'',sk?'Singer of the Month: '+(som.length?som.join(', '):'-'):'','Total songs: '+rows.length+'   Date: '+fd(new Date().toISOString().slice(0,10))].filter(Boolean);
   let y=yp+15;info.forEach(t=>{const ls=d.splitTextToSize(a(t),182);d.text(ls,14,y);y+=ls.length*4.5});
   d.autoTable({startY:y+2,head:[['Order','Date','Singer name','Song name','Song ID']],body:rows.map((r,i)=>[String(i+1),fd(r[1]),r[2],r[3],r[0]].map(a)),styles:{fontSize:8,cellPadding:1.5,minCellHeight:8,valign:'middle',overflow:'ellipsize'},columnStyles:{0:{cellWidth:14,halign:'center'},1:{cellWidth:24},2:{cellWidth:48},3:{cellWidth:70},4:{cellWidth:26}},headStyles:{fillColor:[180,83,26]},didDrawPage:()=>{d.setFontSize(8);d.text('Page '+d.internal.getNumberOfPages(),105,291,{align:'center'})}});
-  const nw=new Date(),pd=n=>String(n).padStart(2,'0'),stamp=nw.getFullYear()+'-'+pd(nw.getMonth()+1)+'-'+pd(nw.getDate())+'_'+pd(nw.getHours())+pd(nw.getMinutes())+pd(nw.getSeconds());
-  const who=(P.singer||'').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'');
-  d.save('sing-from-home-'+(kind=='all'?'all-songs':'my-songs'+(who?'-'+who:''))+'_'+stamp+'.pdf');
+  const who=(P.singer||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''),base=kind=='all'?'all_songs':(who||'my_songs');
+  let cn=1;try{const m=JSON.parse(localStorage.getItem('sfh_pdfn')||'{}');cn=(m[base]||0)+1;m[base]=cn;localStorage.setItem('sfh_pdfn',JSON.stringify(m))}catch(x){cn=Math.floor(Date.now()/1000)%100000}
+  d.save(base+'_'+cn+'.pdf');
 };
 
 /* ---------------- Login with password, songs of the day, message to host ---------------- */
@@ -354,7 +354,7 @@ window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.on
   try{const x=JSON.parse(r.result);if(x.kind!='sfh-pub'||!Array.isArray(x.songs))throw 0;
     if(JSON.stringify(x.songs).length>900000)throw 'size';
     if(!confirm('Publish '+x.songs.length+' songs, '+(x.sotd||[]).length+' Singer of the Day dates and '+(x.singers||[]).length+' singers to participants?'))return;
-    await setDoc(doc(fs,'pub','data'),{singers:x.singers||[],sotd:x.sotd||[],som:x.som||{},stars:x.stars||{},ts:x.ts||''});
+    await setDoc(doc(fs,'pub','data'),{singers:x.singers||[],sotd:x.sotd||[],som:x.som||{},somd:x.somd||{},stars:x.stars||{},ts:x.ts||''});
     await setDoc(doc(fs,'pub','songs'),{json:JSON.stringify(x.songs),n:x.songs.length,ts:x.ts||''});
     await load();draw();alert('Published');
   }catch(z){alert(z=='size'?'The songs list is too large for one document. Tell Claude to split it.':(z&&z.code?'Publishing failed ('+z.code+'). Check the Firebase rules and the admin email.':'That is not a valid participants file.'))}};r.readAsText(f)};
