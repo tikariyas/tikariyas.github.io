@@ -24,6 +24,7 @@ input,select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1
 .ph{width:90px;height:90px;border:1px solid var(--bd);border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:var(--bg);flex:none}.ph img{width:100%;height:100%;object-fit:cover}
 .big{font-size:20px;font-weight:bold;color:var(--ac)}
 .chk{width:30px;height:30px;flex:none;accent-color:var(--ac);margin:0}
+.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:6px}.tbl table{border-collapse:collapse;min-width:100%}.tbl th,.tbl td{white-space:nowrap;padding:6px 10px;border-bottom:1px solid var(--bd);text-align:left;height:44px;box-sizing:border-box;font-size:14px}.tbl th{height:36px;font-size:12px;color:var(--mut);background:var(--bg)}.tbl .n{text-align:center}.tbl tr.me td{background:rgba(180,83,26,.15)}
 </style></head><body>
 <header><h1>🎤 SING FROM HOME <small id="ver" style="font-size:10px;color:var(--mut);font-weight:normal"></small></h1><div id="hb"></div></header>
 <main id="app"><p class="m">Loading…</p></main>
@@ -35,7 +36,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-02 b3';
+const VER='2026-11-02 b4';
 // ===== SETTINGS: paste your Firebase values and the host Google email(s) here =====
 const CFG = {
   firebase: {
@@ -184,6 +185,8 @@ const nmL=l=>(l||[]).map(x=>'<b>'+e(x.n)+'</b>'+(x.h=='Special'?' (special)':x.h
 function sdates(){const st=new Set();SONGS.forEach(r=>st.add(r[1]));((PUB&&PUB.sotd)||[]).forEach(x=>st.add(x.d));return [...st].sort()}
 window.setHD=v=>{HDATE=v||'';draw()};
 window.stepHD=n=>{const ds=sdates(),cur=HDATE||ds[ds.length-1]||'';const c=n<0?ds.filter(x=>x<cur).pop():ds.find(x=>x>cur);if(c){HDATE=c;draw()}};
+const idn=r=>parseInt(String(r[0]||'').split('-')[1])||0,cmpS=(a,b)=>a[1]<b[1]?-1:a[1]>b[1]?1:idn(a)-idn(b);
+const sTable=(rows,me)=>rows.length?`<div class="tbl"><table><tr><th class="n">Order</th><th>Singer name</th><th>Song name</th><th>Song ID</th></tr>${rows.map((r,i)=>`<tr class="${me&&r[2]==me?'me':''}"><td class="n">${i+1}</td><td><b>${e(r[2])}</b></td><td>${e(r[3])}</td><td>${e(r[0])}</td></tr>`).join('')}</table></div><p class="m" style="margin:4px 0 0">Swipe left or right if the table is wider than the screen.</p>`:'';
 function vHome(){
   if(!PUB)return '<div class="c"><p class="m">No data has been published yet.</p></div>';
   const ds=sdates(),d=HDATE||ds[ds.length-1]||tdy(),sk=(P.singer||'').toUpperCase(),s=(PUB.stars||{})[sk],mo=nowM();
@@ -193,10 +196,10 @@ function vHome(){
   if(!ADM)h+=`<div class="c"><b>Your position</b>`+(sk?`<p class="big">${e(sk)}</p>
 <p>⭐ This month: <b>${(s&&s.m&&s.m[mo])||0}</b> of 4 ${((s&&s.m&&s.m[mo])||0)>=4?'– eligible for the Singer of the Month round':''}<br>⭐ Total stars: <b>${s?s.t:0}</b>${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>🏆 Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m">Your name is not linked yet. Please ask the host.</p>')+'</div>';
   h+=`<div class="c"><div class="row" style="justify-content:center;flex-wrap:nowrap"><button onclick="stepHD(-1)">◀</button><input type="date" value="${e(d)}" min="${e(ds[0]||'')}" max="${e(ds[ds.length-1]||'')}" onchange="setHD(this.value)"><button onclick="stepHD(1)">▶</button><button onclick="setHD('')">Latest</button></div><p class="m" style="text-align:center;margin:6px 0 0">${fd(d)}</p></div>`;
-  const ls=SONGS.filter(r=>r[1]==d),mine=ls.filter(r=>r[2]==sk),sd=(PUB.sotd||[]).find(x=>x.d==d);
+  const ls=SONGS.filter(r=>r[1]==d).sort(cmpS),mine=ls.filter(r=>r[2]==sk),sd=(PUB.sotd||[]).find(x=>x.d==d);
   h+=`<div class="c"><b>⭐ Singer of the Day</b><p class="big" style="margin:6px 0">${sd?nmL(sd.l):'<span class="m" style="font-weight:normal;font-size:15px">Not declared</span>'}</p></div>`;
-  if(!ADM)h+=`<div class="c"><b>Your songs on this day</b>${mine.length?mine.map(r=>`<p style="margin:5px 0">${e(r[3])} <span class="m">${e(r[0])}</span></p>`).join(''):'<p class="m">No songs of yours in the published data for this day.</p>'}</div>`;
-  h+=`<div class="c"><b>🎤 All songs performed</b><p class="m" style="margin:2px 0 6px">${ls.length} songs</p>${ls.length?ls.map((r,i)=>`<p style="margin:3px 0;padding:2px 4px;border-radius:6px;${!ADM&&r[2]==sk?'background:rgba(180,83,26,.15)':''}"><span class="m">${i+1}.</span> <b>${e(r[2])}</b> – ${e(r[3])} <span class="m">${e(r[0])}</span></p>`).join(''):'<p class="m">No songs published for this day.</p>'}</div>`;
+  if(!ADM)h+=`<div class="c"><b>Your songs on this day</b>${mine.length?sTable(mine,sk):'<p class="m">No songs of yours in the published data for this day.</p>'}</div>`;
+  h+=`<div class="c"><b>🎤 All songs performed</b><p class="m" style="margin:2px 0 0">${ls.length} songs, in song ID order</p>${ls.length?sTable(ls,sk):'<p class="m">No songs published for this day.</p>'}</div>`;
   return h;
 }
 function vSotd(){
@@ -224,7 +227,7 @@ window.pdf=kind=>{
   const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'}),a=s=>String(s==null?'':s).replace(/[^\x20-\xff]/g,'?');
   const sk=(P.singer||'').toUpperCase(),s=(PUB.stars||{})[sk]||{t:0,m:{},d:[]},mo=nowM();
   const som=Object.entries(PUB.som||{}).filter(x=>x[1]==sk).map(x=>fm(x[0]));
-  const rows=SONGS.filter(r=>kind=='all'||r[2]==sk);
+  const rows=SONGS.filter(r=>kind=='all'||r[2]==sk).slice().sort(cmpS);
   d.setFontSize(20);d.text('SING FROM HOME',105,14,{align:'center'});
   d.setFontSize(9);d.text('Online Singing Session on Zoom',105,19,{align:'center'});
   d.text("Conducted by TIKARIYA'S SCHOOL OF MUSIC - Director: Manoj Tikariya",105,23.5,{align:'center'});
@@ -236,7 +239,7 @@ window.pdf=kind=>{
   d.setFontSize(9);
   const info=[sk?'Singer: '+sk:'',sk?'Stars: '+s.t+' (this month '+((s.m&&s.m[mo])||0)+'/4)':'',sk?'Singer of the Day: '+((s.d&&s.d.length)||0)+' time(s)'+(s.d&&s.d.length?' - '+s.d.map(fd).join(', '):''):'',sk?'Singer of the Month: '+(som.length?som.join(', '):'-'):'','Total songs: '+rows.length+'   Date: '+fd(new Date().toISOString().slice(0,10))].filter(Boolean);
   let y=yp+15;info.forEach(t=>{const ls=d.splitTextToSize(a(t),182);d.text(ls,14,y);y+=ls.length*4.5});
-  d.autoTable({startY:y+2,head:[['Song ID','Date','Singer','Song']],body:rows.map(r=>[r[0],fd(r[1]),r[2],r[3]].map(a)),styles:{fontSize:8,cellPadding:1.5,minCellHeight:7,valign:'middle'},headStyles:{fillColor:[180,83,26]},didDrawPage:()=>{d.setFontSize(8);d.text('Page '+d.internal.getNumberOfPages(),105,291,{align:'center'})}});
+  d.autoTable({startY:y+2,head:[['Order','Date','Singer name','Song name','Song ID']],body:rows.map((r,i)=>[String(i+1),fd(r[1]),r[2],r[3],r[0]].map(a)),styles:{fontSize:8,cellPadding:1.5,minCellHeight:8,valign:'middle',overflow:'ellipsize'},columnStyles:{0:{cellWidth:14,halign:'center'},1:{cellWidth:24},2:{cellWidth:48},3:{cellWidth:70},4:{cellWidth:26}},headStyles:{fillColor:[180,83,26]},didDrawPage:()=>{d.setFontSize(8);d.text('Page '+d.internal.getNumberOfPages(),105,291,{align:'center'})}});
   const nw=new Date(),pd=n=>String(n).padStart(2,'0'),stamp=nw.getFullYear()+'-'+pd(nw.getMonth()+1)+'-'+pd(nw.getDate())+'_'+pd(nw.getHours())+pd(nw.getMinutes())+pd(nw.getSeconds());
   const who=(P.singer||'').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'');
   d.save('sing-from-home-'+(kind=='all'?'all-songs':'my-songs'+(who?'-'+who:''))+'_'+stamp+'.pdf');
