@@ -36,7 +36,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-03 b6';
+const VER='2026-11-04 b7';
 // ===== SETTINGS: paste your Firebase values and the host Google email(s) here =====
 const CFG = {
   firebase: {
@@ -98,7 +98,7 @@ const ABOUT = {
   program: {
     intro: [
       "SING FROM HOME is an online singing session on Zoom. Participants sing one by one, first come first perform, in two rounds.",
-      "At the end of the session a Singer of the Day is declared, who earns a star. A singer who collects 4 stars in a month becomes eligible for the Singer of the Month round."
+      "At the end of the session a Singer of the Day is declared, who earns a star. A singer who collects 4 stars becomes eligible for the Singer of the Month round. After one is chosen, the other 4-star singers start again from zero, while singers with 1 to 3 stars keep theirs."
     ],
     schedule: "Monday to Friday, from 8:30 pm",
     rules: [
@@ -194,7 +194,7 @@ function vHome(){
   let h='';
   const un=MSGS.filter(m=>m.ts>seen).length;if(!ADM&&un)h+=`<div class="c">📩 You have <b>${un}</b> new message${un>1?'s':''} <button onclick="go('msg')">Read</button></div>`;
   if(!ADM)h+=`<div class="c"><b>Your position</b>`+(sk?`<p class="big">${e(sk)}</p>
-<p>⭐ This month: <b>${(s&&s.m&&s.m[mo])||0}</b> of 4 ${((s&&s.m&&s.m[mo])||0)>=4?'– eligible for the Singer of the Month round':''}<br>⭐ Total stars: <b>${s?s.t:0}</b>${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>🏆 Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m">Your name is not linked yet. Please ask the host.</p>')+'</div>';
+<p>⭐ Your stars: <b>${s?s.t:0}</b> ${(s&&s.t>=4)?'– eligible for the Singer of the Month round':'(4 stars = Singer of the Month round)'}${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>🏆 Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m">Your name is not linked yet. Please ask the host.</p>')+'</div>';
   h+=`<div class="c"><div class="row" style="justify-content:center;flex-wrap:nowrap"><button onclick="stepHD(-1)">◀</button><input type="date" value="${e(d)}" min="${e(ds[0]||'')}" max="${e(ds[ds.length-1]||'')}" onchange="setHD(this.value)"><button onclick="stepHD(1)">▶</button><button onclick="setHD('')">Latest</button></div><p class="m" style="text-align:center;margin:6px 0 0">${fd(d)}</p></div>`;
   const ls=SONGS.filter(r=>r[1]==d).sort(cmpS),mine=ls.filter(r=>r[2]==sk),sd=(PUB.sotd||[]).find(x=>x.d==d);
   h+=`<div class="c"><b>⭐ Singer of the Day</b><p class="big" style="margin:6px 0">${sd?nmL(sd.l):'<span class="m" style="font-weight:normal;font-size:15px">Not declared</span>'}</p></div>`;
@@ -204,11 +204,13 @@ function vHome(){
 }
 function vSotd(){
   if(!PUB)return '<div class="c"><p class="m">No data has been published yet.</p></div>';
-  const L=PUB.sotd||[],last=L[L.length-1],somd=PUB.somd||{},somE=Object.entries(PUB.som||{}).sort().reverse(),lm=somE.length?somE[0][0]:'',ld=somd[lm]||'';
+  const L=PUB.sotd||[],somd=PUB.somd||{},somE=Object.entries(PUB.som||{}).sort().reverse(),lm=somE.length?somE[0][0]:'',ld=somd[lm]||'';
   const cyc=L.filter(x=>ld?x.d>ld:(!lm||x.d.slice(0,7)>lm)).slice().reverse();
-  let h=`<div class="c"><b>⭐ Latest Singer of the Day</b>${last?`<p class="m" style="margin:2px 0">${fd(last.d)}</p><p class="big" style="margin:4px 0">${nmL(last.l)}</p>`:'<p class="m">Not declared yet.</p>'}</div>`;
-  h+=`<div class="c"><b>Singers of the Day${lm?' since the Singer of the Month '+e(fm(lm))+(ld?' ('+fd(ld)+')':''):''}</b><p class="m" style="margin:2px 0 6px">This list stays until the next Singer of the Month is declared.</p>${cyc.length?cyc.map(x=>`<p style="margin:5px 0"><span class="m">${fd(x.d)}</span> &nbsp;${nmL(x.l)}</p>`).join(''):'<p class="m">None yet in this round.</p>'}</div>`;
-  h+=`<div class="c"><b>🏆 Singer of the Month</b>${somE.length?somE.slice(0,6).map(([m,n])=>`<p style="margin:4px 0">${e(fm(m))}: <b>${e(n)}</b>${somd[m]?' <span class="m">(declared '+fd(somd[m])+')</span>':''}</p>`).join(''):'<p class="m">Not declared yet.</p>'}</div>`;
+  const sk=(P.singer||'').toUpperCase();
+  const stars=Object.entries(PUB.stars||{}).filter(([n,o])=>o.t>0).sort((a,b)=>b[1].t-a[1].t||a[0].localeCompare(b[0]));
+  let h=`<div class="c"><b>🏆 Singer of the Month</b>${somE.length?somE.slice(0,6).map(([m,n])=>`<p style="margin:4px 0">${e(fm(m))}: <b>${e(n)}</b>${somd[m]?' <span class="m">(declared '+fd(somd[m])+')</span>':''}</p>`).join(''):'<p class="m">Not declared yet.</p>'}</div>`;
+  h+=`<div class="c"><b>⭐ Singers of the Day${lm?' since the Singer of the Month '+e(fm(lm))+(ld?' ('+fd(ld)+')':''):''}</b><p class="m" style="margin:2px 0 6px">This list stays until the next Singer of the Month is declared.</p>${cyc.length?cyc.map(x=>`<p style="margin:5px 0"><span class="m">${fd(x.d)}</span> &nbsp;${nmL(x.l)}</p>`).join(''):'<p class="m">None yet in this round.</p>'}</div>`;
+  h+=`<div class="c"><b>🌟 Star singers</b><p class="m" style="margin:2px 0 6px">Singers with 4 stars sing in the Singer of the Month session. After one is chosen, the other 4-star singers go back to 0. Singers with 1 to 3 stars keep their stars.</p>${stars.length?stars.map(([n,o])=>`<p style="margin:5px 0;${n==sk?'background:rgba(180,83,26,.15);border-radius:6px;padding:2px 4px':''}"><b>${e(n)}</b> &nbsp;${'⭐'.repeat(Math.min(o.t,10))}${o.t>10?'+':''} <span class="m">(${o.t})${o.t>=4?' – eligible':''}</span></p>`).join(''):'<p class="m">No stars yet.</p>'}</div>`;
   return h;
 }
 function grab(){if($('#pp')){P.phone=$('#pp').value;P.city=$('#pc').value;P.note=$('#pn').value}}
@@ -237,7 +239,7 @@ window.pdf=kind=>{
   d.text('A Project of B. S. Tikariya Cultural Foundation \xAE - CIN: U88900MH2025NPL454435',105,yp,{align:'center'});
   d.setFontSize(13);d.text(kind=='all'?'All Songs List':'My Songs',14,yp+9);
   d.setFontSize(9);
-  const info=[sk?'Singer: '+sk:'',sk?'Stars: '+s.t+' (this month '+((s.m&&s.m[mo])||0)+'/4)':'',sk?'Singer of the Day: '+((s.d&&s.d.length)||0)+' time(s)'+(s.d&&s.d.length?' - '+s.d.map(fd).join(', '):''):'',sk?'Singer of the Month: '+(som.length?som.join(', '):'-'):'','Total songs: '+rows.length+'   Date: '+fd(new Date().toISOString().slice(0,10))].filter(Boolean);
+  const info=[sk?'Singer: '+sk:'',sk?'Stars: '+s.t:'',sk?'Singer of the Day: '+((s.d&&s.d.length)||0)+' time(s)'+(s.d&&s.d.length?' - '+s.d.map(fd).join(', '):''):'',sk?'Singer of the Month: '+(som.length?som.join(', '):'-'):'','Total songs: '+rows.length+'   Date: '+fd(new Date().toISOString().slice(0,10))].filter(Boolean);
   let y=yp+15;info.forEach(t=>{const ls=d.splitTextToSize(a(t),182);d.text(ls,14,y);y+=ls.length*4.5});
   d.autoTable({startY:y+2,head:[['Order','Date','Singer name','Song name','Song ID']],body:rows.map((r,i)=>[String(i+1),fd(r[1]),r[2],r[3],r[0]].map(a)),styles:{fontSize:8,cellPadding:1.5,minCellHeight:8,valign:'middle',overflow:'ellipsize'},columnStyles:{0:{cellWidth:14,halign:'center'},1:{cellWidth:24},2:{cellWidth:48},3:{cellWidth:70},4:{cellWidth:26}},headStyles:{fillColor:[180,83,26]},didDrawPage:()=>{d.setFontSize(8);d.text('Page '+d.internal.getNumberOfPages(),105,291,{align:'center'})}});
   const who=(P.singer||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''),base=kind=='all'?'all_songs':(who||'my_songs');
