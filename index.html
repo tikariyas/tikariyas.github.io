@@ -11,13 +11,13 @@
 @media (prefers-color-scheme:dark){:root{--bg:#1b1612;--fg:#f2e9dc;--card:#26201a;--ac:#f0914f;--mut:#a89885;--bd:#3b3229;color-scheme:dark}}
 html,body{margin:0}body{background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
 header{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--bd)}
-h1{font-size:18px;margin:0;color:var(--ac)}h2{margin:4px 0 8px;font-size:18px}
+h1{font-size:27px;line-height:1.15;letter-spacing:1px;margin:0;color:var(--ac)}h2{margin:4px 0 8px;font-size:18px}
 main{padding:12px;max-width:760px;margin:auto}
 .c{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;margin-bottom:10px}
 button,.zm,.up{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--fg);border-radius:8px;padding:7px 11px;cursor:pointer;text-decoration:none;display:inline-block}
 button.on,button.pri{background:var(--ac);color:#fff;border-color:var(--ac)}
 .zm{background:#2d8cff;color:#fff;border-color:#2d8cff}
-nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}nav>*{flex:1 1 auto;text-align:center}
 input,select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:6px;box-sizing:border-box;min-width:0;max-width:100%}
 .f{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin:8px 0}.f label,label.m{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--mut)}
 .m{color:var(--mut);font-size:13px}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
@@ -26,7 +26,7 @@ input,select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1
 .chk{width:30px;height:30px;flex:none;accent-color:var(--ac);margin:0}
 .tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:6px}.tbl table{border-collapse:collapse;min-width:100%}.tbl th,.tbl td{white-space:nowrap;padding:6px 10px;border-bottom:1px solid var(--bd);text-align:left;height:44px;box-sizing:border-box;font-size:14px}.tbl th{height:36px;font-size:12px;color:var(--mut);background:var(--bg)}.tbl .n{text-align:center}.tbl tr.me td{background:rgba(180,83,26,.15)}
 </style></head><body>
-<header><h1>🎤 SING FROM HOME <small id="ver" style="font-size:10px;color:var(--mut);font-weight:normal"></small></h1><div id="hb"></div></header>
+<header><div><h1>🎤 SING FROM HOME</h1><small id="ver" style="font-size:10px;color:var(--mut)"></small></div><div id="hb"></div></header>
 <main id="app"><p class="m">Loading…</p></main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
@@ -36,7 +36,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-02 b5';
+const VER='2026-11-03 b6';
 // ===== SETTINGS: paste your Firebase values and the host Google email(s) here =====
 const CFG = {
   firebase: {
@@ -161,10 +161,10 @@ window.refresh=async()=>{await load();if(tab=='adm')await loadAdm();draw()};
 window.go=async t=>{tab=t;if(t=='adm')await loadAdm();if(t=='adm')setTimeout(()=>{seenAdm=Date.now();try{localStorage.setItem('sfh_seen_adm',String(seenAdm))}catch(x){}},500);if(t=='msg'){seenPrev=seen;seen=Date.now();try{localStorage.setItem('sfh_seen',String(seen))}catch(x){}}draw()};
 
 function draw(){
-  $('#hb').innerHTML=U?'<button onclick="refresh()">↻</button> <button onclick="out()">Sign out</button>':'';
+  $('#hb').innerHTML=U?'<a href="#" onclick="out();return false" style="color:var(--ac);text-decoration:underline;font-size:15px">Sign out</a>':'';
   if(showAbout){$('#app').innerHTML=vAbout(true);return}
   if(!U){$('#app').innerHTML=vLogin();return}
-  if(loadErr){$('#app').innerHTML='<div class="c"><b>Could not load data</b><p class="m">'+e(loadErr)+'</p><p class="m">Check your internet and tap ↻.</p></div>';return}
+  if(loadErr){$('#app').innerHTML='<div class="c"><b>Could not load data</b><p class="m">'+e(loadErr)+'</p><p class="m">Check your internet and try again.</p><p><button class="pri" onclick="refresh()">↻ Try again</button></p></div>';return}
   if(!ADM&&P.status!='approved'){$('#app').innerHTML=vWait();return}
   $('#app').innerHTML=tabs()+(tab=='home'?vHome():tab=='sotd'?vSotd():tab=='prof'?vProf():tab=='pdf'?vPdf():tab=='today'?vToday():tab=='msg'?vMsg():tab=='about'?vAbout(false):vAdm());
 }
@@ -178,15 +178,15 @@ const vLogin=()=>`<div class="c"><h2>Welcome</h2><p>Sign in to see the Singer of
 <p class="m">New here? Type your name, phone or email and a password, tick the box and tap Create account. The host must approve you before you get access.</p>
 <p><button onclick="about()">ℹ About us</button></p></div>`;
 const vWait=()=>`<div class="c"><h2>${P.status=='pending'?'Waiting for approval':'Access not active'}</h2>
-<p>${P.status=='pending'?'Your request has been sent to the host. You will get access once the host approves you. Tap ↻ above to check.':'Your access is not active. Please contact the host.'}</p><p class="m">Signed in as ${e(idOf(U.email))}</p><p><button onclick="about()">ℹ About us</button></p></div>`;
-const tabs=()=>`<nav>${(ADM?[['home','Home'],['sotd','Singer of the Day'],['pdf','PDF'],['about','About'],['adm','Admin']]:[['home','Home'],['sotd','Singer of the Day'],['today','Today'],['msg','Messages'+unread()],['prof','My profile'],['pdf','PDF'],['about','About']]).map(([k,t])=>`<button class="${tab==k?'on':''}" onclick="go('${k}')">${t}</button>`).join('')}${CONF.zoom?`<a class="zm" href="${e(CONF.zoom)}" target="_blank" rel="noopener">▶ Start Zoom</a>`:''}</nav>`;
+<p>${P.status=='pending'?'Your request has been sent to the host. You will get access once the host approves you. Tap Check approval below.':'Your access is not active. Please contact the host.'}</p><p class="m">Signed in as ${e(idOf(U.email))}</p><p><button class="pri" onclick="refresh()">↻ Check approval</button> <button onclick="about()">ℹ About us</button></p></div>`;
+const tabs=()=>`<nav>${(ADM?[['home','Home'],['sotd','Singer of the Day'],['pdf','PDF'],['about','About'],['refresh','↻ Refresh'],['adm','Admin']]:[['home','Home'],['sotd','Singer of the Day'],['today','Today'],['msg','Messages'+unread()],['prof','My profile'],['pdf','PDF'],['about','About'],['refresh','↻ Refresh']]).map(([k,t])=>k=='refresh'?`<button onclick="refresh()">${t}</button>`:`<button class="${tab==k?'on':''}" onclick="go('${k}')">${t}</button>`).join('')}${CONF.zoom?`<a class="zm" href="${e(CONF.zoom)}" target="_blank" rel="noopener">▶ Start Zoom</a>`:''}</nav>`;
 
 const nmL=l=>(l||[]).map(x=>'<b>'+e(x.n)+'</b>'+(x.h=='Special'?' (special)':x.h=='Quiz'?' (quiz)':'')).join(', ');
 function sdates(){const st=new Set();SONGS.forEach(r=>st.add(r[1]));((PUB&&PUB.sotd)||[]).forEach(x=>st.add(x.d));return [...st].sort()}
 window.setHD=v=>{HDATE=v||'';draw()};
 window.stepHD=n=>{const ds=sdates(),cur=HDATE||ds[ds.length-1]||'';const c=n<0?ds.filter(x=>x<cur).pop():ds.find(x=>x>cur);if(c){HDATE=c;draw()}};
 const idn=r=>parseInt(String(r[0]||'').split('-')[1])||0,cmpS=(a,b)=>a[1]<b[1]?-1:a[1]>b[1]?1:idn(a)-idn(b);
-const sTable=(rows,me)=>rows.length?`<div class="tbl"><table><tr><th class="n">Order</th><th>Singer name</th><th>Song name</th><th>Song ID</th></tr>${rows.map((r,i)=>`<tr class="${me&&r[2]==me?'me':''}"><td class="n">${i+1}</td><td><b>${e(r[2])}</b></td><td>${e(r[3])}</td><td>${e(r[0])}</td></tr>`).join('')}</table></div><p class="m" style="margin:4px 0 0">Swipe left or right if the table is wider than the screen.</p>`:'';
+const sTable=(rows,me)=>rows.length?`<div class="tbl"><table><tr><th class="n">Order</th><th>Singer name</th><th>Song name</th><th>Song ID</th></tr>${rows.map((r,i)=>`<tr class="${me&&r[2]==me?'me':''}"><td class="n">${i+1}</td><td><b>${e(r[2])}</b></td><td>${e(r[3])}</td><td>${e(r[0])}</td></tr>`).join('')}</table></div>`:'';
 function vHome(){
   if(!PUB)return '<div class="c"><p class="m">No data has been published yet.</p></div>';
   const ds=sdates(),d=HDATE||ds[ds.length-1]||tdy(),sk=(P.singer||'').toUpperCase(),s=(PUB.stars||{})[sk],mo=nowM();
