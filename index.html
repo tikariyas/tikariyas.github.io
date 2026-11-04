@@ -36,7 +36,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-04 b7';
+const VER='2026-11-05 b8';
 // ===== SETTINGS: paste your Firebase values and the host Google email(s) here =====
 const CFG = {
   firebase: {
@@ -126,7 +126,7 @@ const fd=k=>k.slice(8)+'/'+k.slice(5,7)+'/'+k.slice(0,4);
 const fm=m=>new Date(m+'-01T00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
 const nowM=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
 const okImg=s=>typeof s=='string'&&s.startsWith('data:image/');
-let U=null,P=null,PUB=null,SONGS=[],CONF={},AU=[],tab='home',ADM=false,loadErr='',HDATE='',showAbout=location.hash=='#about',MSGS=[],AM=[],AIN=[],PL=[],PD='',PLAN=null,pendingName='',seenAdm=(()=>{try{return +localStorage.getItem('sfh_seen_adm')||0}catch(x){return 0}})(),seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
+let U=null,P=null,PUB=null,SONGS=[],CONF={},AU=[],tab='home',ADM=false,loadErr='',HDATE='',EDU='',showAbout=location.hash=='#about',MSGS=[],AM=[],AIN=[],PL=[],PD='',PLAN=null,pendingName='',seenAdm=(()=>{try{return +localStorage.getItem('sfh_seen_adm')||0}catch(x){return 0}})(),seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
 
 async function load(){
   loadErr='';PUB=null;SONGS=[];CONF={};
@@ -248,21 +248,34 @@ window.pdf=kind=>{
 };
 
 /* ---------------- Login with password, songs of the day, message to host ---------------- */
-const toEmail=id=>{id=(id||'').trim();if(id.includes('@'))return id.toLowerCase();const dg=id.replace(/\D/g,'').slice(-10);return dg.length==10?dg+'@singfromhome-phone.app':''};
-const authMsg=x=>({'auth/invalid-credential':'Wrong phone/email or password.','auth/wrong-password':'Wrong password.','auth/user-not-found':'No account found. Tap Create account.','auth/email-already-in-use':'This phone number or email already has an account. Tap Sign in.','auth/weak-password':'The password must have at least 6 characters.','auth/operation-not-allowed':'Email/password login is not turned on in Firebase yet.','auth/invalid-email':'Enter a valid 10-digit phone number or an email.','auth/network-request-failed':'No internet. Please try again.'}[x.code]||('Failed ('+(x.code||'error')+')'));
+const phoneDigits=id=>{const dg=(id||'').replace(/\D/g,'').slice(-10);return dg.length==10?dg:''};
+const emailsFor=id=>{id=(id||'').trim();if(id.includes('@'))return [id.toLowerCase()];const dg=phoneDigits(id);return dg?[dg+'@singfromhome-phone.app',dg+'-2@singfromhome-phone.app',dg+'-3@singfromhome-phone.app']:[]};
+const authMsg=x=>({'auth/invalid-credential':'Wrong phone/email or password.','auth/wrong-password':'Wrong password.','auth/user-not-found':'No account found. Tap Create account.','auth/email-already-in-use':'This phone number or email already has an account. Tap Sign in.','auth/weak-password':'The password must have at least 6 characters.','auth/operation-not-allowed':'Email/password login is not turned on in Firebase yet.','auth/invalid-email':'Enter a valid 10-digit phone number or an email.','auth/network-request-failed':'No internet. Please try again.','auth/too-many-requests':'Too many attempts. Please wait a few minutes and try again.'}[x.code]||('Failed ('+(x.code||'error')+')'));
 const needConsent=()=>{if(!$('#cs')||!$('#cs').checked){alert('Please tick the consent box first.');return true}return false};
-window.loginPw=async()=>{if(needConsent())return;const em=toEmail($('#lid').value),pw=$('#lpw').value;
-  if(!em||pw.length<6){alert('Enter a 10-digit phone number or an email, and a password of at least 6 characters.');return}
-  try{await signInWithEmailAndPassword(auth,em,pw)}catch(x){alert(authMsg(x))}};
-window.signupPw=async()=>{if(needConsent())return;const nm=$('#lnm').value.trim(),em=toEmail($('#lid').value),pw=$('#lpw').value;
+window.loginPw=async()=>{if(needConsent())return;const ems=emailsFor($('#lid').value),pw=$('#lpw').value;
+  if(!ems.length||pw.length<6){alert('Enter a 10-digit phone number or an email, and a password of at least 6 characters.');return}
+  let last=null;
+  for(const em of ems){try{await signInWithEmailAndPassword(auth,em,pw);return}catch(x){last=x;if(!['auth/invalid-credential','auth/user-not-found','auth/wrong-password'].includes(x.code))break}}
+  alert(authMsg(last)+(ems.length>1?' If you forgot your password, type your name and a new password above and tap Forgot password.':''))};
+window.signupPw=async()=>{if(needConsent())return;const nm=$('#lnm').value.trim(),ems=emailsFor($('#lid').value),pw=$('#lpw').value;
   if(!nm){alert('Please type your name.');return}
-  if(!em||pw.length<6){alert('Enter a 10-digit phone number or an email, and a password of at least 6 characters.');return}
+  if(!ems.length||pw.length<6){alert('Enter a 10-digit phone number or an email, and a password of at least 6 characters.');return}
   pendingName=nm;
-  try{const c=await createUserWithEmailAndPassword(auth,em,pw);try{await updateProfile(c.user,{displayName:nm})}catch(y){}}
+  try{const c=await createUserWithEmailAndPassword(auth,ems[0],pw);try{await updateProfile(c.user,{displayName:nm})}catch(y){}}
   catch(x){alert(authMsg(x))}};
-window.forgotPw=async()=>{const id=($('#lid').value||'').trim();
-  if(!id.includes('@')){alert('A reset link can be sent only to an email account. For a phone number account, please ask the host.');return}
-  try{await sendPasswordResetEmail(auth,id);alert('A reset link has been sent to '+id+'. Check your inbox and spam folder.')}catch(x){alert(authMsg(x))}};
+window.forgotPw=async()=>{const raw=($('#lid').value||'').trim();
+  if(raw.includes('@')){try{await sendPasswordResetEmail(auth,raw);alert('A reset link has been sent to '+raw+'. Check your inbox and spam folder.')}catch(x){alert(authMsg(x))}return}
+  const ems=emailsFor(raw);if(!ems.length){alert('Type your 10-digit phone number first.');return}
+  if(needConsent())return;
+  const nm=$('#lnm').value.trim(),pw=$('#lpw').value;
+  if(!nm||pw.length<6){alert('Type your name and a NEW password (at least 6 characters) in the boxes above, then tap Forgot password again.');return}
+  if(!confirm('A reset link cannot be sent to a phone number. A new login will be created for this number with the new password you typed, and the host must approve you again. Continue?'))return;
+  pendingName=nm;
+  for(const em of ems.slice(1)){
+    try{const c=await createUserWithEmailAndPassword(auth,em,pw);try{await updateProfile(c.user,{displayName:nm})}catch(y){}return}
+    catch(x){if(x.code!='auth/email-already-in-use'){alert(authMsg(x));return}}
+  }
+  alert('Too many resets for this number. Please contact the host.')};
 
 const tdy=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 async function loadPlan(){try{const s=await getDoc(doc(fs,'plans',tdy()+'_'+U.uid));PLAN=s.exists()?s.data():null}catch(x){PLAN=null}}
@@ -329,13 +342,27 @@ window.about=()=>{showAbout=true;try{location.hash='about'}catch(x){}draw();scro
 window.closeAbout=()=>{showAbout=false;try{history.replaceState(null,'',location.pathname+location.search)}catch(x){}draw()};
 window.addEventListener('hashchange',()=>{showAbout=location.hash=='#about';draw()});
 
+/* ---------------- Admin: edit a participant's profile ---------------- */
+function vEdU(){const u=AU.find(x=>x.id==EDU);if(!u)return '';
+  return `<div class="c"><b>Profile – ${e(u.name||idOf(u.email))}</b><p class="m">${e(idOf(u.email))} · ${e(u.status||'')}</p>
+<div class="row" style="margin:8px 0"><div class="ph">${okImg(u.photo)?`<img src="${u.photo}">`:'<span class="m">No photo</span>'}</div><div><label class="up">📷 Change photo<input type="file" accept="image/*" hidden onchange="picU(this)"></label> ${u.photo?'<button onclick="rmPicU()">Remove</button>':''}</div></div>
+<div class="f"><label>Name<input id="eu_n" value="${e(u.name||'')}"></label><label>Linked singer<input id="eu_s" list="eul" value="${e(u.singer||'')}"><datalist id="eul">${((PUB&&PUB.singers)||[]).map(n=>`<option value="${e(n)}">`).join('')}</datalist></label><label>Phone<input id="eu_p" value="${e(u.phone||'')}"></label><label>City<input id="eu_c" value="${e(u.city||'')}"></label></div>
+<label class="m">Notes<textarea id="eu_t" rows="3" style="width:100%">${e(u.note||'')}</textarea></label>
+<p><button class="pri" onclick="saveU()">Save</button> <button onclick="closeU()">Close</button></p></div>`}
+function grabU(){const u=AU.find(x=>x.id==EDU);if(!u||!$('#eu_n'))return u;u.name=$('#eu_n').value;u.singer=$('#eu_s').value.trim().toUpperCase();u.phone=$('#eu_p').value;u.city=$('#eu_c').value;u.note=$('#eu_t').value;return u}
+window.editU=id=>{EDU=id;draw();scrollTo(0,0)};
+window.closeU=()=>{EDU='';draw()};
+window.rmPicU=()=>{const u=grabU();if(u){u.photo='';draw()}};
+window.picU=el=>{const f=el.files[0];if(!f)return;const u=grabU();const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const S=240,c=document.createElement('canvas');c.width=c.height=S;const m=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)*0.2,m,m,0,0,S,S);u.photo=c.toDataURL('image/jpeg',0.75);draw()};im.src=r.result};r.readAsDataURL(f)};
+window.saveU=async()=>{const u=grabU();if(!u)return;try{await updateDoc(doc(fs,'users',u.id),{name:u.name||'',singer:u.singer||'',phone:u.phone||'',city:u.city||'',note:u.note||'',photo:u.photo||'',updatedAt:Date.now()});alert('Saved');EDU='';await loadAdm();draw()}catch(x){alert('Could not save ('+(x.code||'error')+')')}};
+
 /* ---------------- Admin ---------------- */
 async function loadAdm(){try{const q=await getDocs(collection(fs,'users'));AU=q.docs.map(x=>({id:x.id,...x.data()}));try{const mq=await getDocs(collection(fs,'msgs'));AM=mq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AM=[]}try{const iq=await getDocs(collection(fs,'inbox'));AIN=iq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AIN=[]}await loadPlans()}catch(x){AU=[];alert('Could not load participants ('+(x.code||'error')+'). Check the admin email in firestore.rules.')}}
 function vAdm(){
   const names=(PUB&&PUB.singers)||[],opt='<option value="">Link to singer…</option>'+names.map(n=>`<option>${e(n)}</option>`).join('');
   const pend=AU.filter(u=>u.status!='approved'),ok=AU.filter(u=>u.status=='approved');
   const img=u=>okImg(u.photo)?`<div class="ph" style="width:44px;height:44px"><img src="${u.photo}"></div>`:'';
-  return `<div class="c"><b>1. Publish data</b><p class="m">${PUB?'Last published: '+e(PUB.ts||''):'Nothing published yet.'} (${SONGS.length} songs)</p>
+  return `${EDU?vEdU():''}<div class="c"><b>1. Publish data</b><p class="m">${PUB?'Last published: '+e(PUB.ts||''):'Nothing published yet.'} (${SONGS.length} songs)</p>
 <label class="up">⬆ Choose the file from the host app<input type="file" accept=".json,application/json" hidden onchange="pubUp(this)"></label></div>
 <div class="c"><b>2. Zoom link</b><input id="zl" style="width:100%" value="${e(CONF.zoom||'')}"><p><button onclick="saveZ()">Save link</button></p></div>
 <div class="c"><b>Songs declared by participants</b><div class="f"><input type="date" value="${PD||tdy()}" onchange="setPD(this.value)"></div>${PL.length?PL.map((p,i)=>`<p style="margin:6px 0"><b>${i+1}. ${e(p.singer)}</b> <span class="m">${fdt(p.ts)}</span><br>${(p.songs||[]).map(x=>e(x)).join(' / ')}</p>`).join(''):'<p class="m">Nothing declared for this date.</p>'}<button onclick="copyPlans()">Copy list</button></div>
@@ -345,8 +372,8 @@ ${AM.length?`<div class="c"><b>Sent messages</b>${AM.slice(0,20).map(m=>`<p styl
 <div class="c"><b>3. Waiting for approval (${pend.length})</b></div>
 ${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b><br><span class="m">${e(idOf(u.email))} · ${e(u.status||'')}</span></div></div>
 <div class="f"><select id="lk_${e(u.id)}">${opt}</select><input id="lt_${e(u.id)}" placeholder="or type singer name"></div>
-<button class="pri" onclick="appr('${e(u.id)}')">Approve</button> <button onclick="rej('${e(u.id)}')">Reject</button></div>`).join('')}
-<div class="c"><b>4. Approved (${ok.length})</b>${ok.map(u=>`<p style="margin:6px 0">${e(u.singer||'(not linked)')} <span class="m">${e(idOf(u.email))}</span> <button onclick="rej('${e(u.id)}')">Revoke</button></p>`).join('')}</div>`;
+<button class="pri" onclick="appr('${e(u.id)}')">Approve</button> <button onclick="rej('${e(u.id)}')">Reject</button> <button onclick="editU('${e(u.id)}')">Profile</button></div>`).join('')}
+<div class="c"><b>4. Approved (${ok.length})</b>${ok.map(u=>`<p style="margin:6px 0">${e(u.singer||'(not linked)')} <span class="m">${e(idOf(u.email))}</span> <button onclick="rej('${e(u.id)}')">Revoke</button> <button onclick="editU('${e(u.id)}')">Profile</button></p>`).join('')}</div>`;
 }
 window.appr=async id=>{const v=(($('#lt_'+id).value||'').trim()||$('#lk_'+id).value||'').toUpperCase();if(!v){alert('Choose or type the singer name to link');return}
   try{await updateDoc(doc(fs,'users',id),{status:'approved',singer:v});await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
