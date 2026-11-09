@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Twitch Embed Test - Sing From Home</title>
+<style>
+  body {
+    margin: 0;
+    padding: 16px;
+    background: #f8fafc;
+    color: #0f172a;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+  .card {
+    max-width: 720px;
+    margin: 0 auto;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 4px 18px -2px rgba(15, 23, 42, 0.06);
+  }
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f3460;
+  }
+  .link {
+    font-size: 13px;
+    color: #0f3460;
+    text-decoration: underline;
+  }
+  /* Responsive 16:9 container */
+  .player-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000000;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .player-wrapper iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+  .note {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="header">
+    <div class="title">🔴 Sing From Home - Live Stream</div>
+    <a class="link" href="https://www.twitch.tv/singfromhome" target="_blank" rel="noopener">Open on Twitch</a>
+  </div>
+
+  <div class="player-wrapper">
+    <!-- Notice parent=tikariyas.github.io is strictly required by Twitch -->
+    <iframe
+      src="https://player.twitch.tv/?channel=singfromhome&parent=tikariyas.github.io&autoplay=false&muted=false"
+      allowfullscreen="true"
+      scrolling="no">
+    </iframe>
+  </div>
+
+  <p class="note">
+    *Note: When your channel is not actively broadcasting, the player will display Twitch's offline screen or channel banner.*
+  </p>
+</div>
+
+</body>
+</html>
