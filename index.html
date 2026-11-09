@@ -28,63 +28,63 @@ body{
 }
 header{
   display:flex;justify-content:space-between;align-items:flex-start;
-  padding:12px 18px;border-bottom:1px solid var(--bd);background:var(--card);
+  padding:12px 16px;border-bottom:1px solid var(--bd);background:var(--card);
   position:sticky;top:0;z-index:40;backdrop-filter:blur(10px);box-shadow:0 1px 3px rgba(0,0,0,0.03);
 }
 h1{
-  font-size:22px;font-weight:800;line-height:1.2;letter-spacing:-0.4px;margin:0;color:var(--ac);
+  font-size:21px;font-weight:800;line-height:1.2;letter-spacing:-0.3px;margin:0;color:var(--ac);
 }
 .sub-fnd{
-  font-size:11px;color:#000000;font-weight:500;margin-top:3px;letter-spacing:0.1px;line-height:1.3;
+  font-size:11px;color:#000000;font-weight:500;margin-top:2px;letter-spacing:0.1px;line-height:1.3;
 }
 @media (prefers-color-scheme:dark){.sub-fnd{color:#e2e8f0}}
-h2{margin:4px 0 10px;font-size:18px;font-weight:700;letter-spacing:-0.2px}
-main{padding:16px;max-width:780px;margin:auto}
+h2{margin:4px 0 8px;font-size:18px;font-weight:700}
+main{padding:12px;max-width:760px;margin:auto}
 .c{
   background:var(--card);border:1px solid var(--bd);border-radius:12px;
-  padding:16px;margin-bottom:14px;box-shadow:var(--shadow);
-  transition:box-shadow 0.2s ease,transform 0.15s ease;
+  padding:12px 14px;margin-bottom:12px;box-shadow:var(--shadow);
 }
 button,.zm,.up{
-  font:inherit;font-size:14px;font-weight:600;border:1px solid var(--bd);
-  background:var(--card);color:var(--fg);border-radius:8px;padding:8px 14px;
+  font:inherit;font-size:13px;font-weight:600;border:1px solid var(--bd);
+  background:var(--card);color:var(--fg);border-radius:8px;padding:6px 10px;
   cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;
-  transition:all 0.15s ease;box-shadow:0 1px 2px rgba(0,0,0,0.03);
+  transition:all 0.15s ease;
 }
 button:hover,.up:hover{border-color:var(--ac);transform:translateY(-1px)}
 button:active,.up:active{transform:scale(0.98)}
 button.on,button.pri{
   background:var(--btn-pri-bg);color:#fff;border-color:transparent;
-  box-shadow:0 4px 14px -2px rgba(15,52,96,0.35);
+  box-shadow:0 3px 12px -2px rgba(15,52,96,0.35);
 }
-button.on:hover,button.pri:hover{box-shadow:0 6px 18px -2px rgba(15,52,96,0.45)}
+button.on:hover,button.pri:hover{box-shadow:0 5px 15px -2px rgba(15,52,96,0.45)}
 
-/* Top nine buttons: identical sizing in 3 columns */
+/* 4 + 4 Buttons in 2 rows, Zoom in a separate row */
 nav{
   display:grid;
-  grid-template-columns:repeat(3, 1fr);
+  grid-template-columns:repeat(4, 1fr);
   gap:6px;
-  margin-bottom:14px;
+  margin-bottom:12px;
 }
 nav > button{
   width:100%;
   height:100%;
-  min-height:42px;
-  padding:6px 4px;
-  font-size:13px;
+  min-height:38px;
+  padding:4px 2px;
+  font-size:12px;
   font-weight:600;
   text-align:center;
   box-sizing:border-box;
   display:flex;
   align-items:center;
   justify-content:center;
+  line-height:1.2;
 }
-/* Zoom button: full width */
 nav > .zm{
   grid-column:1 / -1;
   width:100%;
   text-align:center;
-  padding:10px 14px;
+  padding:9px 12px;
+  font-size:14px;
   font-weight:700;
   box-sizing:border-box;
   background:linear-gradient(135deg,#0284c7,#0369a1);
@@ -94,47 +94,46 @@ nav > .zm{
 }
 nav > .zm:hover{box-shadow:0 6px 18px -2px rgba(2,132,199,0.45);transform:translateY(-1px)}
 
-@media (min-width:600px){
-  nav{grid-template-columns:repeat(auto-fit,minmax(110px,1fr));}
-  nav > .zm{grid-column:1 / -1;}
-}
-
 input,select,textarea{
   font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--bd);
-  border-radius:8px;padding:9px 12px;box-sizing:border-box;min-width:0;max-width:100%;
+  border-radius:8px;padding:8px 10px;box-sizing:border-box;min-width:0;max-width:100%;
   transition:border-color 0.15s ease,box-shadow 0.15s ease;outline:none;
 }
 input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,96,0.18)}
-.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:10px 0}
-.f label,label.m{display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:500;color:var(--mut)}
-.m{color:var(--mut);font-size:13px}.row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin:8px 0}
+.f label,label.m{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--mut)}
+.m{color:var(--mut);font-size:13px}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .ph{
-  width:92px;height:92px;border:2px solid var(--bd);border-radius:12px;overflow:hidden;
+  width:90px;height:90px;border:2px solid var(--bd);border-radius:12px;overflow:hidden;
   display:flex;align-items:center;justify-content:center;background:var(--bg);flex:none;box-shadow:0 2px 6px rgba(0,0,0,0.05);
 }
 .ph img{width:100%;height:100%;object-fit:cover}
-.big{font-size:22px;font-weight:800;color:var(--ac);letter-spacing:-0.3px}
-.chk{width:22px;height:22px;flex:none;accent-color:var(--ac);margin:0;cursor:pointer}
+.big{font-size:18px;font-weight:800;color:var(--ac);letter-spacing:-0.2px}
+.chk{width:26px;height:26px;flex:none;accent-color:var(--ac);margin:0;cursor:pointer}
 #dw{
   position:fixed;inset:0;z-index:60;background:rgba(15,23,42,0.72);
   backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;
 }
 #dw .card{
-  max-width:390px;width:100%;border-radius:18px;padding:26px 20px 22px;text-align:center;color:#fff;
+  max-width:380px;width:100%;border-radius:18px;padding:24px 18px 20px;text-align:center;color:#fff;
   background:linear-gradient(150deg,#0f3460 0%,#1e4a7a 50%,#2563eb 100%);
   border:1px solid rgba(255,255,255,0.18);box-shadow:0 20px 50px rgba(0,0,0,0.6);position:relative;
 }
-#dw h2{margin:6px 0;font-size:27px;color:#fff;letter-spacing:-0.5px}
+#dw h2{margin:6px 0;font-size:28px;color:#fff;letter-spacing:.5px}
 #dw .x{
-  position:absolute;top:10px;right:14px;background:rgba(255,255,255,0.18);border:0;
-  color:#fff;font-size:20px;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  position:absolute;top:8px;right:12px;background:rgba(255,255,255,0.18);border:0;
+  color:#fff;font-size:22px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;
 }
-@keyframes fl{0%,100%{transform:scale(1) rotate(-3deg);opacity:1}50%{transform:scale(1.12) rotate(3deg);opacity:.88}}
-#dw .diya{font-size:60px;display:inline-block;filter:drop-shadow(0 0 16px rgba(251,191,36,0.85));animation:fl 1.4s ease-in-out infinite}
-.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:8px;border-radius:8px;border:1px solid var(--bd)}
+@keyframes fl{0%,100%{transform:scale(1) rotate(-3deg);opacity:1}50%{transform:scale(1.14) rotate(3deg);opacity:.85}}
+#dw .diya{font-size:58px;display:inline-block;filter:drop-shadow(0 0 16px rgba(251,191,36,0.85));animation:fl 1.4s ease-in-out infinite}
+.tbl{
+  overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:6px;border-radius:8px;border:1px solid var(--bd);
+}
 .tbl table{border-collapse:separate;border-spacing:0;min-width:100%}
-.tbl th,.tbl td{white-space:nowrap;padding:9px 12px;border-bottom:1px solid var(--bd);text-align:left;height:46px;box-sizing:border-box;font-size:14px}
-.tbl th{height:38px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--mut);background:var(--bg)}
+.tbl th,.tbl td{
+  white-space:nowrap;padding:7px 10px;border-bottom:1px solid var(--bd);text-align:left;height:40px;box-sizing:border-box;font-size:13.5px;
+}
+.tbl th{height:34px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--mut);background:var(--bg)}
 .tbl tr:last-child td{border-bottom:none}
 .tbl .n{text-align:center}
 .tbl tr.me td{background:var(--ac-light);font-weight:600}
@@ -143,7 +142,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 <header>
   <div>
     <h1>🎤 SING FRO<span style="color:#b30000;font-weight:900">M</span> HO<span style="color:#b30000;font-weight:900">M</span>E</h1>
-    <div class="sub-fnd">A project of B. S. Tikariya Cultural Foundation ® (CIN: U88900MH2025NPL454435)</div>
+    <div class="sub-fnd">A project of B. S. Tikariya Cultural Foundation ®<br>(CIN: U88900MH2025NPL454435)</div>
     <span id="ver" style="display:none"></span>
   </div>
   <div id="hb"></div>
@@ -303,6 +302,7 @@ window.setHD=v=>{HDATE=v||'';draw()};
 window.stepHD=n=>{const ds=sdates(),cur=HDATE||ds[ds.length-1]||'';const c=n<0?ds.filter(x=>x<cur).pop():ds.find(x=>x>cur);if(c){HDATE=c;draw()}};
 const idn=r=>parseInt(String(r[0]||'').split('-')[1])||0,cmpS=(a,b)=>a[1]<b[1]?-1:a[1]>b[1]?1:idn(a)-idn(b);
 const sTable=(rows,me)=>rows.length?`<div class="tbl"><table><tr><th class="n">Order</th><th>Singer name</th><th>Song name</th><th>Song ID</th></tr>${rows.map((r,i)=>`<tr class="${me&&r[2]==me?'me':''}"><td class="n">${i+1}</td><td><b>${e(r[2])}</b></td><td>${e(r[3])}</td><td>${e(r[0])}</td></tr>`).join('')}</table></div>`:'';
+
 function vHome(){
   if(!PUB)return '<div class="c"><p class="m">No data has been published yet.</p></div>';
   const ds=sdates(),d=HDATE||ds[ds.length-1]||tdy(),sk=(P.singer||'').toUpperCase(),s=(PUB.stars||{})[sk],mo=nowM();
@@ -310,8 +310,15 @@ function vHome(){
   let h='';
   const un=MSGS.filter(m=>m.ts>seen).length;if(!ADM&&un)h+=`<div class="c" style="border-left:4px solid var(--ac)">📩 You have <b>${un}</b> new message${un>1?'s':''} <button style="margin-left:8px" onclick="go('msg')">Read</button></div>`;
   h+=bdCard();
-  if(!ADM)h+=`<div class="c"><b>Your position</b>`+(sk?`<p class="big">${e(sk)}</p>
-<p>⭐ Your stars: <b>${s?s.t:0}</b> ${(s&&s.t>=4)?'– eligible for the Singer of the Month round':'(4 stars = Singer of the Month round)'}${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>🏆 Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m">Your name is not linked yet. Please ask the host.</p>')+'</div>';
+
+  if(!ADM)h+=`<div class="c" style="padding:10px 14px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:4px">
+      <b>Your position</b>
+      ${sk?`<span class="big" style="font-size:17px">${e(sk)}</span>`:''}
+    </div>
+    ${sk?`<p style="margin:4px 0 0;font-size:13.5px;line-height:1.45">⭐ Your stars: <b>${s?s.t:0}</b> ${(s&&s.t>=4)?'– eligible for Singer of the Month':'(4 stars = Singer of the Month)'}${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>🏆 Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m" style="margin:4px 0 0">Your name is not linked yet. Please ask the host.</p>'}
+  </div>`;
+
   h+=`<div class="c"><div class="row" style="justify-content:center;flex-wrap:nowrap"><button onclick="stepHD(-1)">◀</button><input type="date" value="${e(d)}" min="${e(ds[0]||'')}" max="${e(ds[ds.length-1]||'')}" onchange="setHD(this.value)"><button onclick="stepHD(1)">▶</button><button onclick="setHD('')">Latest</button></div><p class="m" style="text-align:center;margin:6px 0 0">${fd(d)}</p></div>`;
   const ls=SONGS.filter(r=>r[1]==d).sort(cmpS),mine=ls.filter(r=>r[2]==sk),sd=(PUB.sotd||[]).find(x=>x.d==d);
   h+=`<div class="c"><b>⭐ Singer of the Day</b><p class="big" style="margin:6px 0">${sd?nmL(sd.l):'<span class="m" style="font-weight:normal;font-size:15px">Not declared</span>'}</p></div>`;
