@@ -311,13 +311,9 @@ function vHome(){
   const un=MSGS.filter(m=>m.ts>seen).length;if(!ADM&&un)h+=`<div class="c" style="border-left:4px solid var(--ac)">📩 You have <b>${un}</b> new message${un>1?'s':''} <button style="margin-left:8px" onclick="go('msg')">Read</button></div>`;
   h+=bdCard();
 
-  if(!ADM)h+=`<div class="c" style="padding:10px 14px">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:4px">
-      <b>Your position</b>
-      ${sk?`<span class="big" style="font-size:17px">${e(sk)}</span>`:''}
-    </div>
-    ${sk?`<p style="margin:4px 0 0;font-size:13.5px;line-height:1.45">⭐ Your stars: <b>${s?s.t:0}</b> ${(s&&s.t>=4)?'– eligible for Singer of the Month':'(4 stars = Singer of the Month)'}${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>🏆 Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m" style="margin:4px 0 0">Your name is not linked yet. Please ask the host.</p>'}
-  </div>`;
+    if(!ADM)h+=`<div class="c" style="padding:10px 14px"><b>Your position</b>`+(sk?`<p class="big" style="margin:4px 0 2px 0">${e(sk)}</p>
+<p style="margin:2px 0 0 0;line-height:1.35">⭐ Your stars: <b>${s?s.t:0}</b> ${(s&&s.t>=4)?'– eligible for the Singer of the Month round':'(4 stars = Singer of the Month round)'}${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>🏆 Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m" style="margin:4px 0 0">Your name is not linked yet. Please ask the host.</p>')+'</div>';
+
 
   h+=`<div class="c"><div class="row" style="justify-content:center;flex-wrap:nowrap"><button onclick="stepHD(-1)">◀</button><input type="date" value="${e(d)}" min="${e(ds[0]||'')}" max="${e(ds[ds.length-1]||'')}" onchange="setHD(this.value)"><button onclick="stepHD(1)">▶</button><button onclick="setHD('')">Latest</button></div><p class="m" style="text-align:center;margin:6px 0 0">${fd(d)}</p></div>`;
   const ls=SONGS.filter(r=>r[1]==d).sort(cmpS),mine=ls.filter(r=>r[2]==sk),sd=(PUB.sotd||[]).find(x=>x.d==d);
