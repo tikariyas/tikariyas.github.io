@@ -27,13 +27,17 @@ body{
   padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);
 }
 header{
-  display:flex;justify-content:space-between;align-items:center;
+  display:flex;justify-content:space-between;align-items:flex-start;
   padding:12px 18px;border-bottom:1px solid var(--bd);background:var(--card);
   position:sticky;top:0;z-index:40;backdrop-filter:blur(10px);box-shadow:0 1px 3px rgba(0,0,0,0.03);
 }
 h1{
   font-size:22px;font-weight:800;line-height:1.2;letter-spacing:-0.4px;margin:0;color:var(--ac);
 }
+.sub-fnd{
+  font-size:11px;color:#000000;font-weight:500;margin-top:3px;letter-spacing:0.1px;line-height:1.3;
+}
+@media (prefers-color-scheme:dark){.sub-fnd{color:#e2e8f0}}
 h2{margin:4px 0 10px;font-size:18px;font-weight:700;letter-spacing:-0.2px}
 main{padding:16px;max-width:780px;margin:auto}
 .c{
@@ -54,13 +58,47 @@ button.on,button.pri{
   box-shadow:0 4px 14px -2px rgba(15,52,96,0.35);
 }
 button.on:hover,button.pri:hover{box-shadow:0 6px 18px -2px rgba(15,52,96,0.45)}
-.zm{
-  background:linear-gradient(135deg,#0284c7,#0369a1);color:#fff;
-  border-color:transparent;box-shadow:0 4px 14px -2px rgba(2,132,199,0.35);font-weight:600;
+
+/* Top nine buttons: identical sizing in 3 columns */
+nav{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:6px;
+  margin-bottom:14px;
 }
-.zm:hover{box-shadow:0 6px 18px -2px rgba(2,132,199,0.45);transform:translateY(-1px)}
-nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
-nav>*{flex:1 1 auto;text-align:center}
+nav > button{
+  width:100%;
+  height:100%;
+  min-height:42px;
+  padding:6px 4px;
+  font-size:13px;
+  font-weight:600;
+  text-align:center;
+  box-sizing:border-box;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+/* Zoom button: full width */
+nav > .zm{
+  grid-column:1 / -1;
+  width:100%;
+  text-align:center;
+  padding:10px 14px;
+  font-weight:700;
+  box-sizing:border-box;
+  background:linear-gradient(135deg,#0284c7,#0369a1);
+  color:#fff;
+  border-color:transparent;
+  box-shadow:0 4px 14px -2px rgba(2,132,199,0.35);
+}
+nav > .zm:hover{box-shadow:0 6px 18px -2px rgba(2,132,199,0.45);transform:translateY(-1px)}
+
+@media (min-width:600px){
+  nav{grid-template-columns:repeat(auto-fit,minmax(110px,1fr));}
+  nav > .zm{grid-column:1 / -1;}
+}
+
 input,select,textarea{
   font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--bd);
   border-radius:8px;padding:9px 12px;box-sizing:border-box;min-width:0;max-width:100%;
@@ -102,7 +140,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 .tbl tr.me td{background:var(--ac-light);font-weight:600}
 .tbl tr.me td:first-child{border-left:3px solid var(--ac)}
 </style></head><body>
-<header><div><h1>🎤 SING FROM HOME</h1><small id="ver" style="font-size:10px;color:var(--mut)"></small></div><div id="hb"></div></header>
+<header>
+  <div>
+    <h1>🎤 SING FRO<span style="color:#b30000;font-weight:900">M</span> HO<span style="color:#b30000;font-weight:900">M</span>E</h1>
+    <div class="sub-fnd">A project of B. S. Tikariya Cultural Foundation ® (CIN: U88900MH2025NPL454435)</div>
+    <span id="ver" style="display:none"></span>
+  </div>
+  <div id="hb"></div>
+</header>
 <main id="app"><p class="m">Loading…</p></main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
@@ -187,7 +232,7 @@ const ABOUT = {
 };
 
 const app=initializeApp(CFG.firebase),auth=getAuth(app),fs=getFirestore(app);
-document.getElementById('ver').textContent='v'+VER;
+const verEl=document.getElementById('ver');if(verEl)verEl.textContent='v'+VER;
 const $=s=>document.querySelector(s);
 const e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fd=k=>k.slice(8)+'/'+k.slice(5,7)+'/'+k.slice(0,4);
@@ -232,7 +277,7 @@ window.refresh=async()=>{await load();if(tab=='adm')await loadAdm();draw()};
 window.go=async t=>{tab=t;if(t=='adm')await loadAdm();if(t=='adm')setTimeout(()=>{seenAdm=Date.now();try{localStorage.setItem('sfh_seen_adm',String(seenAdm))}catch(x){}},500);if(t=='msg'){seenPrev=seen;seen=Date.now();try{localStorage.setItem('sfh_seen',String(seen))}catch(x){}}draw()};
 
 function draw(){
-  $('#hb').innerHTML=U?'<a href="#" onclick="out();return false" style="color:var(--ac);font-weight:600;text-decoration:none;font-size:14px;padding:5px 10px;border-radius:8px;background:var(--ac-light)">Sign out</a>':'';
+  $('#hb').innerHTML=U?'<a href="#" onclick="out();return false" style="color:var(--ac);font-size:14px;text-decoration:underline;cursor:pointer;white-space:nowrap">Sign out</a>':'';
   if(showAbout){$('#app').innerHTML=vAbout(true);return}
   if(!U){$('#app').innerHTML=vLogin();return}
   if(loadErr){$('#app').innerHTML='<div class="c"><b>Could not load data</b><p class="m">'+e(loadErr)+'</p><p class="m">Check your internet and try again.</p><p><button class="pri" onclick="refresh()">↻ Try again</button></p></div>';return}
@@ -274,17 +319,23 @@ function vHome(){
   h+=`<div class="c"><b>🎤 All songs performed</b><p class="m" style="margin:2px 0 0">${ls.length} songs, in song ID order</p>${ls.length?sTable(ls,sk):'<p class="m">No songs published for this day.</p>'}</div>`;
   return h;
 }
+
 function vSotd(){
   if(!PUB)return '<div class="c"><p class="m">No data has been published yet.</p></div>';
   const L=PUB.sotd||[],somd=PUB.somd||{},somE=Object.entries(PUB.som||{}).sort().reverse(),lm=somE.length?somE[0][0]:'',ld=somd[lm]||'';
   const cyc=L.filter(x=>ld?x.d>ld:(!lm||x.d.slice(0,7)>lm)).slice().reverse();
   const sk=(P.singer||'').toUpperCase();
   const stars=Object.entries(PUB.stars||{}).filter(([n,o])=>o.t>0).sort((a,b)=>b[1].t-a[1].t||a[0].localeCompare(b[0]));
-  let h=`<div class="c"><b>🏆 Singer of the Month</b>${somE.length?somE.slice(0,6).map(([m,n])=>`<p style="margin:4px 0">${e(fm(m))}: <b>${e(n)}</b>${somd[m]?' <span class="m">(declared '+fd(somd[m])+')</span>':''}</p>`).join(''):'<p class="m">Not declared yet.</p>'}</div>`;
-  h+=`<div class="c"><b>⭐ Singers of the Day${lm?' since the Singer of the Month '+e(fm(lm))+(ld?' ('+fd(ld)+')':''):''}</b><p class="m" style="margin:2px 0 6px">This list stays until the next Singer of the Month is declared.</p>${cyc.length?cyc.map(x=>`<p style="margin:5px 0"><span class="m">${fd(x.d)}</span> &nbsp;${nmL(x.l)}</p>`).join(''):'<p class="m">None yet in this round.</p>'}</div>`;
-  h+=`<div class="c"><b>🌟 Star singers</b><p class="m" style="margin:2px 0 6px">Singers with 4 stars sing in the Singer of the Month session. After one is chosen, the other 4-star singers go back to 0. Singers with 1 to 3 stars keep their stars.</p>${stars.length?stars.map(([n,o])=>`<p style="margin:5px 0;${n==sk?'background:var(--ac-light);border-left:3px solid var(--ac);border-radius:6px;padding:3px 6px':''}"><b>${e(n)}</b> &nbsp;${'⭐'.repeat(Math.min(o.t,10))}${o.t>10?'+':''} <span class="m">(${o.t})${o.t>=4?' – eligible':''}</span></p>`).join(''):'<p class="m">No stars yet.</p>'}</div>`;
+
+  let h=`<div class="c"><b>🏆 Singer of the Month</b>${somE.length?`<div class="tbl"><table><tr><th style="width:110px">Month</th><th>Singer of the Month</th><th>Declared date</th></tr>${somE.slice(0,6).map(([m,n])=>`<tr><td><b>${e(fm(m))}</b></td><td><b>${e(n)}</b></td><td><span class="m">${somd[m]?fd(somd[m]):'-'}</span></td></tr>`).join('')}</table></div>`:'<p class="m">Not declared yet.</p>'}</div>`;
+
+  h+=`<div class="c"><b>⭐ Singers of the Day${lm?' since the Singer of the Month '+e(fm(lm))+(ld?' ('+fd(ld)+')':''):''}</b><p class="m" style="margin:2px 0 8px">This list stays until the next Singer of the Month is declared.</p>${cyc.length?`<div class="tbl"><table><tr><th style="width:95px;min-width:95px">Date</th><th>Singer name</th></tr>${cyc.map(x=>`<tr><td style="width:95px;min-width:95px"><span class="m">${fd(x.d)}</span></td><td>${nmL(x.l)}</td></tr>`).join('')}</table></div>`:'<p class="m">None yet in this round.</p>'}</div>`;
+
+  h+=`<div class="c"><b>🌟 Star singers</b><p class="m" style="margin:2px 0 8px">Singers with 4 stars sing in the Singer of the Month session. After one is chosen, the other 4-star singers go back to 0. Singers with 1 to 3 stars keep their stars.</p>${stars.length?`<div class="tbl"><table><tr><th>Singer name</th><th style="min-width:140px">Stars</th><th style="width:50px;text-align:center">Total</th><th style="width:90px">Status</th></tr>${stars.map(([n,o])=>`<tr class="${n==sk?'me':''}"><td><b>${e(n)}</b></td><td style="min-width:140px;letter-spacing:2px">${'⭐'.repeat(Math.min(o.t,10))}${o.t>10?'+':''}</td><td class="n"><span class="m">(${o.t})</span></td><td>${o.t>=4?'<span style="color:var(--ac);font-weight:600">Eligible</span>':'<span class="m">-</span>'}</td></tr>`).join('')}</table></div>`:'<p class="m">No stars yet.</p>'}</div>`;
+
   return h;
 }
+
 function grab(){if($('#pp')){P.phone=$('#pp').value;P.city=$('#pc').value;P.note=$('#pn').value;P.dob=bdRead('pb');P.bshow=$('#pbs').checked}}
 function vProf(){const p=P;return`<div class="c"><div class="row"><div class="ph">${okImg(p.photo)?`<img src="${p.photo}">`:'<span class="m">No photo</span>'}</div>
 <div><h2>${e(p.singer||p.name||'')}</h2><label class="up">📷 ${p.photo?'Change':'Add'} photo<input type="file" accept="image/*" hidden onchange="pic(this)"></label></div></div>
