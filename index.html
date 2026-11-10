@@ -58,7 +58,6 @@ button.on,button.pri{
 }
 button.on:hover,button.pri:hover{box-shadow:0 5px 15px -2px rgba(15,52,96,0.45)}
 
-/* 4 + 4 Buttons in 2 rows, Zoom in a separate row */
 nav{
   display:grid;
   grid-template-columns:repeat(4, 1fr);
@@ -136,16 +135,20 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 .tbl .n{text-align:center}
 .tbl tr.me td{background:var(--ac-light);font-weight:600}
 .tbl tr.me td:first-child{border-left:3px solid var(--ac)}
+.badge{display:inline-block;padding:2px 7px;font-size:11px;font-weight:700;border-radius:6px;text-transform:uppercase;letter-spacing:0.3px}
+.badge-super{background:#b30000;color:#fff}
+.badge-admin{background:var(--ac);color:#fff}
+.badge-user{background:var(--bd);color:var(--fg)}
 </style></head><body>
 <header>
   <div>
     <h1>SING FRO<span style="color:#b30000;font-weight:900">M</span> HO<span style="color:#b30000;font-weight:900">M</span>E</h1>
-    <div class="sub-fnd">A project of B. S. Tikariya Cultural Foundation ®<br>(CIN: U88900MH2025NPL454435)</div>
+    <div class="sub-fnd">A project of B. S. Tikariya Cultural Foundation (R)<br>(CIN: U88900MH2025NPL454435)</div>
     <span id="ver" style="display:none"></span>
   </div>
   <div id="hb"></div>
 </header>
-<main id="app"><p class="m">Loading…</p></main>
+<main id="app"><p class="m">Loading...</p></main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script type="module">
@@ -162,7 +165,7 @@ const CFG = {
     projectId: "sing-from-home",
     appId: "1:848212321051:web:bb26a98a842eb16f21e9be"
   },
-  admins: ["musicsnsounds@gmail.com"]
+  superAdmins: ["musicsnsounds@gmail.com"]
 };
 
 const ABOUT = {
@@ -236,17 +239,21 @@ const fd=k=>k.slice(8)+'/'+k.slice(5,7)+'/'+k.slice(0,4);
 const fm=m=>new Date(m+'-01T00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
 const nowM=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
 const okImg=s=>typeof s=='string'&&s.startsWith('data:image/');
-let U=null,P=null,PUB=null,SONGS=[],CONF={},AU=[],tab='home',ADM=false,loadErr='',HDATE='',EDU='',GRT=[],BD=[],GQ=[],showAbout=location.hash=='#about',MSGS=[],AM=[],AIN=[],PL=[],PD='',PLAN=null,pendingName='',seenAdm=(()=>{try{return +localStorage.getItem('sfh_seen_adm')||0}catch(x){return 0}})(),seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
+let U=null,P=null,PUB=null,SONGS=[],CONF={},AU=[],tab='home',SADM=false,ADM=false,loadErr='',HDATE='',EDU='',GRT=[],BD=[],GQ=[],showAbout=location.hash=='#about',MSGS=[],AM=[],AIN=[],PL=[],PD='',PLAN=null,pendingName='',seenAdm=(()=>{try{return +localStorage.getItem('sfh_seen_adm')||0}catch(x){return 0}})(),seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
 
 async function load(){
   loadErr='';PUB=null;SONGS=[];CONF={};
   try{
     const r=doc(fs,'users',U.uid);let s=await getDoc(r);
-    if(!s.exists()&&!ADM){
-      await setDoc(r,{email:U.email||'',name:U.displayName||pendingName||'',status:'pending',photo:'',phone:'',city:'',note:'',updatedAt:Date.now()});
+    if(!s.exists()&&!SADM){
+      await setDoc(r,{email:U.email||'',name:U.displayName||pendingName||'',status:'pending',role:'user',photo:'',phone:'',city:'',note:'',updatedAt:Date.now()});
       s=await getDoc(r);
     }
-    P=s.exists()?s.data():{status:'approved',name:U.displayName||'',singer:''};
+    P=s.exists()?s.data():{status:'approved',name:U.displayName||'',singer:'',role:SADM?'superadmin':'user'};
+    if(SADM||P.role=='superadmin'){SADM=true;ADM=true;}
+    else if(P.role=='admin'){ADM=true;SADM=false;}
+    else{ADM=false;SADM=false;}
+
     if(ADM||P.status=='approved'){
       const [a,ix,c]=await Promise.all([getDoc(doc(fs,'pub','data')),getDoc(doc(fs,'pub','idx')),getDoc(doc(fs,'config','app'))]);
       PUB=a.exists()?a.data():null;CONF=c.exists()?c.data():{};
@@ -259,8 +266,9 @@ async function load(){
 }
 onAuthStateChanged(auth,async u=>{
   U=u;
-  if(!u){P=null;draw();return}
-  ADM=(CFG.admins||[]).map(x=>x.toLowerCase()).includes((u.email||'').toLowerCase())&&u.emailVerified===true;
+  if(!u){P=null;SADM=false;ADM=false;draw();return}
+  const em=(u.email||'').toLowerCase();
+  SADM=(CFG.superAdmins||[]).map(x=>x.toLowerCase()).includes(em)&&u.emailVerified===true;
   await load();draw();setTimeout(runCards,400);
 });
 
@@ -283,7 +291,7 @@ function draw(){
 }
 const idOf=em=>(em||'').endsWith('@singfromhome-phone.app')?em.split('@')[0]:(em||'');
 const vLogin=()=>`<div class="c"><h2>Welcome</h2><p>Sign in to see the Singer of the Day, declare your songs, message the host and join the session.</p>
-<label style="display:flex;gap:12px;align-items:flex-start;border:2px solid var(--ac);border-radius:10px;padding:12px;font-size:14px;cursor:pointer;background:var(--ac-light)"><input type="checkbox" id="cs" class="chk"><span>I agree that my name, email or phone number, photo, city and notes are stored online by Tikariya’s School of Music for this app, and that my songs and stars may be shown to other approved participants.</span></label>
+<label style="display:flex;gap:12px;align-items:flex-start;border:2px solid var(--ac);border-radius:10px;padding:12px;font-size:14px;cursor:pointer;background:var(--ac-light)"><input type="checkbox" id="cs" class="chk"><span>I agree that my name, email or phone number, photo, city and notes are stored online by Tikariya's School of Music for this app, and that my songs and stars may be shown to other approved participants.</span></label>
 <p style="margin-top:14px"><button class="pri" style="width:100%;padding:12px;font-size:15px" onclick="login()">Sign in with Google</button></p>
 <p class="m" style="text-align:center;margin:10px 0">or use a phone number / email and a password</p>
 <input id="lnm" placeholder="Your name (only for a new account)" style="width:100%;margin-bottom:8px"><input id="lid" placeholder="Phone number (10 digits) or email" inputmode="email" autocapitalize="none" style="width:100%;margin-bottom:8px"><input id="lpw" type="password" placeholder="Password (at least 6 characters)" style="width:100%">
@@ -292,7 +300,7 @@ const vLogin=()=>`<div class="c"><h2>Welcome</h2><p>Sign in to see the Singer of
 <p><button onclick="about()">About us</button></p></div>`;
 const vWait=()=>`<div class="c"><h2>${P.status=='pending'?'Waiting for approval':'Access not active'}</h2>
 <p>${P.status=='pending'?'Your request has been sent to the host. You will get access once the host approves you. Tap Check approval below.':'Your access is not active. Please contact the host.'}</p><p class="m">Signed in as ${e(idOf(U.email))}</p><p><button class="pri" onclick="refresh()">Check approval</button> <button onclick="about()">About us</button></p></div>`;
-const tabs=()=>`<nav>${(ADM?[['home','Home'],['sotd','Singer of the Day'],['pdf','PDF'],['about','About'],['refresh','Refresh'],['adm','Admin']]:[['home','Home'],['sotd','Singer of the Day'],['today','Today'],['msg','Messages'+unread()],['prof','My profile'],['pdf','PDF'],['about','About'],['refresh','Refresh']]).map(([k,t])=>k=='refresh'?`<button onclick="refresh()">${t}</button>`:`<button class="${tab==k?'on':''}" onclick="go('${k}')">${t}</button>`).join('')}${CONF.zoom?`<a class="zm" href="${e(CONF.zoom)}" target="_blank" rel="noopener">Start Zoom</a>`:''}</nav>`;
+const tabs=()=>`<nav>${(ADM?[['home','Home'],['sotd','Singer of the Day'],['pdf','PDF'],['about','About'],['refresh','Refresh'],['adm',SADM?'Super Admin':'Admin']]:[['home','Home'],['sotd','Singer of the Day'],['today','Today'],['msg','Messages'+unread()],['prof','My profile'],['pdf','PDF'],['about','About'],['refresh','Refresh']]).map(([k,t])=>k=='refresh'?`<button onclick="refresh()">${t}</button>`:`<button class="${tab==k?'on':''}" onclick="go('${k}')">${t}</button>`).join('')}${CONF.zoom?`<a class="zm" href="${e(CONF.zoom)}" target="_blank" rel="noopener">Start Zoom</a>`:''}</nav>`;
 
 const nmL=l=>(l||[]).map(x=>'<b>'+e(x.n)+'</b>'+(x.h=='Special'?' (special)':x.h=='Quiz'?' (quiz)':'')).join(', ');
 function sdates(){const st=new Set();SONGS.forEach(r=>st.add(r[1]));((PUB&&PUB.sotd)||[]).forEach(x=>st.add(x.d));return [...st].sort()}
@@ -309,20 +317,20 @@ function vHome(){
   const un=MSGS.filter(m=>m.ts>seen).length;if(!ADM&&un)h+=`<div class="c" style="border-left:4px solid var(--ac)">You have <b>${un}</b> new message${un>1?'s':''} <button style="margin-left:8px" onclick="go('msg')">Read</button></div>`;
   h+=bdCard();
 
-    if(!ADM)h+=`<div class="c" style="padding:10px 14px">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
-        <div style="flex:1;min-width:0">
-          <b>Your position</b>
-          ${sk?`<p class="big" style="margin:3px 0 2px 0">${e(sk)}</p>
-          <p style="margin:2px 0 0 0;line-height:1.35">Your stars: <b>${s?s.t:0}</b>${(s&&s.t>=4)?' <span style="color:var(--ac);font-weight:600">– eligible</span>':''}${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m" style="margin:3px 0 0">Your name is not linked yet. Please ask the host.</p>'}
-        </div>
-        <div class="ph" style="width:52px;height:52px;border-radius:50%;flex:none">
-          ${okImg(P.photo)?`<img src="${P.photo}">`:'<span class="m" style="font-size:10px;text-align:center">No photo</span>'}
-        </div>
+  if(!ADM)h+=`<div class="c" style="padding:10px 14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+      <div style="flex:1;min-width:0">
+        <b>Your position</b>
+        ${sk?`<p class="big" style="margin:3px 0 2px 0">${e(sk)}</p>
+        <p style="margin:2px 0 0 0;line-height:1.35">Your stars: <b>${s?s.t:0}</b>${(s&&s.t>=4)?' <span style="color:var(--ac);font-weight:600">- eligible</span>':''}${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m" style="margin:3px 0 0">Your name is not linked yet. Please ask the host.</p>'}
       </div>
-    </div>`;
+      <div class="ph" style="width:52px;height:52px;border-radius:50%;flex:none">
+        ${okImg(P.photo)?`<img src="${P.photo}">`:'<span class="m" style="font-size:10px;text-align:center">No photo</span>'}
+      </div>
+    </div>
+  </div>`;
 
-  h+=`<div class="c"><div class="row" style="justify-content:center;flex-wrap:nowrap"><button onclick="stepHD(-1)">◀</button><input type="date" value="${e(d)}" min="${e(ds[0]||'')}" max="${e(ds[ds.length-1]||'')}" onchange="setHD(this.value)"><button onclick="stepHD(1)">▶</button><button onclick="setHD('')">Latest</button></div><p class="m" style="text-align:center;margin:6px 0 0">${fd(d)}</p></div>`;
+  h+=`<div class="c"><div class="row" style="justify-content:center;flex-wrap:nowrap"><button onclick="stepHD(-1)">&lt;</button><input type="date" value="${e(d)}" min="${e(ds[0]||'')}" max="${e(ds[ds.length-1]||'')}" onchange="setHD(this.value)"><button onclick="stepHD(1)">&gt;</button><button onclick="setHD('')">Latest</button></div><p class="m" style="text-align:center;margin:6px 0 0">${fd(d)}</p></div>`;
   const ls=SONGS.filter(r=>r[1]==d).sort(cmpS),mine=ls.filter(r=>r[2]==sk),sd=(PUB.sotd||[]).find(x=>x.d==d);
   h+=`<div class="c"><b>Singer of the Day</b><p class="big" style="margin:6px 0">${sd?nmL(sd.l):'<span class="m" style="font-weight:normal;font-size:15px">Not declared</span>'}</p></div>`;
   if(!ADM)h+=`<div class="c"><b>Your songs on this day</b>${mine.length?sTable(mine,sk):'<p class="m">No songs of yours in the published data for this day.</p>'}</div>`;
@@ -341,7 +349,7 @@ function vSotd(){
 
   h+=`<div class="c"><b>Singers of the Day${lm?' since the Singer of the Month '+e(fm(lm))+(ld?' ('+fd(ld)+')':''):''}</b><p class="m" style="margin:2px 0 8px">This list stays until the next Singer of the Month is declared.</p>${cyc.length?`<div class="tbl"><table><tr><th style="width:95px;min-width:95px">Date</th><th>Singer name</th></tr>${cyc.map(x=>`<tr><td style="width:95px;min-width:95px"><span class="m">${fd(x.d)}</span></td><td>${nmL(x.l)}</td></tr>`).join('')}</table></div>`:'<p class="m">None yet in this round.</p>'}</div>`;
 
-  h+=`<div class="c"><b>Star singers</b><p class="m" style="margin:2px 0 8px">Singers with 4 stars sing in the Singer of the Month session. After one is chosen, the other 4-star singers go back to 0. Singers with 1 to 3 stars keep their stars.</p>${stars.length?`<div class="tbl"><table><tr><th>Singer name</th><th style="min-width:140px">Stars</th><th style="width:50px;text-align:center">Total</th><th style="width:90px">Status</th></tr>${stars.map(([n,o])=>`<tr class="${n==sk?'me':''}"><td><b>${e(n)}</b></td><td style="min-width:140px;letter-spacing:2px">${'★'.repeat(Math.min(o.t,10))}${o.t>10?'+':''}</td><td class="n"><span class="m">(${o.t})</span></td><td>${o.t>=4?'<span style="color:var(--ac);font-weight:600">Eligible</span>':'<span class="m">-</span>'}</td></tr>`).join('')}</table></div>`:'<p class="m">No stars yet.</p>'}</div>`;
+  h+=`<div class="c"><b>Star singers</b><p class="m" style="margin:2px 0 8px">Singers with 4 stars sing in the Singer of the Month session. After one is chosen, the other 4-star singers go back to 0. Singers with 1 to 3 stars keep their stars.</p>${stars.length?`<div class="tbl"><table><tr><th>Singer name</th><th style="min-width:80px;text-align:center">Stars</th><th style="width:50px;text-align:center">Total</th><th style="width:90px">Status</th></tr>${stars.map(([n,o])=>`<tr class="${n==sk?'me':''}"><td><b>${e(n)}</b></td><td class="n">${o.t}</td><td class="n"><span class="m">(${o.t})</span></td><td>${o.t>=4?'<span style="color:var(--ac);font-weight:600">Eligible</span>':'<span class="m">-</span>'}</td></tr>`).join('')}</table></div>`:'<p class="m">No stars yet.</p>'}</div>`;
 
   return h;
 }
@@ -370,7 +378,7 @@ window.pdf=kind=>{
   const cc=d.splitTextToSize('Core Committee: RAJESH GARJE, SANTOSH BHAROTE, VIJAY SUTRAVE, SUREKHA TIKARIYA, MANOJ TIKARIYA, NITIN POL, SURESH GHADSING, SHILA RAITHATHA',182);
   d.setFontSize(8);d.text(cc,105,28,{align:'center'});d.setFontSize(9);
   const yp=28+cc.length*3.4+1.5;
-  d.text('A Project of B. S. Tikariya Cultural Foundation \xAE - CIN: U88900MH2025NPL454435',105,yp,{align:'center'});
+  d.text('A Project of B. S. Tikariya Cultural Foundation (R) - CIN: U88900MH2025NPL454435',105,yp,{align:'center'});
   d.setFontSize(13);d.text(kind=='all'?'All Songs List':'My Songs',14,yp+9);
   d.setFontSize(9);
   const info=[sk?'Singer: '+sk:'',sk?'Stars: '+s.t:'',sk?'Singer of the Day: '+((s.d&&s.d.length)||0)+' time(s)'+(s.d&&s.d.length?' - '+s.d.map(fd).join(', '):''):'',sk?'Singer of the Month: '+(som.length?som.join(', '):'-'):'','Total songs: '+rows.length+'   Date: '+fd(new Date().toISOString().slice(0,10))].filter(Boolean);
@@ -413,7 +421,7 @@ window.forgotPw=async()=>{const raw=($('#lid').value||'').trim();
 const tdy=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 async function loadPlan(){try{const s=await getDoc(doc(fs,'plans',tdy()+'_'+U.uid));PLAN=s.exists()?s.data():null}catch(x){PLAN=null}}
 function vToday(){const pl=(PLAN&&PLAN.songs)||[];
-  return `<div class="c"><b>Songs for today – ${fd(tdy())}</b><p class="m">Tell the host which songs you plan to sing today, up to 3. You can change them until the session starts.</p>
+  return `<div class="c"><b>Songs for today - ${fd(tdy())}</b><p class="m">Tell the host which songs you plan to sing today, up to 3. You can change them until the session starts.</p>
 ${[0,1,2].map(i=>`<input id="ps${i}" placeholder="Song ${i+1}" value="${e(pl[i]||'')}" style="width:100%;margin-top:8px;text-transform:uppercase">`).join('')}
 <p style="margin-top:10px"><button class="pri" onclick="savePlan()">${PLAN?'Update':'Save'} my songs</button> ${PLAN?'<button onclick="clearPlan()">Remove</button>':''}</p>
 ${PLAN?`<p class="m">First saved at ${fdt(PLAN.ts)}. The host sees the list in the order people saved it.</p>`:''}</div>`}
@@ -444,7 +452,7 @@ async function loadMsgs(){try{
 function vMsg(){return `<div class="c"><b>Message to the host</b><textarea id="hm" rows="3" maxlength="500" placeholder="Write your message to the host" style="width:100%;margin-top:8px"></textarea><p style="margin-top:10px"><button class="pri" onclick="sendHost()">Send to host</button></p><p class="m">The host can reply here in your Messages.</p></div><div class="c"><b>Messages from the host</b></div>`+(MSGS.length?MSGS.map(m=>`<div class="c"><div class="row" style="justify-content:space-between"><b>${e(m.title)}</b>${m.ts>seenPrev?'<span class="zm" style="padding:2px 8px;font-size:11px;border-radius:6px">NEW</span>':''}</div><p class="m" style="margin:2px 0 6px">${fdt(m.ts)}</p><div style="white-space:pre-wrap">${e(m.body)}</div></div>`).join(''):'<div class="c"><p class="m">No messages yet.</p></div>')}
 window.sendMsg=async()=>{const t=$('#mt').value.trim(),b=$('#mb').value.trim(),to=$('#mto').value;
   if(!t||!b){alert('Write a title and a message');return}
-  const nm=to=='all'?'All participants':$('#mto').selectedOptions[0].text;
+  const nm=to=='all'?'All approved participants':$('#mto').selectedOptions[0].text;
   if(!confirm('Send this message to '+nm+'?'))return;
   try{await addDoc(collection(fs,'msgs'),{title:t,body:b,to,toName:nm,ts:Date.now()});await loadAdm();draw();alert('Sent')}
   catch(x){alert('Failed ('+(x.code||'error')+'). Check that the latest rules are published in Firebase.')}};
@@ -458,23 +466,23 @@ function vAbout(pub){
   const link=(h,t)=>`<a href="${e(h)}" target="_blank" rel="noopener" style="color:var(--ac);font-weight:600">${e(t)}</a>`;
   const ct=[C.email&&'Email: '+link('mailto:'+C.email,C.email),C.phone&&'Phone: '+link('tel:'+C.phone,C.phone),C.whatsapp&&'WhatsApp: '+e(C.whatsapp),C.address&&'Address: '+e(C.address),C.website&&'Website: '+link(C.website,C.website)].concat((C.social||[]).map(x=>link(x.url,x.label))).filter(Boolean);
   return (pub?'<div class="c"><button onclick="closeAbout()">Back</button></div>':'')
-  +`<div class="c" style="text-align:center"><h2 style="margin-top:8px">${e(F.name)}</h2><p class="m">CIN: ${e(F.cin)}${F.since?' · Since '+e(F.since):''}</p>${F.tagline?`<p><b>${e(F.tagline)}</b></p>`:''}</div>`
+  +`<div class="c" style="text-align:center"><h2 style="margin-top:8px">${e(F.name)}</h2><p class="m">CIN: ${e(F.cin)}${F.since?' - Since '+e(F.since):''}</p>${F.tagline?`<p><b>${e(F.tagline)}</b></p>`:''}</div>`
   +sec('About the Foundation',F.about)
   +((F.director||F.address)?`<div class="c">${F.director?`<b>${e(F.director.role||'Director')}</b><p style="margin:4px 0 10px">${e(F.director.name)}</p>`:''}${F.address?`<b>Registered office</b><p style="margin:4px 0">${e(F.address)}</p>`:''}</div>`:'')
   +sec('Our agenda',A.agenda,A.agendaPoints)+sec('How we work',A.how,A.howPoints)+sec('Registrations',null,A.registrations)
-  +((S.intro||S.schedule||(S.rules&&S.rules.length)||(S.committee&&S.committee.length))?`<div class="c"><b>SING FROM HOME</b>${PP(S.intro)}${S.schedule?'<p><b>When:</b> '+e(S.schedule)+'</p>':''}${UL(S.rules)}${(S.committee&&S.committee.length)?`<p style="font-size:12px;line-height:1.6;margin:10px 0 0"><b>Core Committee:</b> ${S.committee.map(x=>e(x)).join(' · ')}</p>`:''}</div>`:'')
+  +((S.intro||S.schedule||(S.rules&&S.rules.length)||(S.committee&&S.committee.length))?`<div class="c"><b>SING FROM HOME</b>${PP(S.intro)}${S.schedule?'<p><b>When:</b> '+e(S.schedule)+'</p>':''}${UL(S.rules)}${(S.committee&&S.committee.length)?`<p style="font-size:12px;line-height:1.6;margin:10px 0 0"><b>Core Committee:</b> ${S.committee.map(x=>e(x)).join(' - ')}</p>`:''}</div>`:'')
   +(SP.upi?`<div class="c"><b>Support our work (voluntary)</b>${PP(SP.intro)}<p style="margin:6px 0"><b>UPI ID:</b> ${e(SP.upi)}</p>${SP.qrImage?`<p><img src="${e(SP.qrImage)}" alt="UPI QR code" style="width:200px;max-width:100%;border:1px solid var(--bd);border-radius:10px;background:#fff"></p>`:''}<p><a class="zm" style="background:var(--ac);border-color:var(--ac);color:#ffffff;font-weight:700" href="upi://pay?pa=${encodeURIComponent(SP.upi)}&amp;pn=${encodeURIComponent(SP.payeeName||F.name)}&amp;cu=INR">Pay with a UPI app</a></p>${SP.note?'<p class="m">'+e(SP.note)+'</p>':''}</div>`:'')
   +sec('Message from the Director',A.message)
   +((A.faq&&A.faq.length)?`<div class="c"><b>Questions</b>${A.faq.map(x=>`<p><b>${e(x.q)}</b><br>${e(x.a)}</p>`).join('')}</div>`:'')
   +(ct.length?`<div class="c"><b>Contact</b>${ct.map(x=>'<p style="margin:4px 0">'+x+'</p>').join('')}</div>`:'')
-  +'<p class="m" style="text-align:center">Conducted by TIKARIYA’S SCHOOL OF MUSIC · Director: Manoj Tikariya</p>';
+  +'<p class="m" style="text-align:center">Conducted by TIKARIYA\'S SCHOOL OF MUSIC - Director: Manoj Tikariya</p>';
 }
 window.about=()=>{showAbout=true;try{location.hash='about'}catch(x){}draw();scrollTo(0,0)};
 window.closeAbout=()=>{showAbout=false;try{history.replaceState(null,'',location.pathname+location.search)}catch(x){}draw()};
 window.addEventListener('hashchange',()=>{showAbout=location.hash=='#about';draw()});
 
 function vEdU(){const u=AU.find(x=>x.id==EDU);if(!u)return '';
-  return `<div class="c"><b>Profile – ${e(u.name||idOf(u.email))}</b><p class="m">${e(idOf(u.email))} · ${e(u.status||'')}</p>
+  return `<div class="c"><b>Profile - ${e(u.name||idOf(u.email))}</b><p class="m">${e(idOf(u.email))} - ${e(u.status||'')}</p>
 <div class="row" style="margin:8px 0"><div class="ph">${okImg(u.photo)?`<img src="${u.photo}">`:'<span class="m">No photo</span>'}</div><div><label class="up">Change photo<input type="file" accept="image/*" hidden onchange="picU(this)"></label> ${u.photo?'<button onclick="rmPicU()">Remove</button>':''}</div></div>
 <div class="f"><label>Name<input id="eu_n" value="${e(u.name||'')}"></label><label>Linked singer<input id="eu_s" list="eul" value="${e(u.singer||'')}"><datalist id="eul">${((PUB&&PUB.singers)||[]).map(n=>`<option value="${e(n)}">`).join('')}</datalist></label><label>Phone<input id="eu_p" value="${e(u.phone||'')}"></label><label>City<input id="eu_c" value="${e(u.city||'')}"></label>${bdSel('eb',u.dob)}</div>
 <label class="m" style="flex-direction:row;align-items:center;gap:10px;margin:8px 0"><input type="checkbox" id="ebs" class="chk" ${(u.bshow!==undefined?u.bshow:BD.some(b=>b.id==u.id))?'checked':''}><span>Show this birthday (day and month) to everyone in the app</span></label>
@@ -487,7 +495,7 @@ window.rmPicU=()=>{const u=grabU();if(u){u.photo='';draw()}};
 window.picU=el=>{const f=el.files[0];if(!f)return;const u=grabU();const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const S=240,c=document.createElement('canvas');c.width=c.height=S;const m=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)*0.2,m,m,0,0,S,S);u.photo=c.toDataURL('image/jpeg',0.75);draw()};im.src=r.result};r.readAsDataURL(f)};
 window.saveU=async()=>{const u=grabU();if(!u)return;try{await updateDoc(doc(fs,'users',u.id),{name:u.name||'',singer:u.singer||'',phone:u.phone||'',city:u.city||'',note:u.note||'',photo:u.photo||'',dob:u.dob||'',updatedAt:Date.now()});await setBd(u.id,u.singer||u.name||'',u.dob,u.bshow);alert('Saved');EDU='';await loadAdm();draw()}catch(x){alert('Could not save ('+(x.code||'error')+')')}};
 
-const SIGN='– Manoj Tikariya<br>Director, B. S. Tikariya Cultural Foundation';
+const SIGN='- Manoj Tikariya<br>Director, B. S. Tikariya Cultural Foundation';
 const BUILTIN=[{id:'b-diwali-2026',icon:'',title:'Happy Diwali!',hi:'शुभ दीपावली',text:'May the festival of lights fill your life and your voice with joy, music and light. Warm wishes to all our singers and their families from the SING FROM HOME family.',from:'2026-11-05',to:'2026-11-12'}];
 const FEST=[
 {i:'',t:'Happy Diwali!',h:'शुभ दीपावली',x:'May the festival of lights fill your life and your voice with joy, music and light. Warm wishes to all our singers and their families from the SING FROM HOME family.'},
@@ -511,7 +519,7 @@ async function loadBd(){try{const q=await getDocs(collection(fs,'birthdays'));BD
 const mdOf=d=>String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 function showCard(o){const old=document.getElementById('dw');if(old)old.remove();
   const d=document.createElement('div');d.id='dw';
-  d.innerHTML=`<div class="card"${o.bg?` style="background:${o.bg}"`:''}><button class="x" onclick="closeDw()" aria-label="Close">✕</button>${o.icon?`<div class="diya">${o.icon}</div>`:''}<h2>${e(o.title)}</h2>${o.sub?`<p style="font-size:20px;font-weight:600;margin:4px 0">${e(o.sub)}</p>`:''}<p style="font-size:15px;line-height:1.6;margin:12px 0;white-space:pre-line">${e(o.text)}</p>${o.sig?`<p style="margin:12px 0 16px;font-size:13px;opacity:0.95">${o.sig}</p>`:''}<button style="background:#fff;color:#0f3460;border:0;border-radius:10px;padding:11px 34px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 15px rgba(0,0,0,0.2)" onclick="closeDw()">Close</button></div>`;
+  d.innerHTML=`<div class="card"${o.bg?` style="background:${o.bg}"`:''}><button class="x" onclick="closeDw()" aria-label="Close">X</button>${o.icon?`<div class="diya">${o.icon}</div>`:''}<h2>${e(o.title)}</h2>${o.sub?`<p style="font-size:20px;font-weight:600;margin:4px 0">${e(o.sub)}</p>`:''}<p style="font-size:15px;line-height:1.6;margin:12px 0;white-space:pre-line">${e(o.text)}</p>${o.sig?`<p style="margin:12px 0 16px;font-size:13px;opacity:0.95">${o.sig}</p>`:''}<button style="background:#fff;color:#0f3460;border:0;border-radius:10px;padding:11px 34px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 15px rgba(0,0,0,0.2)" onclick="closeDw()">Close</button></div>`;
   d.onclick=ev=>{if(ev.target===d)closeDw()};document.body.appendChild(d)}
 function seenMap(){try{return JSON.parse(localStorage.getItem('sfh_cards')||'{}')}catch(x){return {}}}
 function nextCard(){if(document.getElementById('dw'))return;const c=GQ.shift();if(!c)return;const m=seenMap();m[c.key]=tdy();try{localStorage.setItem('sfh_cards',JSON.stringify(m))}catch(x){}showCard(c)}
@@ -522,14 +530,14 @@ function runCards(){const t=tdy(),m=seenMap(),due=[];
     if(bl.length&&m['bd-'+t]!==t){const mine=bl.some(b=>b.id==U.uid),names=bl.map(b=>b.singer).join(', ');
       due.push({key:'bd-'+t,icon:'',title:mine?'Happy Birthday!':'Birthday today',sub:mine?'':names,
         text:mine?'Wishing you a wonderful birthday'+(bl.find(b=>b.id==U.uid).singer?', '+bl.find(b=>b.id==U.uid).singer:'')+'! May your year be full of music, health and joy.':'Let us wish '+names+' a very happy birthday today!',
-        sig:mine?'– The SING FROM HOME family':'',bg:'linear-gradient(150deg,#0f3460 0%,#1e4a7a 50%,#2563eb 100%)'})}}
+        sig:mine?'- The SING FROM HOME family':'',bg:'linear-gradient(150deg,#0f3460 0%,#1e4a7a 50%,#2563eb 100%)'})}}
   GQ=due;nextCard()}
 function bdCard(){const out=[],b0=new Date(tdy()+'T00:00');
   for(let i=0;i<=7;i++){const d=new Date(b0.getFullYear(),b0.getMonth(),b0.getDate()+i),md=mdOf(d);BD.filter(b=>b.md==md).forEach(b=>out.push({n:b.singer,i,d}))}
   return out.length?`<div class="c"><b>Birthdays</b>${out.map(o=>`<p style="margin:5px 0"><b>${e(o.n)}</b> <span class="m">${o.i==0?'today':o.d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</span></p>`).join('')}</div>`:''}
 loadGreet().then(()=>setTimeout(runCards,500));
 const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
-const bdSel=(id,dob)=>{const [mm,dd]=(dob||'').split('-');return `<label>Birthday – day<select id="${id}d"><option value="">–</option>${Array.from({length:31},(_,k)=>`<option value="${String(k+1).padStart(2,'0')}"${dd==String(k+1).padStart(2,'0')?' selected':''}>${k+1}</option>`).join('')}</select></label><label>Month<select id="${id}m"><option value="">–</option>${MON.map((n,k)=>`<option value="${String(k+1).padStart(2,'0')}"${mm==String(k+1).padStart(2,'0')?' selected':''}>${n}</option>`).join('')}</select></label>`};
+const bdSel=(id,dob)=>{const [mm,dd]=(dob||'').split('-');return `<label>Birthday - day<select id="${id}d"><option value="">-</option>${Array.from({length:31},(_,k)=>`<option value="${String(k+1).padStart(2,'0')}"${dd==String(k+1).padStart(2,'0')?' selected':''}>${k+1}</option>`).join('')}</select></label><label>Month<select id="${id}m"><option value="">-</option>${MON.map((n,k)=>`<option value="${String(k+1).padStart(2,'0')}"${mm==String(k+1).padStart(2,'0')?' selected':''}>${n}</option>`).join('')}</select></label>`};
 const bdRead=id=>{const d=$('#'+id+'d'),m=$('#'+id+'m');return d&&m&&d.value&&m.value?m.value+'-'+d.value:''};
 async function setBd(uid,name,dob,show){try{if(show&&dob)await setDoc(doc(fs,'birthdays',uid),{singer:name||'',md:dob,ts:Date.now()});else await deleteDoc(doc(fs,'birthdays',uid))}catch(x){}await loadBd()}
 window.fillFest=v=>{if(v==='')return;const f=FEST[+v];$('#gt').value=f.t;$('#gh').value=f.h;$('#gx').value=f.x;$('#gt').dataset.i=f.i};
@@ -542,42 +550,45 @@ window.delGreet=async id=>{if(!confirm('Delete this greeting?'))return;try{await
 
 async function loadAdm(){try{const q=await getDocs(collection(fs,'users'));AU=q.docs.map(x=>({id:x.id,...x.data()}));try{const mq=await getDocs(collection(fs,'msgs'));AM=mq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AM=[]}try{const iq=await getDocs(collection(fs,'inbox'));AIN=iq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AIN=[]}await loadPlans()}catch(x){AU=[];alert('Could not load participants ('+(x.code||'error')+'). Check the admin email in firestore.rules.')}}
 function vAdm(){
-  const names=(PUB&&PUB.singers)||[],opt='<option value="">Link to singer…</option>'+names.map(n=>`<option>${e(n)}</option>`).join('');
+  const names=(PUB&&PUB.singers)||[],opt='<option value="">Link to singer...</option>'+names.map(n=>`<option>${e(n)}</option>`).join('');
   const pend=AU.filter(u=>u.status!='approved'),ok=AU.filter(u=>u.status=='approved');
   const img=u=>okImg(u.photo)?`<div class="ph" style="width:44px;height:44px"><img src="${u.photo}"></div>`:'';
-  return `${EDU?vEdU():''}<div class="c"><b>Publish data</b><p class="m">${PUB?'Last published: '+e(PUB.ts||''):'Nothing published yet.'} (${SONGS.length} songs)</p>
+  const roleBadge=u=>(CFG.superAdmins||[]).map(x=>x.toLowerCase()).includes((u.email||'').toLowerCase())||u.role=='superadmin'?'<span class="badge badge-super">Super Admin</span>':u.role=='admin'?'<span class="badge badge-admin">Admin</span>':'<span class="badge badge-user">User</span>';
+  return `${EDU?vEdU():''}${SADM?`<div class="c" style="border:2px solid var(--ac)"><b>Super Admin Console</b><p class="m" style="margin:2px 0 8px">As Super Admin, you can grant or revoke Admin permissions for any participant.</p>
+<div class="tbl"><table><tr><th>Participant</th><th>Login / ID</th><th>Current Role</th><th style="text-align:center">Admin Control</th></tr>
+${ok.map(u=>{
+  const isTargetSuper=(CFG.superAdmins||[]).map(x=>x.toLowerCase()).includes((u.email||'').toLowerCase())||u.role=='superadmin';
+  const isTargetAdmin=u.role=='admin';
+  return `<tr><td><b>${e(u.singer||u.name||'(no name)')}</b></td><td><span class="m">${e(idOf(u.email))}</span></td><td>${roleBadge(u)}</td><td style="text-align:center;white-space:nowrap">${isTargetSuper?'<span class="m">Super Admin</span>':isTargetAdmin?`<button onclick="setRole('${e(u.id)}','user')">Revoke Admin</button>`:`<button class="pri" onclick="setRole('${e(u.id)}','admin')">Make Admin</button>`}</td></tr>`;
+}).join('')}</table></div></div>`:''}
+<div class="c"><b>Publish data</b><p class="m">${PUB?'Last published: '+e(PUB.ts||''):'Nothing published yet.'} (${SONGS.length} songs)</p>
 <label class="up">Choose the file from the host app<input type="file" accept=".json,application/json" hidden onchange="pubUp(this)"></label></div>
 <div class="c"><b>Zoom link</b><input id="zl" style="width:100%" value="${e(CONF.zoom||'')}"><p style="margin-top:10px"><button onclick="saveZ()">Save link</button></p></div>
-<div class="c"><b>Festival greetings</b><p class="m" style="margin:2px 0 6px">A pop-up shown once a day to everyone who opens the app between the two dates.</p><select id="gf" onchange="fillFest(this.value)"><option value="">Choose a festival…</option>${FEST.map((f,i)=>`<option value="${i}">${e(f.t)}</option>`).join('')}</select><input id="gt" placeholder="Title" style="width:100%;margin-top:8px"><input id="gh" placeholder="Hindi / Marathi line (optional)" style="width:100%;margin-top:8px"><textarea id="gx" rows="3" placeholder="Message" style="width:100%;margin-top:8px"></textarea><div class="f"><label>Show from<input type="date" id="gfrom" value="${tdy()}"></label><label>Show until<input type="date" id="gto" value="${tdy()}"></label></div><p style="margin-top:10px"><button class="pri" onclick="addGreet()">Add greeting</button> <button onclick="prevGreet()">Preview</button></p>${GRT.length?GRT.slice().sort((a,b)=>a.from<b.from?1:-1).map(g=>`<p style="margin:6px 0"><b>${e(g.title)}</b> <span class="m">${fd(g.from)} – ${fd(g.to)}</span> <button onclick="delGreet('${e(g.id)}')">Delete</button></p>`).join(''):'<p class="m">No greetings added yet. The Diwali greeting for 5 to 12 Nov 2026 is built in.</p>'}</div>
+<div class="c"><b>Festival greetings</b><p class="m" style="margin:2px 0 6px">A pop-up shown once a day to everyone who opens the app between the two dates.</p><select id="gf" onchange="fillFest(this.value)"><option value="">Choose a festival...</option>${FEST.map((f,i)=>`<option value="${i}">${e(f.t)}</option>`).join('')}</select><input id="gt" placeholder="Title" style="width:100%;margin-top:8px"><input id="gh" placeholder="Hindi / Marathi line (optional)" style="width:100%;margin-top:8px"><textarea id="gx" rows="3" placeholder="Message" style="width:100%;margin-top:8px"></textarea><div class="f"><label>Show from<input type="date" id="gfrom" value="${tdy()}"></label><label>Show until<input type="date" id="gto" value="${tdy()}"></label></div><p style="margin-top:10px"><button class="pri" onclick="addGreet()">Add greeting</button> <button onclick="prevGreet()">Preview</button></p>${GRT.length?GRT.slice().sort((a,b)=>a.from<b.from?1:-1).map(g=>`<p style="margin:6px 0"><b>${e(g.title)}</b> <span class="m">${fd(g.from)} - ${fd(g.to)}</span> <button onclick="delGreet('${e(g.id)}')">Delete</button></p>`).join(''):'<p class="m">No greetings added yet. The Diwali greeting for 5 to 12 Nov 2026 is built in.</p>'}</div>
 <div class="c"><b>Songs declared by participants</b><div class="f"><input type="date" value="${PD||tdy()}" onchange="setPD(this.value)"></div>${PL.length?PL.map((p,i)=>`<p style="margin:6px 0"><b>${i+1}. ${e(p.singer)}</b> <span class="m">${fdt(p.ts)}</span><br>${(p.songs||[]).map(x=>e(x)).join(' / ')}</p>`).join(''):'<p class="m">Nothing declared for this date.</p>'}<button onclick="copyPlans()">Copy list</button></div>
 <div class="c"><b>Messages from participants (${AIN.length})</b>${AIN.slice(0,30).map(m=>`<div style="margin:8px 0;border-top:1px solid var(--bd);padding-top:8px"><b>${e(m.name||'?')}</b> <span class="m">${fdt(m.ts)}</span>${m.ts>seenAdm?' <span class="zm" style="padding:1px 6px;font-size:11px;border-radius:6px">NEW</span>':''}<div style="white-space:pre-wrap">${e(m.text)}</div><p style="margin-top:6px"><button onclick="replyTo('${e(m.uid)}')">Reply</button> <button onclick="delIn('${e(m.id)}')">Delete</button></p></div>`).join('')||'<p class="m">No messages yet.</p>'}</div>
 <div class="c"><b>Send a message</b><input id="mt" placeholder="Title" style="width:100%;margin-top:8px"><textarea id="mb" rows="4" placeholder="Message" style="width:100%;margin-top:8px"></textarea><div class="f"><select id="mto"><option value="all">All approved participants</option>${ok.map(u=>`<option value="${e(u.id)}">${e(u.singer||u.name)}</option>`).join('')}</select></div><button class="pri" onclick="sendMsg()">Send</button><p class="m">Participants can only read it. ${AM.length} sent so far.</p></div>
-${AM.length?`<div class="c"><b>Sent messages</b>${AM.slice(0,20).map(m=>`<p style="margin:8px 0"><b>${e(m.title)}</b> <span class="m">→ ${e(m.toName||m.to)} · ${fdt(m.ts)}</span> <button onclick="delMsg('${e(m.id)}')">Delete</button></p>`).join('')}</div>`:''}
+${AM.length?`<div class="c"><b>Sent messages</b>${AM.slice(0,20).map(m=>`<p style="margin:8px 0"><b>${e(m.title)}</b> <span class="m">-&gt; ${e(m.toName||m.to)} - ${fdt(m.ts)}</span> <button onclick="delMsg('${e(m.id)}')">Delete</button></p>`).join('')}</div>`:''}
 <div class="c"><b>Waiting for approval (${pend.length})</b></div>
-${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b><br><span class="m">${e(idOf(u.email))} · ${e(u.status||'')}</span></div></div>
+${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b><br><span class="m">${e(idOf(u.email))} - ${e(u.status||'')}</span></div></div>
 <div class="f"><select id="lk_${e(u.id)}">${opt}</select><input id="lt_${e(u.id)}" placeholder="or type singer name"></div>
 <p style="margin-top:8px"><button class="pri" onclick="appr('${e(u.id)}')">Approve</button> <button onclick="rej('${e(u.id)}')">Reject</button> <button onclick="editU('${e(u.id)}')">Profile</button></p></div>`).join('')}
-<div class="c"><b>Approved (${ok.length})</b>${ok.length?`<div class="tbl"><table><tr><th>Singer name</th><th>Login / Phone</th><th style="text-align:center">Actions</th></tr>${ok.map(u=>`<tr><td><b>${e(u.singer||'(not linked)')}</b></td><td><span class="m">${e(idOf(u.email))}</span></td><td style="text-align:center;white-space:nowrap"><button onclick="editU('${e(u.id)}')">Profile</button> <button onclick="rej('${e(u.id)}')">Revoke</button></td></tr>`).join('')}</table></div>`:'<p class="m">No approved participants yet.</p>'}</div>`;
+<div class="c"><b>Approved (${ok.length})</b>${ok.length?`<div class="tbl"><table><tr><th>Singer name</th><th>Login / Phone</th><th>Role</th><th style="text-align:center">Actions</th></tr>${ok.map(u=>`<tr><td><b>${e(u.singer||'(not linked)')}</b></td><td><span class="m">${e(idOf(u.email))}</span></td><td>${roleBadge(u)}</td><td style="text-align:center;white-space:nowrap"><button onclick="editU('${e(u.id)}')">Profile</button> <button onclick="rej('${e(u.id)}')">Revoke</button></td></tr>`).join('')}</table></div>`:'<p class="m">No approved participants yet.</p>'}</div>`;
 }
+window.setRole=async(id,r)=>{
+  if(!SADM){alert('Only Super Admin can change administrative roles.');return}
+  const u=AU.find(x=>x.id==id);
+  const nm=u?(u.singer||u.name||id):id;
+  const actionText=r=='admin'?'promote '+nm+' to Admin':'revoke Admin privileges from '+nm;
+  if(!confirm('Are you sure you want to '+actionText+'?'))return;
+  try{
+    await updateDoc(doc(fs,'users',id),{role:r,updatedAt:Date.now()});
+    await loadAdm();draw();
+    alert('User role updated to '+r+'.');
+  }catch(x){alert('Failed ('+(x.code||'error')+').')}
+};
 window.appr=async id=>{const v=(($('#lt_'+id).value||'').trim()||$('#lk_'+id).value||'').toUpperCase();if(!v){alert('Choose or type the singer name to link');return}
   try{await updateDoc(doc(fs,'users',id),{status:'approved',singer:v});await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
 window.rej=async id=>{if(!confirm('Remove access for this person?'))return;try{await updateDoc(doc(fs,'users',id),{status:'rejected'});await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
 window.saveZ=async()=>{try{await setDoc(doc(fs,'config','app'),{zoom:$('#zl').value.trim()});CONF.zoom=$('#zl').value.trim();alert('Zoom link saved');draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
-const hsh=t=>{let h=5381;for(let i=0;i<t.length;i++)h=((h<<5)+h+t.charCodeAt(i))|0;return String(h>>>0)};
-window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=async()=>{
-  try{const x=JSON.parse(r.result);if(x.kind!='sfh-pub'||!Array.isArray(x.songs))throw 0;
-    const by={};x.songs.forEach(sg=>{const m=String(sg[1]).slice(0,7);(by[m]=by[m]||[]).push(sg)});
-    const ms=Object.keys(by).sort(),js={};let tot=0;
-    ms.forEach(m=>{js[m]=JSON.stringify(by[m]);tot+=js[m].length;if(js[m].length>900000)throw 'size'});
-    if(!confirm('Publish '+x.songs.length+' songs ('+Math.round(tot/1024)+' KB in '+ms.length+' month'+(ms.length>1?'s':'')+'), '+(x.sotd||[]).length+' Singer of the Day dates and '+(x.singers||[]).length+' singers to participants?'+(tot>1500000?'\n\nNote: the songs list is getting large and the app may load slowly. Please tell Claude.':'')))return;
-    const ix=await getDoc(doc(fs,'pub','idx')),old=ix.exists()?(ix.data().months||{}):{},nw={};let wr=0;
-    for(const m of ms){const hh=hsh(js[m]);nw[m]={n:by[m].length,h:hh};if(!old[m]||old[m].h!==hh){await setDoc(doc(fs,'pub','songs_'+m),{json:js[m],n:by[m].length,h:hh,ts:x.ts||''});wr++}}
-    await setDoc(doc(fs,'pub','data'),{singers:x.singers||[],sotd:x.sotd||[],som:x.som||{},somd:x.somd||{},stars:x.stars||{},ts:x.ts||''});
-    await setDoc(doc(fs,'pub','idx'),{months:nw,total:tot,ts:x.ts||''});
-    for(const m of Object.keys(old))if(!nw[m]){try{await deleteDoc(doc(fs,'pub','songs_'+m))}catch(y){}}
-    try{await deleteDoc(doc(fs,'pub','songs'))}catch(y){}
-    await load();draw();alert('Published. '+wr+' of '+ms.length+' month(s) updated.');
-  }catch(z){alert(z=='size'?'One month of songs is too large for a single document. Please tell Claude.':(z&&z.code?'Publishing failed ('+z.code+'). Check the Firebase rules and the admin email.':'That is not a valid participants file.'))}};r.readAsText(f)};
-
-if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
-</script></body></html>
+const hsh=t=>{let h=5381;for(let i=0;i<t.length;i++)h=((h<<5)+h+t.charCodeAt(i))|0;
