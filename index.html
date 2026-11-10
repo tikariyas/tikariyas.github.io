@@ -154,6 +154,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
 const VER='2026-11-10 b11';
 const CFG = {
   firebase: {
@@ -237,7 +238,7 @@ const fd=k=>k.slice(8)+'/'+k.slice(5,7)+'/'+k.slice(0,4);
 const fm=m=>new Date(m+'-01T00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
 const nowM=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
 const okImg=s=>typeof s=='string'&&s.startsWith('data:image/');
-let U=null,P=null,PUB=null,LIVE_SESSION=null;SONGS=[],CONF={},AU=[],tab='home',ADM=false,IS_SUPER=false,IS_ADMIN=false,loadErr='',HDATE='',EDU='',GRT=[],BD=[],GQ=[],showAbout=location.hash=='#about',MSGS=[],AM=[],AIN=[],PL=[],PD='',PLAN=null,pendingName='',seenAdm=(()=>{try{return +localStorage.getItem('sfh_seen_adm')||0}catch(x){return 0}})(),seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
+let U=null,P=null,PUB=null,SONGS=[],CONF={},AU=[],tab='home',ADM=false,IS_SUPER=false,IS_ADMIN=false,LIVE_SESSION=null,loadErr='',HDATE='',EDU='',GRT=[],BD=[],GQ=[],showAbout=location.hash=='#about',MSGS=[],AM=[],AIN=[],PL=[],PD='',PLAN=null,pendingName='',seenAdm=(()=>{try{return +localStorage.getItem('sfh_seen_adm')||0}catch(x){return 0}})(),seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
 
 async function load(){
   loadErr='';PUB=null;SONGS=[];CONF={};
@@ -258,6 +259,7 @@ async function load(){
     }
   }catch(x){loadErr=x.code||x.message}
 }
+
 onAuthStateChanged(auth, async u => {
   U = u;
   if (!u) {
@@ -273,11 +275,15 @@ onAuthStateChanged(auth, async u => {
   IS_SUPER = (CFG.superadmins || []).map(x => x.toLowerCase()).includes(em) && verified;
   ADM = IS_SUPER;
 
-  await load();// Real-time live session listener for all users
+  await load();
+
+  IS_ADMIN = IS_SUPER || (P && P.status == 'approved' && P.role == 'admin');
+  ADM = IS_ADMIN;
+
+  // Real-time live listener for participants and admins
   onSnapshot(doc(fs, 'live', 'session'), snap => {
     if (snap.exists()) {
       const data = snap.data();
-      // Only treat as live if it belongs to today's date and is active
       if (data.date === tdy() && data.active) {
         LIVE_SESSION = data;
       } else {
@@ -288,9 +294,6 @@ onAuthStateChanged(auth, async u => {
     }
     if (tab === 'home') draw();
   });
-
-  IS_ADMIN = IS_SUPER || (P && P.status == 'approved' && P.role == 'admin');
-  ADM = IS_ADMIN;
 
   draw();
   setTimeout(runCards, 400);
@@ -383,7 +386,9 @@ function vHome(){
   const som=Object.entries(PUB.som||{}).sort().reverse();
   let h='';
   const un=MSGS.filter(m=>m.ts>seen).length;if(!ADM&&un)h+=`<div class="c" style="border-left:4px solid var(--ac)">📩 You have <b>${un}</b> new message${un>1?'s':''} <button style="margin-left:8px" onclick="go('msg')">Read</button></div>`;
-  h+=bdCard();// Live Session Banner for Participants
+  h+=bdCard();
+
+  // Live Session Banner for Participants
   if (LIVE_SESSION && LIVE_SESSION.singers && LIVE_SESSION.singers.length) {
     const ls = LIVE_SESSION;
     h += `<div class="c" style="border:2px solid var(--ac);background:var(--ac-light)">
@@ -392,7 +397,7 @@ function vHome(){
           <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#16a34a;margin-right:6px"></span>
           <b style="color:var(--ac)">Live Session in Progress</b>
         </div>
-        <span class="zm" style="padding:2px 8px;font-size:12px;border-radius:6px">Round ${ls.currentRound || 1}</span>
+        <span class="badge-round" style="background:var(--ac);color:#fff">Round ${ls.currentRound || 1}</span>
       </div>
 
       ${ls.sotd && ls.sotd.winner ? `
