@@ -624,23 +624,27 @@ ${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b>
     <th>Role</th>
     <th style="text-align:center">Actions</th>
   </tr>
-  ${ok.map(u => `<tr>
-    <td><b>${e(u.singer || '(not linked)')}</b></td>
-    <td><span class="m">${e(idOf(u.email))}</span></td>
-    <td><span class="m" style="font-weight:600;color:${u.role == 'admin' ? 'var(--ac)' : 'inherit'}">${u.role == 'admin' ? 'Admin' : 'Participant'}</span></td>
-    <td style="text-align:center;white-space:nowrap">
-      ${IS_SUPER ? (
-        u.role == 'admin'
-          ? `<button onclick="revokeAdmin('${e(u.id)}','${e(u.singer || u.name)}')">Revoke Admin</button> `
-          : `<button onclick="makeAdmin('${e(u.id)}','${e(u.singer || u.name)}')">Make Admin</button> `
-      ) : ''}
-      <button onclick="editU('${e(u.id)}')">Profile</button>
-      <button onclick="rej('${e(u.id)}')">Revoke Access</button>
-    </td>
-  </tr>`).join('')}
-</table></div>` : '<p class="m">No approved participants yet.</p>'}</div>`;
-}
-
+ ${ok.map(u => {
+    const isSup = (CFG.superadmins || []).map(x => x.toLowerCase()).includes((u.email || '').toLowerCase());
+    const roleTxt = isSup ? 'Superadmin' : (u.role == 'admin' ? 'Admin' : 'Participant');
+    const roleStyle = isSup ? 'color:#b30000;font-weight:800' : (u.role == 'admin' ? 'color:var(--ac);font-weight:700' : 'color:var(--mut)');
+    return `<tr>
+      <td><b>${e(u.singer || '(not linked)')}</b></td>
+      <td><span class="m">${e(idOf(u.email))}</span></td>
+      <td><span style="${roleStyle}">${roleTxt}</span></td>
+      <td style="text-align:center;white-space:nowrap">
+        ${isSup ? `<button onclick="editU('${e(u.id)}')">Profile</button>` : `
+          ${IS_SUPER ? (
+            u.role == 'admin'
+              ? `<button onclick="revokeAdmin('${e(u.id)}','${e(u.singer || u.name)}')">Revoke Admin</button> `
+              : `<button onclick="makeAdmin('${e(u.id)}','${e(u.singer || u.name)}')">Make Admin</button> `
+          ) : ''}
+          <button onclick="editU('${e(u.id)}')">Profile</button>
+          <button onclick="rej('${e(u.id)}')">Revoke Access</button>
+        `}
+      </td>
+    </tr>`;
+  }).join('')}
 window.appr=async id=>{const v=(($('#lt_'+id).value||'').trim()||$('#lk_'+id).value||'').toUpperCase();if(!v){alert('Choose or type the singer name to link');return}
   try{await updateDoc(doc(fs,'users',id),{status:'approved',singer:v});await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
 window.rej=async id=>{if(!confirm('Remove access for this person?'))return;try{await updateDoc(doc(fs,'users',id),{status:'rejected'});await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
