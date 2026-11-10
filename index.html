@@ -170,6 +170,7 @@ const CFG = {
   admins: []
 };
 
+
 const ABOUT = {
   foundation: {
     name: "B. S. Tikariya Cultural Foundation",
@@ -274,19 +275,15 @@ onAuthStateChanged(auth, async u => {
   }
   const em = (u.email || '').toLowerCase();
   const verified = u.emailVerified === true;
-  
-  // Superadmin check
   IS_SUPER = (CFG.superadmins || []).map(x => x.toLowerCase()).includes(em) && verified;
+  IS_ADMIN = IS_SUPER || ((CFG.admins || []).map(x => x.toLowerCase()).includes(em) && verified);
+  ADM = IS_ADMIN; // Keeps backward compatibility with existing admin functions
 
   await load();
-
-  // Admin check: either Superadmin or user profile has role == 'admin'
-  IS_ADMIN = IS_SUPER || (P && P.status == 'approved' && P.role == 'admin');
-  ADM = IS_ADMIN;
-
   draw();
   setTimeout(runCards, 400);
 });
+
 
 window.login=async()=>{
   if(!$('#cs')||!$('#cs').checked){alert('Please tick the consent box first.');return}
@@ -316,7 +313,6 @@ const vLogin=()=>`<div class="c"><h2>Welcome</h2><p>Sign in to see the Singer of
 <p><button onclick="about()">ℹ About us</button></p></div>`;
 const vWait=()=>`<div class="c"><h2>${P.status=='pending'?'Waiting for approval':'Access not active'}</h2>
 <p>${P.status=='pending'?'Your request has been sent to the host. You will get access once the host approves you. Tap Check approval below.':'Your access is not active. Please contact the host.'}</p><p class="m">Signed in as ${e(idOf(U.email))}</p><p><button class="pri" onclick="refresh()">↻ Check approval</button> <button onclick="about()">ℹ About us</button></p></div>`;
-
 const tabs = () => {
   let list = [];
   if (IS_SUPER) {
@@ -600,7 +596,6 @@ window.addGreet=async()=>{const t=$('#gt').value.trim(),x=$('#gx').value.trim(),
 window.delGreet=async id=>{if(!confirm('Delete this greeting?'))return;try{await deleteDoc(doc(fs,'greet',id));await loadGreet();draw()}catch(y){alert('Failed ('+(y.code||'error')+')')}};
 
 async function loadAdm(){try{const q=await getDocs(collection(fs,'users'));AU=q.docs.map(x=>({id:x.id,...x.data()}));try{const mq=await getDocs(collection(fs,'msgs'));AM=mq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AM=[]}try{const iq=await getDocs(collection(fs,'inbox'));AIN=iq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AIN=[]}await loadPlans()}catch(x){AU=[];alert('Could not load participants ('+(x.code||'error')+'). Check the admin email in firestore.rules.')}}
-
 function vAdm(){
   const names=(PUB&&PUB.singers)||[],opt='<option value="">Link to singer…</option>'+names.map(n=>`<option>${e(n)}</option>`).join('');
   const pend=AU.filter(u=>u.status!='approved'),ok=AU.filter(u=>u.status=='approved');
@@ -624,7 +619,7 @@ ${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b>
     <th>Role</th>
     <th style="text-align:center">Actions</th>
   </tr>
- ${ok.map(u => {
+  ${ok.map(u => {
     const isSup = (CFG.superadmins || []).map(x => x.toLowerCase()).includes((u.email || '').toLowerCase());
     const roleTxt = isSup ? 'Superadmin' : (u.role == 'admin' ? 'Admin' : 'Participant');
     const roleStyle = isSup ? 'color:#b30000;font-weight:800' : (u.role == 'admin' ? 'color:var(--ac);font-weight:700' : 'color:var(--mut)');
@@ -645,9 +640,9 @@ ${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b>
       </td>
     </tr>`;
   }).join('')}
-window.appr=async id=>{const v=(($('#lt_'+id).value||'').trim()||$('#lk_'+id).value||'').toUpperCase();if(!v){alert('Choose or type the singer name to link');return}
-  try{await updateDoc(doc(fs,'users',id),{status:'approved',singer:v});await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
-window.rej=async id=>{if(!confirm('Remove access for this person?'))return;try{await updateDoc(doc(fs,'users',id),{status:'rejected'});await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
+</table></div>` : '<p class="m">No approved participants yet.</p>'}</div>`;
+}
+
 window.makeAdmin = async (id, name) => {
   if (!IS_SUPER) return;
   if (!confirm('Promote ' + name + ' to Admin? They will be able to manage daily sessions, approve singers, and send messages.')) return;
@@ -673,6 +668,9 @@ window.revokeAdmin = async (id, name) => {
     alert('Failed (' + (x.code || 'error') + ')');
   }
 };
+window.appr=async id=>{const v=(($('#lt_'+id).value||'').trim()||$('#lk_'+id).value||'').toUpperCase();if(!v){alert('Choose or type the singer name to link');return}
+  try{await updateDoc(doc(fs,'users',id),{status:'approved',singer:v});await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
+window.rej=async id=>{if(!confirm('Remove access for this person?'))return;try{await updateDoc(doc(fs,'users',id),{status:'rejected'});await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
 window.saveZ=async()=>{try{await setDoc(doc(fs,'config','app'),{zoom:$('#zl').value.trim()});CONF.zoom=$('#zl').value.trim();alert('Zoom link saved');draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
 const hsh=t=>{let h=5381;for(let i=0;i<t.length;i++)h=((h<<5)+h+t.charCodeAt(i))|0;return String(h>>>0)};
 window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=async()=>{
