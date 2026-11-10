@@ -55,6 +55,11 @@ button.on,button.pri{
   background:var(--btn-pri-bg);color:#fff;border-color:transparent;
   box-shadow:0 3px 12px -2px rgba(15,52,96,0.35);
 }
+button.danger{
+  background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;border-color:transparent;
+  box-shadow:0 3px 12px -2px rgba(220,38,38,0.35);
+}
+button.danger:hover{box-shadow:0 5px 15px -2px rgba(220,38,38,0.45)}
 input,select,textarea{
   font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--bd);
   border-radius:8px;padding:8px 10px;box-sizing:border-box;min-width:0;max-width:100%;
@@ -363,8 +368,39 @@ window.downloadLivePDF = () => {
   d.save('Live_Session_' + LIVE.date + '.pdf');
 };
 
+window.endSession = async () => {
+  if (!confirm("Are you sure you want to end today's live session?\n\nThis will remove the live banner from all participants' screens and mark the session as concluded.")) return;
+
+  try {
+    // 1. Mark session as inactive in Firestore
+    await setDoc(doc(fs, 'live', 'session'), {
+      date: LIVE.date,
+      currentRound: currentRound,
+      singers: LIVE.singers,
+      performances: LIVE.performances,
+      sotd: SOTD,
+      updatedAt: Date.now(),
+      active: false
+    });
+
+    // 2. Clear local storage for today's session
+    try {
+      localStorage.removeItem('sfh_live_session_' + LIVE.date);
+    } catch (e) {}
+
+    alert("Session concluded successfully. Returning to App Dashboard.");
+    window.location.href = 'index.html';
+  } catch (err) {
+    alert("Could not end session (" + (err.code || err.message) + ")");
+  }
+};
+
 function draw(){
-  $('#hb').innerHTML = `<div class="row"><button onclick="downloadLivePDF()">Export PDF</button><button class="pri" onclick="location.href='index.html'">App Dashboard</button></div>`;
+  $('#hb').innerHTML = `<div class="row">
+    <button onclick="downloadLivePDF()">Export PDF</button>
+    <button class="danger" onclick="endSession()">End Session</button>
+    <button class="pri" onclick="location.href='index.html'">App Dashboard</button>
+  </div>`;
 
   let h = '';
 
@@ -423,11 +459,7 @@ function draw(){
             <td>
               <div style="display:flex;align-items:center;white-space:nowrap">
                 <input id="${sKey}" list="dl_allsongs" value="${e(p ? p.song : '')}" placeholder="Type song..." style="width:200px;text-transform:uppercase" oninput="onSongInput('${e(s.name)}', ${currentRound})">
-                <span id="rep_${currentRound}_${s.name.replace(/[^a-zA-Z0-9]/g, '_')}">${p && p.repeatCount > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${p.repeatCount})</span>` : ''}</span>
-              </div>
-            </td>
-            <td id="id_${currentRound}_${s.name.replace(/[^a-zA-Z0-9]/g, '_')}">
-              ${p && p.song ? `<b>${p.songId}</b>` : '<span class="m">-</span>'}
+                <span id="rep_${currentRound}_${s.name.replace(/[^a-zA-Z0-9]/g, '_')}">${p && p.repeatCount > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${p.repeatCount})</span>` : ''}</span> </div> </td> <td id="id_${currentRound}_${s.name.replace(/[^a-zA-Z0-9]/g, '_')}"> ${p && p.song ? `<b>${p.songId}</b>` : '<span class="m">-</span>'}
             </td>
             <td>
               ${p && p.song ? `
