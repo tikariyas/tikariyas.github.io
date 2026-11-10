@@ -138,6 +138,17 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 .tbl tr.me td{background:var(--ac-light);font-weight:600}
 .tbl tr.me td:first-child{border-left:3px solid var(--ac)}
 .badge-round{color:var(--ac);background:var(--ac-light);font-weight:800;padding:2px 8px;border-radius:6px;font-size:12px}
+
+/* In-app custom notification modal (No 'tikariyas.github.io says') */
+#custom-modal{
+  position:fixed;inset:0;z-index:90;background:rgba(15,23,42,0.7);backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;padding:16px;
+}
+#custom-modal .box{
+  background:var(--card);color:var(--fg);max-width:440px;width:100%;border-radius:14px;
+  padding:20px 18px;border:1px solid var(--bd);box-shadow:var(--shadow);
+}
+#custom-modal .box h3{margin:0 0 10px;font-size:17px;color:var(--ac)}
 </style></head><body>
 <header>
   <div>
@@ -148,6 +159,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
   <div id="hb"></div>
 </header>
 <main id="app"><p class="m">Loading…</p></main>
+
+<div id="custom-modal">
+  <div class="box" id="custom-modal-body"></div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script type="module">
@@ -156,7 +172,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-10 b11';
+const VER='2026-11-10 b12';
 const CFG = {
   firebase: {
     apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
@@ -167,6 +183,20 @@ const CFG = {
   superadmins: ["musicsnsounds@gmail.com"],
   admins: []
 };
+
+// In-app modal notification helper
+window.showNotice = (msg, title="Sing From Home") => {
+  const m = $('#custom-modal');
+  $('#custom-modal-body').innerHTML = `<h3>${e(title)}</h3><p style="margin:12px 0 16px">${e(msg)}</p><p style="text-align:right;margin:0"><button class="pri" onclick="closeModal()">OK</button></p>`;
+  m.style.display = 'flex';
+};
+window.showConfirm = (msg, onOk, title="Confirmation") => {
+  const m = $('#custom-modal');
+  $('#custom-modal-body').innerHTML = `<h3>${e(title)}</h3><p style="margin:12px 0 16px;white-space:pre-line">${e(msg)}</p><p style="text-align:right;margin:0;display:flex;gap:8px;justify-content:flex-end"><button onclick="closeModal()">Cancel</button><button class="danger" id="modal-ok-btn">Confirm</button></p>`;
+  $('#modal-ok-btn').onclick = () => { closeModal(); onOk(); };
+  m.style.display = 'flex';
+};
+window.closeModal = () => { $('#custom-modal').style.display = 'none'; };
 
 const ABOUT = {
   foundation: {
@@ -219,7 +249,8 @@ const ABOUT = {
     schedule: "Monday to Friday, from 8:30 pm",
     rules: [
       "Join at least 3 sessions in a week to keep your stars. Joining fewer reduces one star.",
-      "Singers who enter after 8:45 pm can still sing, but are not eligible for Singer of the Day."
+      "Singers who enter after 8:45 pm can still sing, but are not eligible for Singer of the Day.",
+      "Singer of the Month finalists receive a specially designed physical G-Clef Trophy."
     ],
     committee: ["RAJESH GARJE","SANTOSH BHAROTE","VIJAY SUTRAVE","SUREKHA TIKARIYA","MANOJ TIKARIYA","NITIN POL","SURESH GHADSING","SHILA RAITHATHA"]
   },
@@ -281,7 +312,7 @@ onAuthStateChanged(auth, async u => {
   IS_ADMIN = IS_SUPER || (P && P.status == 'approved' && P.role == 'admin');
   ADM = IS_ADMIN;
 
-  // Real-time live listener for participants and admins
+  // Real-time live listener for all participants & admins
   onSnapshot(doc(fs, 'live', 'session'), snap => {
     if (snap.exists()) {
       const data = snap.data();
@@ -301,9 +332,9 @@ onAuthStateChanged(auth, async u => {
 });
 
 window.login=async()=>{
-  if(!$('#cs')||!$('#cs').checked){alert('Please tick the consent box first.');return}
+  if(!$('#cs')||!$('#cs').checked){showNotice('Please tick the consent box first.');return}
   try{await signInWithPopup(auth,new GoogleAuthProvider())}
-  catch(x){alert('Sign-in failed ('+(x.code||'error')+'). Please open this page in Chrome (not inside WhatsApp) and try again.')}
+  catch(x){showNotice('Sign-in failed ('+(x.code||'error')+'). Please open in Chrome and try again.')}
 };
 window.out=()=>signOut(auth);
 window.refresh=async()=>{await load();if(P&&P.status=='approved'&&P.role=='admin'){IS_ADMIN=ADM=true;}if(tab=='adm')await loadAdm();draw()};
@@ -374,8 +405,15 @@ const tabs = () => {
   return `<nav>${list.map(([k, t]) => k == 'refresh' ? `<button onclick="refresh()">${t}</button>` : `<button class="${tab == k ? 'on' : ''}" onclick="go('${k}')">${t}</button>`).join('')}${CONF.zoom ? `<a class="zm" href="${e(CONF.zoom)}" target="_blank" rel="noopener">Start Zoom</a>` : ''}</nav>`;
 };
 
-const nmL=l=>(l||[]).map(x=>'<b>'+e(x.n)+'</b>'+(x.h=='Special'?' (special)':x.h=='Quiz'?' (quiz)':'')).join(', ');
-function sdates(){const st=new Set();SONGS.forEach(r=>st.add(r[1]));((PUB&&PUB.sotd)||[]).forEach(x=>st.add(x.d));return [...st].sort()}
+// Formats multiple SOTDs clean
+const nmL = l => (l||[]).map(x => '<b>' + e(x.n) + '</b>' + (x.h === 'Special' ? ' (special)' : x.h === 'Quiz' ? ' (quiz)' : '')).join(', ');
+
+function sdates(){
+  const st = new Set();
+  SONGS.forEach(r => st.add(r[1]));
+  ((PUB&&PUB.sotd)||[]).forEach(x => st.add(x.d));
+  return [...st].sort();
+}
 window.setHD=v=>{HDATE=v||'';draw()};
 window.stepHD=n=>{const ds=sdates(),cur=HDATE||ds[ds.length-1]||'';const c=n<0?ds.filter(x=>x<cur).pop():ds.find(x=>x>cur);if(c){HDATE=c;draw()}};
 const idn=r=>parseInt(String(r[0]||'').split('-')[1])||0,cmpS=(a,b)=>a[1]<b[1]?-1:a[1]>b[1]?1:idn(a)-idn(b);
@@ -389,7 +427,7 @@ function vHome(){
   const un=MSGS.filter(m=>m.ts>seen).length;if(!ADM&&un)h+=`<div class="c" style="border-left:4px solid var(--ac)">📩 You have <b>${un}</b> new message${un>1?'s':''} <button style="margin-left:8px" onclick="go('msg')">Read</button></div>`;
   h+=bdCard();
 
-  // Live Session Banner for Participants
+  // Active Live Session Banner for Participants
   if (LIVE_SESSION && LIVE_SESSION.singers && LIVE_SESSION.singers.length) {
     const ls = LIVE_SESSION;
     h += `<div class="c" style="border:2px solid var(--ac);background:var(--ac-light)">
@@ -401,10 +439,10 @@ function vHome(){
         <span class="badge-round" style="background:var(--ac);color:#fff">Round ${ls.currentRound || 1}</span>
       </div>
 
-      ${ls.sotd && ls.sotd.winner ? `
+      ${ls.sotdList && ls.sotdList.length ? `
         <div style="margin:10px 0;padding:8px;background:var(--card);border-radius:8px;border:1px solid var(--bd);text-align:center">
-          <span class="m" style="font-size:11px;text-transform:uppercase;font-weight:700">Declared Singer of the Day</span>
-          <p class="big" style="margin:2px 0">${e(ls.sotd.winner)} <span style="font-size:13px;color:var(--ac)">(${e(ls.sotd.mode.toUpperCase())})</span></p>
+          <span class="m" style="font-size:11px;text-transform:uppercase;font-weight:700">Declared Singer(s) of the Day</span>
+          <p class="big" style="margin:4px 0">${ls.sotdList.map(w => `<b>${e(w.n)}</b> <span style="font-size:12px;color:var(--ac)">(${e(w.h)})</span>`).join(' · ')}</p>
         </div>
       ` : ''}
 
@@ -434,6 +472,7 @@ function vHome(){
     </div>`;
   }
 
+  // Your Position Card (Circular 52x52 Photo + Role Tags)
   h+=`<div class="c" style="padding:10px 14px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
         <div style="flex:1;min-width:0">
@@ -462,11 +501,16 @@ function vSotd(){
   const sk=(P.singer||'').toUpperCase();
   const stars=Object.entries(PUB.stars||{}).filter(([n,o])=>o.t>0).sort((a,b)=>b[1].t-a[1].t||a[0].localeCompare(b[0]));
 
-  let h=`<div class="c"><b>Singer of the Month</b>${somE.length?`<div class="tbl"><table><tr><th style="width:110px">Month</th><th>Singer of the Month</th><th>Declared date</th></tr>${somE.slice(0,6).map(([m,n])=>`<tr><td><b>${e(fm(m))}</b></td><td><b>${e(n)}</b></td><td><span class="m">${somd[m]?fd(somd[m]):'-'}</span></td></tr>`).join('')}</table></div>`:' earthly<p class="m">Not declared yet.</p>'}</div>`;
+  let h=`<div class="c" style="border-left:4px solid #f59e0b;background:var(--ac-light)">
+    <b>🏆 Singer of the Month Award Announcement</b>
+    <p class="m" style="margin:4px 0 0;line-height:1.6">Qualify with 4 stars to enter the monthly SOTM competition. Winner receives a custom-crafted stainless steel <b>G-Clef Memento Award</b> by Tikariya’s School of Music.</p>
+  </div>`;
+
+  h+=`<div class="c"><b>Singer of the Month</b>${somE.length?`<div class="tbl"><table><tr><th style="width:110px">Month</th><th>Singer of the Month</th><th>Declared date</th></tr>${somE.slice(0,6).map(([m,n])=>`<tr><td><b>${e(fm(m))}</b></td><td><b>${e(n)}</b></td><td><span class="m">${somd[m]?fd(somd[m]):'-'}</span></td></tr>`).join('')}</table></div>`:'<p class="m">Not declared yet.</p>'}</div>`;
 
   h+=`<div class="c"><b>Singers of the Day${lm?' since the Singer of the Month '+e(fm(lm))+(ld?' ('+fd(ld)+')':''):''}</b><p class="m" style="margin:2px 0 8px">This list stays until the next Singer of the Month is declared.</p>${cyc.length?`<div class="tbl"><table><tr><th style="width:95px;min-width:95px">Date</th><th>Singer name</th></tr>${cyc.map(x=>`<tr><td style="width:95px;min-width:95px"><span class="m">${fd(x.d)}</span></td><td>${nmL(x.l)}</td></tr>`).join('')}</table></div>`:'<p class="m">None yet in this round.</p>'}</div>`;
 
-  h+=`<div class="c"><b>Star singers</b><p class="m" style="margin:2px 0 8px">Singers with 4 stars sing in the Singer of the Month session. After one is chosen, the other 4-star singers go back to 0. Singers with 1 to 3 stars keep their stars.</p>${stars.length?`<div class="tbl"><table><tr><th>Singer name</th><th style="min-width:140px">Stars</th><th style="width:50px;text-align:center">Total</th><th style="width:90px">Status</th></tr>${stars.map(([n,o])=>`<tr class="${n==sk?'me':''}"><td><b>${e(n)}</b></td><td style="min-width:140px;letter-spacing:2px">${'⭐'.repeat(Math.min(o.t,10))}${o.t>10?'+':''}</td><td class="n"><span class="m">(${o.t})</span></td><td>${o.t>=4?'<span style="color:var(--ac);font-weight:600">Eligible</span>':'<span class="m">-</span>'}</td></tr>`).join('')}</table></div>`:'<p class="m">No stars yet.</p>'}</div>`;
+  h+=`<div class="c"><b>Star singers</b><p class="m" style="margin:2px 0 8px">Join 3+ sessions a week to retain stars. Singers with 4 stars sing in the SOTM session.</p>${stars.length?`<div class="tbl"><table><tr><th>Singer name</th><th style="min-width:140px">Stars</th><th style="width:50px;text-align:center">Total</th><th style="width:90px">Status</th></tr>${stars.map(([n,o])=>`<tr class="${n==sk?'me':''}"><td><b>${e(n)}</b></td><td style="min-width:140px;letter-spacing:2px">${'⭐'.repeat(Math.min(o.t,10))}${o.t>10?'+':''}</td><td class="n"><span class="m">(${o.t})</span></td><td>${o.t>=4?'<span style="color:var(--ac);font-weight:600">Finalist</span>':'<span class="m">-</span>'}</td></tr>`).join('')}</table></div>`:'<p class="m">No stars yet.</p>'}</div>`;
 
   return h;
 }
@@ -479,12 +523,12 @@ function vProf(){const p=P;return`<div class="c"><div class="row"><div class="ph
 <label class="m">Notes<textarea id="pn" rows="3">${e(p.note||'')}</textarea></label>
 <p><button class="pri" onclick="saveP()">Save profile</button></p><p class="m">Only you and the host can see your profile.</p></div>`}
 window.pic=el=>{const f=el.files[0];if(!f)return;grab();const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const S=240,c=document.createElement('canvas');c.width=c.height=S;const m=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)*0.2,m,m,0,0,S,S);P.photo=c.toDataURL('image/jpeg',0.75);draw()};im.src=r.result};r.readAsDataURL(f)};
-window.saveP=async()=>{grab();try{await updateDoc(doc(fs,'users',U.uid),{phone:P.phone||'',city:P.city||'',note:P.note||'',photo:P.photo||'',dob:P.dob||'',updatedAt:Date.now()});await setBd(U.uid,P.singer||P.name||'',P.dob,P.bshow);alert('Saved')}catch(x){alert('Could not save ('+(x.code||'error')+')')}};
+window.saveP=async()=>{grab();try{await updateDoc(doc(fs,'users',U.uid),{phone:P.phone||'',city:P.city||'',note:P.note||'',photo:P.photo||'',dob:P.dob||'',updatedAt:Date.now()});await setBd(U.uid,P.singer||P.name||'',P.dob,P.bshow);showNotice('Saved');}catch(x){showNotice('Could not save ('+(x.code||'error')+')')}};
 
 const vPdf=()=>`<div class="c"><b>PDF downloads</b><p class="m">Both PDFs show your position (Singer of the Day, Singer of the Month and stars).</p>
 <p><button class="pri" onclick="pdf('all')">⬇ All songs list till now</button></p><p><button class="pri" onclick="pdf('my')">⬇ My songs till now</button></p></div>`;
 window.pdf=kind=>{
-  if(!PUB||!window.jspdf){alert('Data or PDF tool not ready. Check your internet and try again.');return}
+  if(!PUB||!window.jspdf){showNotice('Data or PDF tool not ready. Check your internet and try again.');return}
   const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'}),a=s=>String(s==null?'':s).replace(/[^\x20-\xff]/g,'?');
   const sk=(P.singer||'').toUpperCase(),s=(PUB.stars||{})[sk]||{t:0,m:{},d:[]},mo=nowM();
   const som=Object.entries(PUB.som||{}).filter(x=>x[1]==sk).map(x=>fm(x[0]));
@@ -509,31 +553,33 @@ window.pdf=kind=>{
 const phoneDigits=id=>{const dg=(id||'').replace(/\D/g,'').slice(-10);return dg.length==10?dg:''};
 const emailsFor=id=>{id=(id||'').trim();if(id.includes('@'))return [id.toLowerCase()];const dg=phoneDigits(id);return dg?[dg+'@singfromhome-phone.app',dg+'-2@singfromhome-phone.app',dg+'-3@singfromhome-phone.app']:[]};
 const authMsg=x=>({'auth/invalid-credential':'Wrong phone/email or password.','auth/wrong-password':'Wrong password.','auth/user-not-found':'No account found. Tap Create account.','auth/email-already-in-use':'This phone number or email already has an account. Tap Sign in.','auth/weak-password':'The password must have at least 6 characters.','auth/operation-not-allowed':'Email/password login is not turned on in Firebase yet.','auth/invalid-email':'Enter a valid 10-digit phone number or an email.','auth/network-request-failed':'No internet. Please try again.','auth/too-many-requests':'Too many attempts. Please wait a few minutes and try again.'}[x.code]||('Failed ('+(x.code||'error')+')'));
-const needConsent=()=>{if(!$('#cs')||!$('#cs').checked){alert('Please tick the consent box first.');return true}return false};
+const needConsent=()=>{if(!$('#cs')||!$('#cs').checked){showNotice('Please tick the consent box first.');return true}return false};
 window.loginPw=async()=>{if(needConsent())return;const ems=emailsFor($('#lid').value),pw=$('#lpw').value;
-  if(!ems.length||pw.length<6){alert('Enter a 10-digit phone number or an email, and a password of at least 6 characters.');return}
+  if(!ems.length||pw.length<6){showNotice('Enter a 10-digit phone number or an email, and a password of at least 6 characters.');return}
   let last=null;
   for(const em of ems){try{await signInWithEmailAndPassword(auth,em,pw);return}catch(x){last=x;if(!['auth/invalid-credential','auth/user-not-found','auth/wrong-password'].includes(x.code))break}}
-  alert(authMsg(last)+(ems.length>1?' If you forgot your password, type your name and a new password above and tap Forgot password.':''))};
+  showNotice(authMsg(last)+(ems.length>1?' If you forgot your password, type your name and a new password above and tap Forgot password.':''))};
 window.signupPw=async()=>{if(needConsent())return;const nm=$('#lnm').value.trim(),ems=emailsFor($('#lid').value),pw=$('#lpw').value;
-  if(!nm){alert('Please type your name.');return}
-  if(!ems.length||pw.length<6){alert('Enter a 10-digit phone number or an email, and a password of at least 6 characters.');return}
+  if(!nm){showNotice('Please type your name.');return}
+  if(!ems.length||pw.length<6){showNotice('Enter a 10-digit phone number or an email, and a password of at least 6 characters.');return}
   pendingName=nm;
   try{const c=await createUserWithEmailAndPassword(auth,ems[0],pw);try{await updateProfile(c.user,{displayName:nm})}catch(y){}}
-  catch(x){alert(authMsg(x))}};
+  catch(x){showNotice(authMsg(x))}};
 window.forgotPw=async()=>{const raw=($('#lid').value||'').trim();
-  if(raw.includes('@')){try{await sendPasswordResetEmail(auth,raw);alert('A reset link has been sent to '+raw+'. Check your inbox and spam folder.')}catch(x){alert(authMsg(x))}return}
-  const ems=emailsFor(raw);if(!ems.length){alert('Type your 10-digit phone number first.');return}
+  if(raw.includes('@')){try{await sendPasswordResetEmail(auth,raw);showNotice('A reset link has been sent to '+raw+'. Check your inbox and spam folder.');}catch(x){showNotice(authMsg(x))}return}
+  const ems=emailsFor(raw);if(!ems.length){showNotice('Type your 10-digit phone number first.');return}
   if(needConsent())return;
   const nm=$('#lnm').value.trim(),pw=$('#lpw').value;
-  if(!nm||pw.length<6){alert('Type your name and a NEW password (at least 6 characters) in the boxes above, then tap Forgot password again.');return}
-  if(!confirm('A reset link cannot be sent to a phone number. A new login will be created for this number with the new password you typed, and the host must approve you again. Continue?'))return;
-  pendingName=nm;
-  for(const em of ems.slice(1)){
-    try{const c=await createUserWithEmailAndPassword(auth,em,pw);try{await updateProfile(c.user,{displayName:nm})}catch(y){}return}
-    catch(x){if(x.code!='auth/email-already-in-use'){alert(authMsg(x));return}}
-  }
-  alert('Too many resets for this number. Please contact the host.')};
+  if(!nm||pw.length<6){showNotice('Type your name and a NEW password (at least 6 characters) in the boxes above, then tap Forgot password again.');return}
+  showConfirm('A reset link cannot be sent to a phone number. A new login will be created for this number with the new password you typed, and the host must approve you again. Continue?', async () => {
+    pendingName=nm;
+    for(const em of ems.slice(1)){
+      try{const c=await createUserWithEmailAndPassword(auth,em,pw);try{await updateProfile(c.user,{displayName:nm})}catch(y){}return}
+      catch(x){if(x.code!='auth/email-already-in-use'){showNotice(authMsg(x));return}}
+    }
+    showNotice('Too many resets for this number. Please contact the host.');
+  });
+};
 
 const tdy=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 async function loadPlan(){try{const s=await getDoc(doc(fs,'plans',tdy()+'_'+U.uid));PLAN=s.exists()?s.data():null}catch(x){PLAN=null}}
@@ -543,21 +589,21 @@ ${[0,1,2].map(i=>`<input id="ps${i}" placeholder="Song ${i+1}" value="${e(pl[i]|
 <p style="margin-top:10px"><button class="pri" onclick="savePlan()">${PLAN?'Update':'Save'} my songs</button> ${PLAN?'<button onclick="clearPlan()">Remove</button>':''}</p>
 ${PLAN?`<p class="m">First saved at ${fdt(PLAN.ts)}. The host sees the list in the order people saved it.</p>`:''}</div>`}
 window.savePlan=async()=>{const sg=[0,1,2].map(i=>$('#ps'+i).value.trim().toUpperCase()).filter(Boolean);
-  if(!sg.length){alert('Enter at least one song.');return}
-  if(!P.singer){alert('Your name is not linked yet. Please ask the host.');return}
-  try{const d=tdy(),now=Date.now();await setDoc(doc(fs,'plans',d+'_'+U.uid),{uid:U.uid,date:d,singer:P.singer,songs:sg,note:'',ts:PLAN?PLAN.ts:now,upd:now});await loadPlan();draw();alert('Saved')}
-  catch(x){alert('Could not save ('+(x.code||'error')+'). Check that the latest rules are published.')}};
-window.clearPlan=async()=>{if(!confirm('Remove your songs for today?'))return;try{await deleteDoc(doc(fs,'plans',tdy()+'_'+U.uid));PLAN=null;draw()}catch(x){alert('Could not remove ('+(x.code||'error')+')')}};
-window.sendHost=async()=>{const t=($('#hm').value||'').trim();if(!t){alert('Write your message first.');return}
-  try{await addDoc(collection(fs,'inbox'),{uid:U.uid,name:P.singer||P.name||'',text:t.slice(0,500),ts:Date.now()});$('#hm').value='';alert('Sent to the host')}
-  catch(x){alert('Could not send ('+(x.code||'error')+'). Check that the latest rules are published.')}};
+  if(!sg.length){showNotice('Enter at least one song.');return}
+  if(!P.singer){showNotice('Your name is not linked yet. Please ask the host.');return}
+  try{const d=tdy(),now=Date.now();await setDoc(doc(fs,'plans',d+'_'+U.uid),{uid:U.uid,date:d,singer:P.singer,songs:sg,note:'',ts:PLAN?PLAN.ts:now,upd:now});await loadPlan();draw();showNotice('Saved');}
+  catch(x){showNotice('Could not save ('+(x.code||'error')+'). Check that the latest rules are published.')}};
+window.clearPlan=async()=>{showConfirm('Remove your songs for today?', async () => {try{await deleteDoc(doc(fs,'plans',tdy()+'_'+U.uid));PLAN=null;draw()}catch(x){showNotice('Could not remove ('+(x.code||'error')+')')}})};
+window.sendHost=async()=>{const t=($('#hm').value||'').trim();if(!t){showNotice('Write your message first.');return}
+  try{await addDoc(collection(fs,'inbox'),{uid:U.uid,name:P.singer||P.name||'',text:t.slice(0,500),ts:Date.now()});$('#hm').value='';showNotice('Sent to the host');}
+  catch(x){showNotice('Could not send ('+(x.code||'error')+'). Check that the latest rules are published.')}};
 async function loadPlans(){PD=PD||tdy();try{const q=await getDocs(query(collection(fs,'plans'),where('date','==',PD)));PL=q.docs.map(x=>x.data()).sort((a,b)=>a.ts-b.ts)}catch(x){PL=[]}}
 window.setPD=v=>{PD=v||tdy();loadPlans().then(draw)};
 window.copyPlans=()=>{const t='SING FROM HOME - songs declared for '+fd(PD||tdy())+'\n'+(PL.length?PL.map((p,i)=>(i+1)+'. '+p.singer+' - '+(p.songs||[]).join(' / ')).join('\n'):'(none)');
-  const done=()=>alert('List copied');
-  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(done,()=>alert(t));else{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');done()}catch(x){alert(t)}a.remove()}};
-window.replyTo=uid=>{const sl=$('#mto');if(sl&&[...sl.options].some(o=>o.value==uid)){sl.value=uid;$('#mt').focus();$('#mt').scrollIntoView({block:'center'})}else alert('That person is not approved yet, so you cannot reply.')};
-window.delIn=async id=>{if(!confirm('Delete this message?'))return;try{await deleteDoc(doc(fs,'inbox',id));await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
+  const done=()=>showNotice('List copied');
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(done,()=>showNotice(t));else{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');done()}catch(x){showNotice(t)}a.remove()}};
+window.replyTo=uid=>{const sl=$('#mto');if(sl&&[...sl.options].some(o=>o.value==uid)){sl.value=uid;$('#mt').focus();$('#mt').scrollIntoView({block:'center'})}else showNotice('That person is not approved yet, so you cannot reply.')};
+window.delIn=async id=>{showConfirm('Delete this message?', async () => {try{await deleteDoc(doc(fs,'inbox',id));await loadAdm();draw()}catch(x){showNotice('Failed ('+(x.code||'error')+')')}})};
 
 const fdt=ts=>new Date(ts).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
 const unread=()=>{const n=MSGS.filter(m=>m.ts>seen).length;return n?' ('+n+')':''};
@@ -568,12 +614,14 @@ async function loadMsgs(){try{
 }catch(x){MSGS=[]}}
 function vMsg(){return `<div class="c"><b>Message to the host</b><textarea id="hm" rows="3" maxlength="500" placeholder="Write your message to the host" style="width:100%;margin-top:8px"></textarea><p style="margin-top:10px"><button class="pri" onclick="sendHost()">Send to host</button></p><p class="m">The host can reply here in your Messages.</p></div><div class="c"><b>Messages from the host</b></div>`+(MSGS.length?MSGS.map(m=>`<div class="c"><div class="row" style="justify-content:space-between"><b>${e(m.title)}</b>${m.ts>seenPrev?'<span class="zm" style="padding:2px 8px;font-size:11px;border-radius:6px">NEW</span>':''}</div><p class="m" style="margin:2px 0 6px">${fdt(m.ts)}</p><div style="white-space:pre-wrap">${e(m.body)}</div></div>`).join(''):'<div class="c"><p class="m">No messages yet.</p></div>')}
 window.sendMsg=async()=>{const t=$('#mt').value.trim(),b=$('#mb').value.trim(),to=$('#mto').value;
-  if(!t||!b){alert('Write a title and a message');return}
+  if(!t||!b){showNotice('Write a title and a message');return}
   const nm=to=='all'?'All participants':$('#mto').selectedOptions[0].text;
-  if(!confirm('Send this message to '+nm+'?'))return;
-  try{await addDoc(collection(fs,'msgs'),{title:t,body:b,to,toName:nm,ts:Date.now()});await loadAdm();draw();alert('Sent')}
-  catch(x){alert('Failed ('+(x.code||'error')+'). Check that the latest rules are published in Firebase.')}};
-window.delMsg=async id=>{if(!confirm('Delete this message for everyone?'))return;try{await deleteDoc(doc(fs,'msgs',id));await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
+  showConfirm('Send this message to '+nm+'?', async () => {
+    try{await addDoc(collection(fs,'msgs'),{title:t,body:b,to,toName:nm,ts:Date.now()});await loadAdm();draw();showNotice('Sent');}
+    catch(x){showNotice('Failed ('+(x.code||'error')+'). Check that the latest rules are published in Firebase.')}
+  });
+};
+window.delMsg=async id=>{showConfirm('Delete this message for everyone?', async () => {try{await deleteDoc(doc(fs,'msgs',id));await loadAdm();draw()}catch(x){showNotice('Failed ('+(x.code||'error')+')')}})};
 
 const PP=x=>(Array.isArray(x)?x:[x]).filter(Boolean).map(t=>'<p>'+e(t)+'</p>').join('');
 const UL=a=>a&&a.length?'<ul style="margin:6px 0;padding-left:18px">'+a.map(x=>'<li style="margin:4px 0">'+e(x)+'</li>').join('')+'</ul>':'';
@@ -609,8 +657,8 @@ function grabU(){const u=AU.find(x=>x.id==EDU);if(!u||!$('#eu_n'))return u;u.nam
 window.editU=id=>{EDU=id;draw();scrollTo(0,0)};
 window.closeU=()=>{EDU='';draw()};
 window.rmPicU=()=>{const u=grabU();if(u){u.photo='';draw()}};
-window.picU=el=>{const f=el.files[0];if(!f)return;const u=grabU();const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const S=240,c=document.createElement('canvas');c.width=c.height=S;const m=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)*0.2,m,m,0,0,S,S);u.photo=c.toDataURL('image/jpeg',0.75);draw()};im.src=r.result};r.readAsDataURL(f)};
-window.saveU=async()=>{const u=grabU();if(!u)return;try{await updateDoc(doc(fs,'users',u.id),{name:u.name||'',singer:u.singer||'',phone:u.phone||'',city:u.city||'',note:u.note||'',photo:u.photo||'',dob:u.dob||'',updatedAt:Date.now()});await setBd(u.id,u.singer||u.name||'',u.dob,u.bshow);alert('Saved');EDU='';await loadAdm();draw()}catch(x){alert('Could not save ('+(x.code||'error')+')')}};
+window.picU=el=>{const f=el.files[0];if(!f)return;const u=grabU();const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const S=240,c=document.createElement('canvas');c.width=c.height=S;const m=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)*0.2,m,m,0,0,S,S);P.photo=c.toDataURL('image/jpeg',0.75);draw()};im.src=r.result};r.readAsDataURL(f)};
+window.saveU=async()=>{const u=grabU();if(!u)return;try{await updateDoc(doc(fs,'users',u.id),{name:u.name||'',singer:u.singer||'',phone:u.phone||'',city:u.city||'',note:u.note||'',photo:u.photo||'',dob:u.dob||'',updatedAt:Date.now()});await setBd(u.id,u.singer||u.name||'',u.dob,u.bshow);showNotice('Saved');EDU='';await loadAdm();draw()}catch(x){showNotice('Could not save ('+(x.code||'error')+')')}};
 
 const SIGN='– Manoj Tikariya<br>Director, B. S. Tikariya Cultural Foundation';
 const BUILTIN=[{id:'b-diwali-2026',icon:'🪔',title:'Happy Diwali!',hi:'शुभ दीपावली',text:'May the festival of lights fill your life and your voice with joy, music and light. Warm wishes to all our singers and their families from the SING FROM HOME family.',from:'2026-11-05',to:'2026-11-12'}];
@@ -658,14 +706,14 @@ const bdSel=(id,dob)=>{const [mm,dd]=(dob||'').split('-');return `<label>Birthda
 const bdRead=id=>{const d=$('#'+id+'d'),m=$('#'+id+'m');return d&&m&&d.value&&m.value?m.value+'-'+d.value:''};
 async function setBd(uid,name,dob,show){try{if(show&&dob)await setDoc(doc(fs,'birthdays',uid),{singer:name||'',md:dob,ts:Date.now()});else await deleteDoc(doc(fs,'birthdays',uid))}catch(x){}await loadBd()}
 window.fillFest=v=>{if(v==='')return;const f=FEST[+v];$('#gt').value=f.t;$('#gh').value=f.h;$('#gx').value=f.x;$('#gt').dataset.i=f.i};
-window.prevGreet=()=>{const t=$('#gt').value.trim(),x=$('#gx').value.trim();if(!t||!x){alert('Write a title and a message first');return}showCard({icon:$('#gt').dataset.i||'🎉',title:t,sub:$('#gh').value.trim(),text:x,sig:SIGN})};
+window.prevGreet=()=>{const t=$('#gt').value.trim(),x=$('#gx').value.trim();if(!t||!x){showNotice('Write a title and a message first');return}showCard({icon:$('#gt').dataset.i||'🎉',title:t,sub:$('#gh').value.trim(),text:x,sig:SIGN})};
 window.addGreet=async()=>{const t=$('#gt').value.trim(),x=$('#gx').value.trim(),fr=$('#gfrom').value,to=$('#gto').value;
-  if(!t||!x||!fr||!to){alert('Fill the title, message and both dates');return}if(to<fr){alert('The end date is before the start date');return}
-  try{await addDoc(collection(fs,'greet'),{title:t,hi:$('#gh').value.trim(),text:x,from:fr,to,icon:$('#gt').dataset.i||'🎉',ts:Date.now()});await loadGreet();draw();alert('Greeting added. It shows to everyone from '+fd(fr)+' to '+fd(to)+'.')}
-  catch(y){alert('Could not save ('+(y.code||'error')+'). Check that the latest rules are published.')}};
-window.delGreet=async id=>{if(!confirm('Delete this greeting?'))return;try{await deleteDoc(doc(fs,'greet',id));await loadGreet();draw()}catch(y){alert('Failed ('+(y.code||'error')+')')}};
+  if(!t||!x||!fr||!to){showNotice('Fill the title, message and both dates');return}if(to<fr){showNotice('The end date is before the start date');return}
+  try{await addDoc(collection(fs,'greet'),{title:t,hi:$('#gh').value.trim(),text:x,from:fr,to,icon:$('#gt').dataset.i||'🎉',ts:Date.now()});await loadGreet();draw();showNotice('Greeting added. It shows to everyone from '+fd(fr)+' to '+fd(to)+'.');}
+  catch(y){showNotice('Could not save ('+(y.code||'error')+'). Check that the latest rules are published.')}};
+window.delGreet=async id=>{showConfirm('Delete this greeting?', async () => {try{await deleteDoc(doc(fs,'greet',id));await loadGreet();draw()}catch(y){showNotice('Failed ('+(y.code||'error')+')')}})};
 
-async function loadAdm(){try{const q=await getDocs(collection(fs,'users'));AU=q.docs.map(x=>({id:x.id,...x.data()}));try{const mq=await getDocs(collection(fs,'msgs'));AM=mq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AM=[]}try{const iq=await getDocs(collection(fs,'inbox'));AIN=iq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AIN=[]}await loadPlans()}catch(x){AU=[];alert('Could not load participants ('+(x.code||'error')+'). Check the admin email in firestore.rules.')}}
+async function loadAdm(){try{const q=await getDocs(collection(fs,'users'));AU=q.docs.map(x=>({id:x.id,...x.data()}));try{const mq=await getDocs(collection(fs,'msgs'));AM=mq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AM=[]}try{const iq=await getDocs(collection(fs,'inbox'));AIN=iq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AIN=[]}await loadPlans()}catch(x){AU=[];showNotice('Could not load participants ('+(x.code||'error')+'). Check the admin email in firestore.rules.')}}
 function vAdm(){
   const names=(PUB&&PUB.singers)||[],opt='<option value="">Link to singer…</option>'+names.map(n=>`<option>${e(n)}</option>`).join('');
   const pend=AU.filter(u=>u.status!='approved'),ok=AU.filter(u=>u.status=='approved');
@@ -715,48 +763,52 @@ ${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b>
 
 window.makeAdmin = async (id, name) => {
   if (!IS_SUPER) return;
-  if (!confirm('Promote ' + name + ' to Admin? They will be able to manage daily sessions, approve singers, and send messages.')) return;
-  try {
-    await updateDoc(doc(fs, 'users', id), { role: 'admin' });
-    await loadAdm();
-    draw();
-    alert(name + ' is now an Admin.');
-  } catch (x) {
-    alert('Failed (' + (x.code || 'error') + ')');
-  }
+  showConfirm('Promote ' + name + ' to Admin? They will be able to manage daily sessions, approve singers, and send messages.', async () => {
+    try {
+      await updateDoc(doc(fs, 'users', id), { role: 'admin' });
+      await loadAdm();
+      draw();
+      showNotice(name + ' is now an Admin.');
+    } catch (x) {
+      showNotice('Failed (' + (x.code || 'error') + ')');
+    }
+  });
 };
 
 window.revokeAdmin = async (id, name) => {
   if (!IS_SUPER) return;
-  if (!confirm('Remove Admin role from ' + name + '? They will become a standard participant.')) return;
-  try {
-    await updateDoc(doc(fs, 'users', id), { role: 'participant' });
-    await loadAdm();
-    draw();
-    alert('Admin privileges removed for ' + name);
-  } catch (x) {
-    alert('Failed (' + (x.code || 'error') + ')');
-  }
+  showConfirm('Remove Admin role from ' + name + '? They will become a standard participant.', async () => {
+    try {
+      await updateDoc(doc(fs, 'users', id), { role: 'participant' });
+      await loadAdm();
+      draw();
+      showNotice('Admin privileges removed for ' + name);
+    } catch (x) {
+      showNotice('Failed (' + (x.code || 'error') + ')');
+    }
+  });
 };
-window.appr=async id=>{const v=(($('#lt_'+id).value||'').trim()||$('#lk_'+id).value||'').toUpperCase();if(!v){alert('Choose or type the singer name to link');return}
-  try{await updateDoc(doc(fs,'users',id),{status:'approved',singer:v});await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
-window.rej=async id=>{if(!confirm('Remove access for this person?'))return;try{await updateDoc(doc(fs,'users',id),{status:'rejected'});await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
-window.saveZ=async()=>{try{await setDoc(doc(fs,'config','app'),{zoom:$('#zl').value.trim()});CONF.zoom=$('#zl').value.trim();alert('Zoom link saved');draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
+
+window.appr=async id=>{const v=(($('#lt_'+id).value||'').trim()||$('#lk_'+id).value||'').toUpperCase();if(!v){showNotice('Choose or type the singer name to link');return}
+  try{await updateDoc(doc(fs,'users',id),{status:'approved',singer:v});await loadAdm();draw()}catch(x){showNotice('Failed ('+(x.code||'error')+')')}};
+window.rej=async id=>{showConfirm('Remove access for this person?', async () => {try{await updateDoc(doc(fs,'users',id),{status:'rejected'});await loadAdm();draw()}catch(x){showNotice('Failed ('+(x.code||'error')+')')}})};
+window.saveZ=async()=>{try{await setDoc(doc(fs,'config','app'),{zoom:$('#zl').value.trim()});CONF.zoom=$('#zl').value.trim();showNotice('Zoom link saved');draw()}catch(x){showNotice('Failed ('+(x.code||'error')+')')}};
 const hsh=t=>{let h=5381;for(let i=0;i<t.length;i++)h=((h<<5)+h+t.charCodeAt(i))|0;return String(h>>>0)};
 window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=async()=>{
   try{const x=JSON.parse(r.result);if(x.kind!='sfh-pub'||!Array.isArray(x.songs))throw 0;
     const by={};x.songs.forEach(sg=>{const m=String(sg[1]).slice(0,7);(by[m]=by[m]||[]).push(sg)});
     const ms=Object.keys(by).sort(),js={};let tot=0;
     ms.forEach(m=>{js[m]=JSON.stringify(by[m]);tot+=js[m].length;if(js[m].length>900000)throw 'size'});
-    if(!confirm('Publish '+x.songs.length+' songs ('+Math.round(tot/1024)+' KB in '+ms.length+' month'+(ms.length>1?'s':'')+'), '+(x.sotd||[]).length+' Singer of the Day dates and '+(x.singers||[]).length+' singers to participants?'+(tot>1500000?'\n\nNote: the songs list is getting large and the app may load slowly. Please tell Claude.':'')))return;
-    const ix=await getDoc(doc(fs,'pub','idx')),old=ix.exists()?(ix.data().months||{}):{},nw={};let wr=0;
-    for(const m of ms){const hh=hsh(js[m]);nw[m]={n:by[m].length,h:hh};if(!old[m]||old[m].h!==hh){await setDoc(doc(fs,'pub','songs_'+m),{json:js[m],n:by[m].length,h:hh,ts:x.ts||''});wr++}}
-    await setDoc(doc(fs,'pub','data'),{singers:x.singers||[],sotd:x.sotd||[],som:x.som||{},somd:x.somd||{},stars:x.stars||{},ts:x.ts||''});
-    await setDoc(doc(fs,'pub','idx'),{months:nw,total:tot,ts:x.ts||''});
-    for(const m of Object.keys(old))if(!nw[m]){try{await deleteDoc(doc(fs,'pub','songs_'+m))}catch(y){}}
-    try{await deleteDoc(doc(fs,'pub','songs'))}catch(y){}
-    await load();draw();alert('Published. '+wr+' of '+ms.length+' month(s) updated.');
-  }catch(z){alert(z=='size'?'One month of songs is too large for a single document. Please tell Claude.':(z&&z.code?'Publishing failed ('+z.code+'). Check the Firebase rules and the admin email.':'That is not a valid participants file.'))}};r.readAsText(f)};
+    showConfirm('Publish '+x.songs.length+' songs ('+Math.round(tot/1024)+' KB in '+ms.length+' month'+(ms.length>1?'s':'')+'), '+(x.sotd||[]).length+' Singer of the Day dates and '+(x.singers||[]).length+' singers to participants?', async () => {
+      const ix=await getDoc(doc(fs,'pub','idx')),old=ix.exists()?(ix.data().months||{}):{},nw={};let wr=0;
+      for(const m of ms){const hh=hsh(js[m]);nw[m]={n:by[m].length,h:hh};if(!old[m]||old[m].h!==hh){await setDoc(doc(fs,'pub','songs_'+m),{json:js[m],n:by[m].length,h:hh,ts:x.ts||''});wr++}}
+      await setDoc(doc(fs,'pub','data'),{singers:x.singers||[],sotd:x.sotd||[],som:x.som||{},somd:x.somd||{},stars:x.stars||{},ts:x.ts||''});
+      await setDoc(doc(fs,'pub','idx'),{months:nw,total:tot,ts:x.ts||''});
+      for(const m of Object.keys(old))if(!nw[m]){try{await deleteDoc(doc(fs,'pub','songs_'+m))}catch(y){}}
+      try{await deleteDoc(doc(fs,'pub','songs'))}catch(y){}
+      await load();draw();showNotice('Published. '+wr+' of '+ms.length+' month(s) updated.');
+    });
+  }catch(z){showNotice(z=='size'?'One month of songs is too large for a single document.':(z&&z.code?'Publishing failed ('+z.code+'). Check the Firebase rules and the admin email.':'That is not a valid participants file.'))}};r.readAsText(f)};
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script></body></html>
