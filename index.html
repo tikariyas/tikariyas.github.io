@@ -137,6 +137,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 .tbl .n{text-align:center}
 .tbl tr.me td{background:var(--ac-light);font-weight:600}
 .tbl tr.me td:first-child{border-left:3px solid var(--ac)}
+.badge-round{color:var(--ac);background:var(--ac-light);font-weight:800;padding:2px 8px;border-radius:6px;font-size:12px}
 </style></head><body>
 <header>
   <div>
@@ -461,7 +462,7 @@ function vSotd(){
   const sk=(P.singer||'').toUpperCase();
   const stars=Object.entries(PUB.stars||{}).filter(([n,o])=>o.t>0).sort((a,b)=>b[1].t-a[1].t||a[0].localeCompare(b[0]));
 
-  let h=`<div class="c"><b>Singer of the Month</b>${somE.length?`<div class="tbl"><table><tr><th style="width:110px">Month</th><th>Singer of the Month</th><th>Declared date</th></tr>${somE.slice(0,6).map(([m,n])=>`<tr><td><b>${e(fm(m))}</b></td><td><b>${e(n)}</b></td><td><span class="m">${somd[m]?fd(somd[m]):'-'}</span></td></tr>`).join('')}</table></div>`:'<p class="m">Not declared yet.</p>'}</div>`;
+  let h=`<div class="c"><b>Singer of the Month</b>${somE.length?`<div class="tbl"><table><tr><th style="width:110px">Month</th><th>Singer of the Month</th><th>Declared date</th></tr>${somE.slice(0,6).map(([m,n])=>`<tr><td><b>${e(fm(m))}</b></td><td><b>${e(n)}</b></td><td><span class="m">${somd[m]?fd(somd[m]):'-'}</span></td></tr>`).join('')}</table></div>`:' earthly<p class="m">Not declared yet.</p>'}</div>`;
 
   h+=`<div class="c"><b>Singers of the Day${lm?' since the Singer of the Month '+e(fm(lm))+(ld?' ('+fd(ld)+')':''):''}</b><p class="m" style="margin:2px 0 8px">This list stays until the next Singer of the Month is declared.</p>${cyc.length?`<div class="tbl"><table><tr><th style="width:95px;min-width:95px">Date</th><th>Singer name</th></tr>${cyc.map(x=>`<tr><td style="width:95px;min-width:95px"><span class="m">${fd(x.d)}</span></td><td>${nmL(x.l)}</td></tr>`).join('')}</table></div>`:'<p class="m">None yet in this round.</p>'}</div>`;
 
