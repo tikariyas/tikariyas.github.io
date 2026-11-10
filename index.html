@@ -164,6 +164,12 @@ const CFG = {
     projectId: "sing-from-home",
     appId: "1:848212321051:web:bb26a98a842eb16f21e9be"
   },
+  // Master control account
+  superadmins: ["musicsnsounds@gmail.com"],
+  // Committee / Host assistants (add emails here when needed)
+  admins: []
+};
+
   admins: ["musicsnsounds@gmail.com"]
 };
 
@@ -238,7 +244,7 @@ const fd=k=>k.slice(8)+'/'+k.slice(5,7)+'/'+k.slice(0,4);
 const fm=m=>new Date(m+'-01T00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
 const nowM=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
 const okImg=s=>typeof s=='string'&&s.startsWith('data:image/');
-let U=null,P=null,PUB=null,SONGS=[],CONF={},AU=[],tab='home',ADM=false,loadErr='',HDATE='',EDU='',GRT=[],BD=[],GQ=[],showAbout=location.hash=='#about',MSGS=[],AM=[],AIN=[],PL=[],PD='',PLAN=null,pendingName='',seenAdm=(()=>{try{return +localStorage.getItem('sfh_seen_adm')||0}catch(x){return 0}})(),seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
+let U=null,P=null,PUB=null,SONGS=[],CONF={},AU=[],tab='home',ADM=false,IS_SUPER=false,IS_ADMIN=false,loadErr='',HDATE='',EDU='',GRT=[],BD=[],GQ=[],showAbout=location.hash=='#about',MSGS=[],AM=[],AIN=[],PL=[],PD='',PLAN=null,pendingName='',seenAdm=(()=>{try{return +localStorage.getItem('sfh_seen_adm')||0}catch(x){return 0}})(),seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
 
 async function load(){
   loadErr='';PUB=null;SONGS=[];CONF={};
@@ -259,12 +265,27 @@ async function load(){
     }
   }catch(x){loadErr=x.code||x.message}
 }
-onAuthStateChanged(auth,async u=>{
-  U=u;
-  if(!u){P=null;draw();return}
-  ADM=(CFG.admins||[]).map(x=>x.toLowerCase()).includes((u.email||'').toLowerCase())&&u.emailVerified===true;
-  await load();draw();setTimeout(runCards,400);
+onAuthStateChanged(auth, async u => {
+  U = u;
+  if (!u) {
+    P = null;
+    IS_SUPER = false;
+    IS_ADMIN = false;
+    ADM = false;
+    draw();
+    return;
+  }
+  const em = (u.email || '').toLowerCase();
+  const verified = u.emailVerified === true;
+  IS_SUPER = (CFG.superadmins || []).map(x => x.toLowerCase()).includes(em) && verified;
+  IS_ADMIN = IS_SUPER || ((CFG.admins || []).map(x => x.toLowerCase()).includes(em) && verified);
+  ADM = IS_ADMIN; // Keeps backward compatibility with existing admin functions
+
+  await load();
+  draw();
+  setTimeout(runCards, 400);
 });
+
 
 window.login=async()=>{
   if(!$('#cs')||!$('#cs').checked){alert('Please tick the consent box first.');return}
@@ -294,7 +315,47 @@ const vLogin=()=>`<div class="c"><h2>Welcome</h2><p>Sign in to see the Singer of
 <p><button onclick="about()">ℹ About us</button></p></div>`;
 const vWait=()=>`<div class="c"><h2>${P.status=='pending'?'Waiting for approval':'Access not active'}</h2>
 <p>${P.status=='pending'?'Your request has been sent to the host. You will get access once the host approves you. Tap Check approval below.':'Your access is not active. Please contact the host.'}</p><p class="m">Signed in as ${e(idOf(U.email))}</p><p><button class="pri" onclick="refresh()">↻ Check approval</button> <button onclick="about()">ℹ About us</button></p></div>`;
-const tabs=()=>`<nav>${(ADM?[['home','Home'],['sotd','Singer of the Day'],['pdf','PDF'],['about','About'],['refresh','↻ Refresh'],['adm','Admin']]:[['home','Home'],['sotd','Singer of the Day'],['today','Today'],['msg','Messages'+unread()],['prof','My profile'],['pdf','PDF'],['about','About'],['refresh','↻ Refresh']]).map(([k,t])=>k=='refresh'?`<button onclick="refresh()">${t}</button>`:`<button class="${tab==k?'on':''}" onclick="go('${k}')">${t}</button>`).join('')}${CONF.zoom?`<a class="zm" href="${e(CONF.zoom)}" target="_blank" rel="noopener">▶ Start Zoom</a>`:''}</nav>`;
+const tabs = () => {
+  let list = [];
+  if (IS_SUPER) {
+    // Superadmin: Full console + access to participant tabs for verification
+    list = [
+      ['home', 'Home'],
+      ['sotd', 'Singer of the Day'],
+      ['today', 'Today'],
+      ['pdf', 'PDF'],
+      ['adm', 'Admin'],
+      ['about', 'About'],
+      ['refresh', 'Refresh']
+    ];
+  } else if (IS_ADMIN) {
+    // Admin: Daily session management + core participant tools
+    list = [
+      ['home', 'Home'],
+      ['sotd', 'Singer of the Day'],
+      ['today', 'Today'],
+      ['msg', 'Messages' + unread()],
+      ['pdf', 'PDF'],
+      ['adm', 'Admin'],
+      ['about', 'About'],
+      ['refresh', 'Refresh']
+    ];
+  } else {
+    // Standard Participant: Individual singer tools
+    list = [
+      ['home', 'Home'],
+      ['sotd', 'Singer of the Day'],
+      ['today', 'Today'],
+      ['msg', 'Messages' + unread()],
+      ['prof', 'My profile'],
+      ['pdf', 'PDF'],
+      ['about', 'About'],
+      ['refresh', 'Refresh']
+    ];
+  }
+
+  return `<nav>${list.map(([k, t]) => k == 'refresh' ? `<button onclick="refresh()">${t}</button>` : `<button class="${tab == k ? 'on' : ''}" onclick="go('${k}')">${t}</button>`).join('')}${CONF.zoom ? `<a class="zm" href="${e(CONF.zoom)}" target="_blank" rel="noopener">Start Zoom</a>` : ''}</nav>`;
+};
 
 const nmL=l=>(l||[]).map(x=>'<b>'+e(x.n)+'</b>'+(x.h=='Special'?' (special)':x.h=='Quiz'?' (quiz)':'')).join(', ');
 function sdates(){const st=new Set();SONGS.forEach(r=>st.add(r[1]));((PUB&&PUB.sotd)||[]).forEach(x=>st.add(x.d));return [...st].sort()}
