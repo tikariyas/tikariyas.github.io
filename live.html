@@ -1,374 +1,447 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sing From Home - Live Daily Session</title>
-  <style>
-    :root {
-      --bg: #0f172a;
-      --card-bg: #1e293b;
-      --border: #334155;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --primary: #38bdf8;
-      --primary-hover: #0284c7;
-      --accent: #f59e0b;
-      --danger: #ef4444;
-      --success: #10b981;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    body { background-color: var(--bg); color: var(--text); padding: 20px; line-height: 1.5; }
-
-    header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
-    h1 { font-size: 1.4rem; font-weight: 700; color: var(--text); }
-    .clock-display { font-size: 1.1rem; font-weight: 600; color: var(--primary); }
-
-    .grid { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
-    .card { background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
-    .card h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 12px; }
-
-    .form-group { margin-bottom: 12px; }
-    label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px; }
-    input, select, button { width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); background: #0b1120; color: var(--text); font-size: 0.9rem; }
-    input:focus, select:focus { outline: none; border-color: var(--primary); }
-    
-    button { cursor: pointer; font-weight: 600; transition: background 0.2s ease; border: none; }
-    .btn-primary { background: var(--primary); color: #000; }
-    .btn-primary:hover { background: var(--primary-hover); }
-    .btn-secondary { background: var(--border); color: var(--text); }
-    .btn-secondary:hover { background: #475569; }
-    .btn-accent { background: var(--accent); color: #000; }
-    .btn-danger { background: var(--danger); color: #fff; }
-
-    /* Singer Table */
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
-    th, td { padding: 10px 8px; border-bottom: 1px solid var(--border); text-align: left; }
-    th { color: var(--text-muted); font-weight: 600; }
-    tr:hover { background-color: rgba(255, 255, 255, 0.02); }
-
-    .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
-    .badge-eligible { background: rgba(16, 185, 129, 0.2); color: var(--success); }
-    .badge-late { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
-    .badge-sotd { background: var(--accent); color: #000; }
-
-    .star-rating span { cursor: pointer; color: #475569; font-size: 1.1rem; }
-    .star-rating span.active { color: var(--accent); }
-
-    .suggest-box { position: relative; }
-    .suggest-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #0b1120; border: 1px solid var(--border); max-height: 140px; overflow-y: auto; z-index: 10; display: none; }
-    .suggest-item { padding: 6px 10px; cursor: pointer; display: flex; justify-content: space-between; }
-    .suggest-item:hover { background: #1e293b; color: var(--primary); }
-    .repeat-tag { color: var(--accent); font-size: 0.75rem; }
-
-    .controls-row { display: flex; gap: 10px; margin-top: 14px; }
-
-    @media print {
-      body { background: #fff; color: #000; }
-      .card { border: 1px solid #ccc; background: #fff; color: #000; }
-      .no-print { display: none; }
-      th, td { border-bottom: 1px solid #ddd; color: #000; }
-    }
-  </style>
-</head>
-<body>
-
-  <header>
-    <div>
-      <h1>Sing From Home — Daily Live Session</h1>
-      <small style="color: var(--text-muted);">B. S. Tikariya Cultural Foundation</small>
-    </div>
-    <div style="display: flex; gap: 20px; align-items: center;">
-      <div id="sessionClock" class="clock-display">00:00:00</div>
-      <button class="btn-secondary no-print" onclick="window.print()" style="width: auto;">Print / Export PDF</button>
-    </div>
-  </header>
-
-  <div class="grid">
-    <!-- Left Sidebar: Entry, Status & SOTD Declaration -->
-    <div class="no-print" style="display: flex; flex-direction: column; gap: 16px;">
-      
-      <!-- Participant Gathering Form -->
-      <div class="card">
-        <h2>Add Singer (Gathering)</h2>
-        <div class="form-group">
-          <label>Singer Name</label>
-          <input type="text" id="newSingerName" placeholder="Enter singer name..." autocomplete="off">
-        </div>
-        <button class="btn-primary" onclick="addSinger()">Add to Session</button>
-        <small style="display:block; margin-top: 6px; color: var(--text-muted);">
-          Rule: Entries recorded after 8:45 PM are marked as not eligible for Star of the Day.
-        </small>
-      </div>
-
-      <!-- SOTD Declaring Card -->
-      <div class="card">
-        <h2>Elect Singer of the Day (SOTD)</h2>
-        <div class="form-group">
-          <label>Selected Singer</label>
-          <select id="sotdSingerSelect">
-            <option value="">-- Choose Eligible Singer --</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Election Mode</label>
-          <select id="sotdMode">
-            <option value="By Score">By Score (Highest Points)</option>
-            <option value="By Quiz">By Quiz</option>
-            <option value="Special Moments">Special Moments (New Encouragement)</option>
-          </select>
-        </div>
-        <button class="btn-accent" onclick="declareSOTD()">Declare Singer of the Day</button>
-      </div>
-
-      <!-- Quick Session Stats -->
-      <div class="card">
-        <h2>Session Summary</h2>
-        <p style="font-size: 0.9rem; margin-bottom: 4px;">Total Singers: <span id="statTotalSingers" style="font-weight: 700;">0</span></p>
-        <p style="font-size: 0.9rem; margin-bottom: 4px;">Songs Sung: <span id="statTotalSongs" style="font-weight: 700;">0</span></p>
-        <p style="font-size: 0.9rem; margin-bottom: 4px;">Latest Song ID: <span id="statLastSongId" style="font-weight: 700; color: var(--primary);">S-0168</span></p>
-        <p style="font-size: 0.9rem;">SOTD: <span id="statSOTD" style="font-weight: 700; color: var(--accent);">None</span></p>
-      </div>
-
-    </div>
-
-    <!-- Right Side: Live Roster and Song Tracking -->
-    <div>
-      <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-          <h2>Singing Queue & Rounds</h2>
-          <div style="display: flex; gap: 8px;">
-            <button class="btn-secondary" style="width: auto; padding: 4px 10px;" onclick="switchRound(1)">Round 1</button>
-            <button class="btn-secondary" style="width: auto; padding: 4px 10px;" onclick="switchRound(2)">Round 2</button>
-            <button class="btn-secondary" style="width: auto; padding: 4px 10px;" onclick="switchRound(3)">Round 3</button>
-          </div>
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 40px;">#</th>
-              <th style="width: 140px;">Singer</th>
-              <th style="width: 70px;">Join Time</th>
-              <th style="width: 80px;">SOTD Status</th>
-              <th style="width: 80px;">Song ID</th>
-              <th>Song Title (Type to search past songs)</th>
-              <th style="width: 130px;">Marking (1 to 5)</th>
-            </tr>
-          </thead>
-          <tbody id="rosterBody">
-            <!-- Dynamic participant rows inserted here -->
-          </tbody>
-        </table>
-      </div>
-    </div>
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f3460">
+<link rel="icon" href="icon-192.png">
+<title>Live Session · Sing From Home</title>
+<style>
+:root{
+  --bg:#f8fafc;--fg:#0f172a;--card:#ffffff;--ac:#0f3460;--ac-light:#e8eef7;
+  --mut:#64748b;--bd:#cbd5e1;--btn-pri-bg:linear-gradient(135deg,#0f3460 0%,#1e4a7a 100%);
+  --shadow:0 4px 18px -2px rgba(15,23,42,0.06),0 2px 6px -1px rgba(15,23,42,0.03);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0a0f1d;--fg:#f8fafc;--card:#141d33;--ac:#60a5fa;--ac-light:#1e293b;
+    --mut:#94a3b8;--bd:#1e293b;--btn-pri-bg:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);
+    --shadow:0 10px 30px -4px rgba(0,0,0,0.5);
+    color-scheme:dark;
+  }
+}
+html,body{margin:0}
+body{
+  background:var(--bg);color:var(--fg);
+  font:15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Inter",sans-serif;
+  padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);
+}
+header{
+  display:flex;justify-content:space-between;align-items:flex-start;
+  padding:12px 16px;border-bottom:1px solid var(--bd);background:var(--card);
+  position:sticky;top:0;z-index:40;backdrop-filter:blur(10px);box-shadow:0 1px 3px rgba(0,0,0,0.03);
+}
+h1{
+  font-size:21px;font-weight:800;line-height:1.2;letter-spacing:-0.3px;margin:0;color:var(--ac);
+}
+.sub-fnd{
+  font-size:11px;color:#000000;font-weight:500;margin-top:2px;letter-spacing:0.1px;line-height:1.3;
+}
+@media (prefers-color-scheme:dark){.sub-fnd{color:#e2e8f0}}
+h2{margin:4px 0 8px;font-size:18px;font-weight:700}
+main{padding:12px;max-width:880px;margin:auto}
+.c{
+  background:var(--card);border:1px solid var(--bd);border-radius:12px;
+  padding:12px 14px;margin-bottom:12px;box-shadow:var(--shadow);
+}
+button,.zm{
+  font:inherit;font-size:13px;font-weight:600;border:1px solid var(--bd);
+  background:var(--card);color:var(--fg);border-radius:8px;padding:6px 10px;
+  cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;
+  transition:all 0.15s ease;
+}
+button:hover{border-color:var(--ac);transform:translateY(-1px)}
+button:active{transform:scale(0.98)}
+button.on,button.pri{
+  background:var(--btn-pri-bg);color:#fff;border-color:transparent;
+  box-shadow:0 3px 12px -2px rgba(15,52,96,0.35);
+}
+button.danger{background:#dc2626;color:#fff;border-color:transparent}
+input,select,textarea{
+  font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--bd);
+  border-radius:8px;padding:8px 10px;box-sizing:border-box;min-width:0;max-width:100%;
+  transition:border-color 0.15s ease,box-shadow 0.15s ease;outline:none;
+}
+input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,96,0.18)}
+.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:8px 0}
+.m{color:var(--mut);font-size:13px}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.big{font-size:18px;font-weight:800;color:var(--ac);letter-spacing:-0.2px}
+.tbl{
+  overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:6px;border-radius:8px;border:1px solid var(--bd);
+}
+.tbl table{border-collapse:separate;border-spacing:0;min-width:100%}
+.tbl th,.tbl td{
+  white-space:nowrap;padding:7px 10px;border-bottom:1px solid var(--bd);text-align:left;height:40px;box-sizing:border-box;font-size:13.5px;
+}
+.tbl th{height:34px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--mut);background:var(--bg)}
+.tbl tr:last-child td{border-bottom:none}
+.tbl .n{text-align:center}
+.badge-ok{color:#15803d;background:#dcfce7;font-weight:700;padding:2px 8px;border-radius:6px;font-size:11.5px}
+.badge-late{color:#b91c1c;background:#fee2e2;font-weight:700;padding:2px 8px;border-radius:6px;font-size:11.5px}
+.badge-round{color:var(--ac);background:var(--ac-light);font-weight:800;padding:2px 8px;border-radius:6px;font-size:12px}
+.score-box{display:inline-flex;gap:4px}
+.score-star{cursor:pointer;font-size:16px;user-select:none;opacity:0.3;transition:opacity .15s}
+.score-star.active{opacity:1;color:#f59e0b}
+</style></head><body>
+<header>
+  <div>
+    <h1>SING FRO<span style="color:#b30000;font-weight:900">M</span> HO<span style="color:#b30000;font-weight:900">M</span>E</h1>
+    <div class="sub-fnd">Live Session Host Console · B. S. Tikariya Cultural Foundation ®</div>
   </div>
+  <div id="hb"></div>
+</header>
+<main id="app"><p class="m">Connecting to live console…</p></main>
 
-  <script>
-    // System Song Tracker Seed (Initialized to S-0168)
-    let latestSongNumber = 168;
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script type="module">
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import {getAuth,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import {getFirestore,doc,getDoc,setDoc,getDocs,collection} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-    // In-memory song bank to detect repeat performances
-    // Replace or populate this list with historical songs
-    let songRegistry = [
-      { id: "S-0168", title: "Pal Pal Dil Ke Paas", count: 2 },
-      { id: "S-0167", title: "Lag Ja Gale", count: 3 }
-    ];
+const CFG = {
+  firebase: {
+    apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
+    authDomain: "sing-from-home.firebaseapp.com",
+    projectId: "sing-from-home",
+    appId: "1:848212321051:web:bb26a98a842eb16f21e9be"
+  },
+  superadmins: ["musicsnsounds@gmail.com"]
+};
 
-    let currentRound = 1;
-    let participants = [];
-    let sotdWinner = null;
+const app = initializeApp(CFG.firebase), auth = getAuth(app), fs = getFirestore(app);
+const $ = s => document.querySelector(s);
+const e = s => String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fd = k => k.slice(8)+'/'+k.slice(5,7)+'/'+k.slice(0,4);
+const tdy = () => {const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+const curTime = () => new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', hour12:true});
 
-    // Real-time clock update
-    function updateClock() {
-      const now = new Date();
-      const hrs = String(now.getHours()).padStart(2, '0');
-      const mins = String(now.getMinutes()).padStart(2, '0');
-      const secs = String(now.getSeconds()).padStart(2, '0');
-      document.getElementById('sessionClock').innerText = `${hrs}:${mins}:${secs}`;
+let U=null, IS_SUPER=false, IS_ADMIN=false, KNOWN_SINGERS=[], ALL_SONGS=[], MAX_ID_NUM=168;
+let currentRound = 1;
+let SOTD = {winner:'', mode:'score', reason:''};
+
+// Session state structure
+let LIVE = {
+  date: tdy(),
+  singers: [], // { name, joinTime, eligible: true/false }
+  performances: [] // { round, singer, song, songId, stars: [1..5], repeatCount: 0 }
+};
+
+// Local storage backup
+function saveLocal(){
+  try{ localStorage.setItem('sfh_live_session_'+LIVE.date, JSON.stringify({LIVE, currentRound, SOTD})); }catch(x){}
+}
+function loadLocal(){
+  try{
+    const d = localStorage.getItem('sfh_live_session_'+LIVE.date);
+    if(d){
+      const parsed = JSON.parse(d);
+      if(parsed.LIVE) LIVE = parsed.LIVE;
+      if(parsed.currentRound) currentRound = parsed.currentRound;
+      if(parsed.SOTD) SOTD = parsed.SOTD;
     }
-    setInterval(updateClock, 1000);
-    updateClock();
+  }catch(x){}
+}
 
-    // Check 8:45 PM deadline eligibility
-    function checkEligibility() {
-      const now = new Date();
-      const totalMinutes = now.getHours() * 60 + now.getMinutes();
-      const cutoffMinutes = 20 * 60 + 45; // 8:45 PM
-      return totalMinutes <= cutoffMinutes;
+async function init(){
+  loadLocal();
+  try{
+    const pubData = await getDoc(doc(fs, 'pub', 'data'));
+    if(pubData.exists()){
+      KNOWN_SINGERS = pubData.data().singers || [];
     }
-
-    // Add Singer
-    function addSinger() {
-      const nameInput = document.getElementById('newSingerName');
-      const name = nameInput.value.trim();
-      if (!name) return;
-
-      const now = new Date();
-      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      const isEligible = checkEligibility();
-
-      const singerObj = {
-        id: Date.now(),
-        name: name,
-        joinTime: timeStr,
-        eligible: isEligible,
-        rounds: {
-          1: { songId: '', songTitle: '', score: 0 },
-          2: { songId: '', songTitle: '', score: 0 },
-          3: { songId: '', songTitle: '', score: 0 }
-        }
-      };
-
-      participants.push(singerObj);
-      nameInput.value = '';
-      renderTable();
-      updateSotdDropdown();
+    const ix = await getDoc(doc(fs, 'pub', 'idx'));
+    if(ix.exists()){
+      const ms = Object.keys(ix.data().months || {}).sort();
+      const ds = await Promise.all(ms.map(m => getDoc(doc(fs, 'pub', 'songs_' + m))));
+      ALL_SONGS = [].concat(...ds.map(d => d.exists() ? JSON.parse(d.data().json) : []));
     }
+    ALL_SONGS.forEach(r => {
+      const num = parseInt(String(r[0]||'').replace(/\D/g,'')) || 0;
+      if(num > MAX_ID_NUM) MAX_ID_NUM = num;
+    });
+  }catch(x){ console.error('Data init error', x); }
+  draw();
+}
 
-    function switchRound(roundNumber) {
-      currentRound = roundNumber;
-      renderTable();
-    }
+onAuthStateChanged(auth, async u => {
+  U = u;
+  if(!u){
+    $('#app').innerHTML = `<div class="c"><h2>Access Restricted</h2><p>Please sign in from the main app first.</p><p><a class="zm" href="index.html">Back to Main App</a></p></div>`;
+    return;
+  }
+  const em = (u.email || '').toLowerCase();
+  IS_SUPER = (CFG.superadmins || []).map(x => x.toLowerCase()).includes(em);
+  const udoc = await getDoc(doc(fs, 'users', u.uid));
+  const p = udoc.exists() ? udoc.data() : {};
+  IS_ADMIN = IS_SUPER || (p.status == 'approved' && p.role == 'admin');
 
-    // Render Table Rows
-    function renderTable() {
-      const tbody = document.getElementById('rosterBody');
-      tbody.innerHTML = '';
+  if(!IS_ADMIN){
+    $('#app').innerHTML = `<div class="c"><h2>Access Restricted</h2><p>The Live Session Console is reserved for Superadmins and Admins.</p><p><a class="zm" href="index.html">Back to Main App</a></p></div>`;
+    return;
+  }
 
-      participants.forEach((singer, index) => {
-        const roundData = singer.rounds[currentRound] || { songId: '', songTitle: '', score: 0 };
-        const tr = document.createElement('tr');
+  await init();
+});
 
-        tr.innerHTML = `
-          <td>${index + 1}</td>
-          <td>
-            <strong>${singer.name}</strong>
-            ${sotdWinner && sotdWinner.id === singer.id ? '<br><span class="badge badge-sotd">STAR (' + sotdWinner.mode + ')</span>' : ''}
-          </td>
-          <td>${singer.joinTime}</td>
-          <td>
-            <span class="badge ${singer.eligible ? 'badge-eligible' : 'badge-late'}">
-              ${singer.eligible ? 'Eligible' : 'Late (>8:45)'}
-            </span>
-          </td>
-          <td>
-            <input type="text" value="${roundData.songId}" placeholder="ID" 
-              style="width: 75px; text-transform: uppercase;"
-              onchange="updateSongId(${singer.id}, ${currentRound}, this.value)">
-          </td>
-          <td>
-            <div class="suggest-box">
-              <input type="text" value="${roundData.songTitle}" placeholder="Song name..." 
-                oninput="onSongInput(this, ${singer.id}, ${currentRound})"
-                onfocus="onSongInput(this, ${singer.id}, ${currentRound})">
-              <div class="suggest-dropdown"></div>
-            </div>
-          </td>
-          <td>
-            <div class="star-rating" title="1: Start, 2: Ready, 3: Mic clean, 4: Good, 5: Better">
-              ${[1, 2, 3, 4, 5].map(star => `
-                <span class="${star <= roundData.score ? 'active' : ''}" 
-                  onclick="setRating(${singer.id}, ${currentRound}, ${star})">★</span>
-              `).join('')}
-            </div>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
+function getNextSongId(){
+  // Determine next song ID
+  let highest = MAX_ID_NUM;
+  LIVE.performances.forEach(p => {
+    const num = parseInt(String(p.songId||'').replace(/\D/g,'')) || 0;
+    if(num > highest) highest = num;
+  });
+  return 'S-' + String(highest + 1).padStart(4, '0');
+}
 
-      document.getElementById('statTotalSingers').innerText = participants.length;
-      document.getElementById('statLastSongId').innerText = `S-${String(latestSongNumber).padStart(4, '0')}`;
-    }
+function checkRepeat(songTitle){
+  if(!songTitle) return 0;
+  const t = songTitle.trim().toUpperCase();
+  let cnt = 0;
+  ALL_SONGS.forEach(r => { if(String(r[3]||'').trim().toUpperCase() === t) cnt++; });
+  LIVE.performances.forEach(r => { if(String(r.song||'').trim().toUpperCase() === t) cnt++; });
+  return cnt;
+}
 
-    // Handle song search autocomplete & repeat lookup
-    function onSongInput(inputElement, singerId, round) {
-      const val = inputElement.value.trim().toLowerCase();
-      const parent = inputElement.parentElement;
-      const dropdown = parent.querySelector('.suggest-dropdown');
-      
-      updateSongTitle(singerId, round, inputElement.value);
+window.addSinger = () => {
+  const inp = $('#in_singer');
+  const name = (inp.value || '').trim().toUpperCase();
+  if(!name){ alert('Please enter or select singer name.'); return; }
+  if(LIVE.singers.some(s => s.name === name)){ alert('Singer already added in session.'); return; }
 
-      if (!val) {
-        dropdown.style.display = 'none';
-        return;
-      }
+  const now = new Date();
+  const cutoff = new Date();
+  cutoff.setHours(20, 45, 0, 0); // 8:45 PM cutoff
 
-      const matches = songRegistry.filter(s => s.title.toLowerCase().includes(val));
-      if (matches.length === 0) {
-        dropdown.style.display = 'none';
-        return;
-      }
+  const eligible = now <= cutoff;
+  LIVE.singers.push({
+    name,
+    joinTime: curTime(),
+    eligible
+  });
+  inp.value = '';
+  saveLocal();
+  draw();
+};
 
-      dropdown.innerHTML = '';
-      matches.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'suggest-item';
-        div.innerHTML = `<span>${item.title}</span><span class="repeat-tag">Sung ${item.count}x</span>`;
-        div.onclick = () => {
-          inputElement.value = item.title;
-          updateSongTitle(singerId, round, item.title);
-          updateSongId(singerId, round, item.id);
-          dropdown.style.display = 'none';
-          renderTable();
-        };
-        dropdown.appendChild(div);
-      });
-      dropdown.style.display = 'block';
-    }
+window.removeSinger = (idx) => {
+  if(!confirm('Remove ' + LIVE.singers[idx].name + ' from today\'s singing order?')) return;
+  const name = LIVE.singers[idx].name;
+  LIVE.singers.splice(idx, 1);
+  LIVE.performances = LIVE.performances.filter(p => p.singer !== name);
+  saveLocal();
+  draw();
+};
 
-    // Assign new auto-incremented Song ID if not assigned
-    function assignNextSongId() {
-      latestSongNumber += 1;
-      return `S-${String(latestSongNumber).padStart(4, '0')}`;
-    }
+window.saveSong = (singerName, round) => {
+  const songInp = $('#sg_' + round + '_' + singerName.replace(/[^a-zA-Z0-9]/g, '_'));
+  const song = (songInp.value || '').trim().toUpperCase();
+  if(!song){ alert('Please enter song title.'); return; }
 
-    function updateSongTitle(singerId, round, title) {
-      const singer = participants.find(p => p.id === singerId);
-      if (singer) {
-        singer.rounds[round].songTitle = title;
-        if (title.length > 2 && !singer.rounds[round].songId) {
-          singer.rounds[round].songId = assignNextSongId();
-          renderTable();
-        }
-      }
-    }
+  let p = LIVE.performances.find(x => x.singer === singerName && x.round === round);
+  const rep = checkRepeat(song);
 
-    function updateSongId(singerId, round, id) {
-      const singer = participants.find(p => p.id === singerId);
-      if (singer) singer.rounds[round].songId = id;
-    }
+  if(!p){
+    p = {
+      round,
+      singer: singerName,
+      song,
+      songId: getNextSongId(),
+      stars: [false, false, false, false, false],
+      repeatCount: rep
+    };
+    LIVE.performances.push(p);
+  } else {
+    p.song = song;
+    p.repeatCount = rep;
+  }
 
-    function setRating(singerId, round, rating) {
-      const singer = participants.find(p => p.id === singerId);
-      if (singer) {
-        singer.rounds[round].score = rating;
-        renderTable();
-      }
-    }
+  saveLocal();
+  draw();
+};
 
-    function updateSotdDropdown() {
-      const select = document.getElementById('sotdSingerSelect');
-      select.innerHTML = '<option value="">-- Choose Eligible Singer --</option>';
-      participants.filter(p => p.eligible).forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.innerText = p.name;
-        select.appendChild(opt);
-      });
-    }
+window.toggleStar = (perfIdx, starIdx) => {
+  const p = LIVE.performances[perfIdx];
+  if(!p) return;
+  p.stars[starIdx] = !p.stars[starIdx];
+  saveLocal();
+  draw();
+};
 
-    function declareSOTD() {
-      const singerId = document.getElementById('sotdSingerSelect').value;
-      const mode = document.getElementById('sotdMode').value;
-      if (!singerId) return alert('Select an eligible singer first.');
+window.setRound = (r) => {
+  currentRound = r;
+  saveLocal();
+  draw();
+};
 
-      const singer = participants.find(p => p.id == singerId);
-      sotdWinner = { id: singer.id, name: singer.name, mode: mode };
-      document.getElementById('statSOTD').innerText = `${singer.name} (${mode})`;
-      renderTable();
-    }
-  </script>
-</body>
-</html>
+window.setSOTD = () => {
+  const winner = $('#sotd_winner').value;
+  const mode = $('#sotd_mode').value;
+  const reason = $('#sotd_reason').value.trim();
+  if(!winner){ alert('Please choose SOTD winner.'); return; }
+
+  SOTD = { winner, mode, reason };
+  saveLocal();
+  draw();
+  alert('Singer of the Day recorded: ' + winner);
+};
+
+window.downloadLivePDF = () => {
+  if(!window.jspdf){ alert('PDF generator loading, please wait a second.'); return; }
+  const {jsPDF} = window.jspdf;
+  const d = new jsPDF({unit:'mm',format:'a4'});
+  const a = s => String(s||'').replace(/[^\x20-\xff]/g,'?');
+
+  d.setFontSize(18);
+  d.text('SING FROM HOME - Live Session Record', 105, 14, {align:'center'});
+  d.setFontSize(10);
+  d.text('Session Date: ' + fd(LIVE.date) + ' | Generated: ' + curTime(), 105, 20, {align:'center'});
+
+  let y = 28;
+  if(SOTD.winner){
+    d.setFontSize(12);
+    d.text('Singer of the Day: ' + SOTD.winner + ' (' + SOTD.mode.toUpperCase() + (SOTD.reason?' - '+SOTD.reason:'') + ')', 14, y);
+    y += 8;
+  }
+
+  const rows = LIVE.performances.map((p, i) => {
+    const starCount = p.stars.filter(Boolean).length;
+    return [
+      String(i + 1),
+      'Round ' + p.round,
+      p.singer,
+      p.song,
+      p.songId,
+      starCount + ' / 5',
+      p.repeatCount > 0 ? 'Repeated (' + p.repeatCount + 'x)' : 'Original'
+    ].map(a);
+  });
+
+  d.autoTable({
+    startY: y,
+    head: [['#', 'Round', 'Singer name', 'Song name', 'Song ID', 'Score', 'Status']],
+    body: rows,
+    styles: {fontSize: 8.5, cellPadding: 2},
+    headStyles: {fillColor: [15, 52, 96]}
+  });
+
+  d.save('Live_Session_' + LIVE.date + '.pdf');
+};
+
+function draw(){
+  $('#hb').innerHTML = `<div class="row"><button onclick="downloadLivePDF()">Export PDF</button><button class="pri" onclick="location.href='index.html'">App Dashboard</button></div>`;
+
+  let h = '';
+
+  // 1. Session Timing & Queue Registration Card
+  h += `<div class="c">
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <h2>Live Session · ${fd(LIVE.date)}</h2>
+        <p class="m">Order is locked in as singers arrive between 8:25 PM - 8:30 PM. 8:45 PM is SOTD cutoff.</p>
+      </div>
+      <div><span class="badge-round">Current: Round ${currentRound}</span></div>
+    </div>
+    <div class="f" style="margin-top:10px">
+      <input id="in_singer" list="dl_known" placeholder="Enter / Select Singer Name" style="text-transform:uppercase">
+      <datalist id="dl_known">
+        ${KNOWN_SINGERS.map(s => `<option value="${e(s)}">`).join('')}
+      </datalist>
+      <button class="pri" onclick="addSinger()">Add to Singing Queue</button>
+    </div>
+  </div>`;
+
+  // 2. Multi-Round Sing Order & Performance Sheet
+  h += `<div class="c">
+    <div class="row" style="justify-content:space-between;margin-bottom:8px">
+      <b>Singing Order & Performance Sheet</b>
+      <div class="row">
+        <button class="${currentRound===1?'on':''}" onclick="setRound(1)">Round 1</button>
+        <button class="${currentRound===2?'on':''}" onclick="setRound(2)">Round 2</button>
+        <button class="${currentRound===3?'on':''}" onclick="setRound(3)">Round 3</button>
+      </div>
+    </div>
+
+    ${LIVE.singers.length ? `
+      <div class="tbl"><table>
+        <tr>
+          <th class="n">Order</th>
+          <th>Singer Name</th>
+          <th>Arrival</th>
+          <th>SOTD Star Status</th>
+          <th>Song Title (Round ${currentRound})</th>
+          <th>Song ID</th>
+          <th style="min-width:140px">Scoring (1 to 5 Stars)</th>
+          <th style="text-align:center">Action</th>
+        </tr>
+        ${LIVE.singers.map((s, idx) => {
+          const p = LIVE.performances.find(x => x.singer === s.name && x.round === currentRound);
+          const pIdx = LIVE.performances.indexOf(p);
+          const sKey = 'sg_' + currentRound + '_' + s.name.replace(/[^a-zA-Z0-9]/g, '_');
+          const isEligible = s.eligible;
+
+          return `<tr>
+            <td class="n"><b>${idx + 1}</b></td>
+            <td><b>${e(s.name)}</b></td>
+            <td><span class="m">${e(s.joinTime)}</span></td>
+            <td>${isEligible ? '<span class="badge-ok">Eligible</span>' : '<span class="badge-late">Ineligible (>8:45)</span>'}</td>
+            <td>
+              <input id="${sKey}" list="dl_allsongs" value="${e(p ? p.song : '')}" placeholder="Type letters to recall..." style="width:220px;text-transform:uppercase" onchange="saveSong('${e(s.name)}', ${currentRound})">
+              ${p && p.repeatCount > 0 ? `<br><span class="m" style="color:#d97706;font-size:11px">Sung ${p.repeatCount} time(s) before</span>` : ''}
+            </td>
+            <td><b>${p ? p.songId : '<span class="m">-</span>'}</b></td>
+            <td>
+              ${p ? `
+                <div class="score-box" title="1: Announced | 2: Turn ready | 3: No mic noise | 4: Good singing | 5: Better singing">
+                  ${[0,1,2,3,4].map(sIdx => `<span class="score-star ${p.stars[sIdx]?'active':''}" onclick="toggleStar(${pIdx}, ${sIdx})">★</span>`).join('')}
+                </div>
+                <span class="m" style="font-size:11px;margin-left:4px">(${p.stars.filter(Boolean).length}/5)</span>
+              ` : '<span class="m">Enter song first</span>'}
+            </td>
+            <td style="text-align:center">
+              <button onclick="removeSinger(${idx})">Remove</button>
+            </td>
+          </tr>`;
+        }).join('')}
+      </table></div>
+    ` : '<p class="m">No singers registered in queue yet. Start adding members above.</p>'}
+    
+    <datalist id="dl_allsongs">
+      ${[...new Set(ALL_SONGS.map(r => r[3]))].filter(Boolean).map(t => `<option value="${e(t)}">`).join('')}
+    </datalist>
+  </div>`;
+
+  // 3. Singer of the Day (SOTD) Declaration Box
+  const eligibleSingers = LIVE.singers.filter(s => s.eligible);
+  h += `<div class="c">
+    <b>Declare Singer of the Day (SOTD)</b>
+    <p class="m">Marked immediately when singing finishes. Evaluated by Score, Quiz, or Special Moments.</p>
+    <div class="f">
+      <select id="sotd_winner">
+        <option value="">Choose SOTD Singer…</option>
+        ${eligibleSingers.map(s => `<option value="${e(s.name)}" ${SOTD.winner===s.name?'selected':''}>${e(s.name)}</option>`).join('')}
+      </select>
+      <select id="sotd_mode">
+        <option value="score" ${SOTD.mode==='score'?'selected':''}>By Score</option>
+        <option value="quiz" ${SOTD.mode==='quiz'?'selected':''}>By Quiz</option>
+        <option value="special" ${SOTD.mode==='special'?'selected':''}>Special Moments (Encouragement)</option>
+      </select>
+      <input id="sotd_reason" placeholder="Optional notes / Quiz song" value="${e(SOTD.reason||'')}">
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="pri" onclick="setSOTD()">Declare SOTD & Award Star</button>
+      ${SOTD.winner ? `<span class="badge-ok">Winner: <b>${e(SOTD.winner)}</b> (${e(SOTD.mode.toUpperCase())})</span>` : ''}
+    </div>
+  </div>`;
+
+  // 4. Session Scoring Guide
+  h += `<div class="c">
+    <b>Marking & Scoring Reference (5 Stars)</b>
+    <div class="m" style="margin-top:6px;line-height:1.7">
+      ⭐1: Starts when announced · ⭐2: Ready on turn · ⭐3: No mic noise · ⭐4: Good singing · ⭐5: Better singing<br>
+      <i>Singers arriving after 8:45 PM can sing all rounds, but star eligibility is automatically restricted.</i>
+    </div>
+  </div>`;
+
+  $('#app').innerHTML = h;
+}
+</script></body></html>
