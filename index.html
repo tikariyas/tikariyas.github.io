@@ -170,9 +170,6 @@ const CFG = {
   admins: []
 };
 
-  admins: ["musicsnsounds@gmail.com"]
-};
-
 const ABOUT = {
   foundation: {
     name: "B. S. Tikariya Cultural Foundation",
@@ -285,7 +282,6 @@ onAuthStateChanged(auth, async u => {
   draw();
   setTimeout(runCards, 400);
 });
-
 
 window.login=async()=>{
   if(!$('#cs')||!$('#cs').checked){alert('Please tick the consent box first.');return}
