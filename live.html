@@ -145,11 +145,37 @@ function syncToFirestore() {
   }, 150);
 }
 
+let syncTimer = null;
+
+function syncToFirestore() {
+  clearTimeout(syncTimer);
+  // Debounce (150ms) to bundle rapid keystrokes into a single write
+  syncTimer = setTimeout(async () => {
+    try {
+      await setDoc(doc(fs, 'live', 'session'), {
+        date: LIVE.date,
+        currentRound: currentRound,
+        singers: LIVE.singers,
+        performances: LIVE.performances,
+        sotd: SOTD,
+        updatedAt: Date.now(),
+        active: true
+      });
+    } catch (err) {
+      console.error('Live sync error:', err);
+    }
+  }, 150);
+}
+
 function saveLocal() {
   // 1. Keep offline backup in browser storage
   try {
     localStorage.setItem('sfh_live_session_' + LIVE.date, JSON.stringify({LIVE, currentRound, SOTD}));
   } catch (x) {}
+
+  // 2. Push to Firestore for all participants
+  syncToFirestore();
+}
 
   // 2. Push to Firestore for all participants
   syncToFirestore();
