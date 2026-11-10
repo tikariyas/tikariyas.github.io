@@ -141,7 +141,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 </style></head><body>
 <header>
   <div>
-    <h1>🎤 SING FRO<span style="color:#b30000;font-weight:900">M</span> HO<span style="color:#b30000;font-weight:900">M</span>E</h1>
+    <h1>SING FRO<span style="color:#b30000;font-weight:900">M</span> HO<span style="color:#b30000;font-weight:900">M</span>E</h1>
     <div class="sub-fnd">A project of B. S. Tikariya Cultural Foundation ®<br>(CIN: U88900MH2025NPL454435)</div>
     <span id="ver" style="display:none"></span>
   </div>
@@ -312,14 +312,14 @@ function vHome(){
   h+=bdCard();
 
     if(!ADM)h+=`<div class="c" style="padding:10px 14px"><b>Your position</b>`+(sk?`<p class="big" style="margin:4px 0 2px 0">${e(sk)}</p>
-<p style="margin:2px 0 0 0;line-height:1.35">⭐ Your stars: <b>${s?s.t:0}</b> ${(s&&s.t>=4)?'– eligible for the Singer of the Month round':'(4 stars = Singer of the Month round)'}${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>🏆 Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m" style="margin:4px 0 0">Your name is not linked yet. Please ask the host.</p>')+'</div>';
+<p style="margin:2px 0 0 0;line-height:1.35">Your stars: <b>${s?s.t:0}</b> ${(s&&s.t>=4)?'– eligible for the Singer of the Month round':'(4 stars = Singer of the Month round)'}${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>🏆 Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m" style="margin:4px 0 0">Your name is not linked yet. Please ask the host.</p>')+'</div>';
 
 
   h+=`<div class="c"><div class="row" style="justify-content:center;flex-wrap:nowrap"><button onclick="stepHD(-1)">◀</button><input type="date" value="${e(d)}" min="${e(ds[0]||'')}" max="${e(ds[ds.length-1]||'')}" onchange="setHD(this.value)"><button onclick="stepHD(1)">▶</button><button onclick="setHD('')">Latest</button></div><p class="m" style="text-align:center;margin:6px 0 0">${fd(d)}</p></div>`;
   const ls=SONGS.filter(r=>r[1]==d).sort(cmpS),mine=ls.filter(r=>r[2]==sk),sd=(PUB.sotd||[]).find(x=>x.d==d);
-  h+=`<div class="c"><b>⭐ Singer of the Day</b><p class="big" style="margin:6px 0">${sd?nmL(sd.l):'<span class="m" style="font-weight:normal;font-size:15px">Not declared</span>'}</p></div>`;
+  h+=`<div class="c"><b>Singer of the Day</b><p class="big" style="margin:6px 0">${sd?nmL(sd.l):'<span class="m" style="font-weight:normal;font-size:15px">Not declared</span>'}</p></div>`;
   if(!ADM)h+=`<div class="c"><b>Your songs on this day</b>${mine.length?sTable(mine,sk):'<p class="m">No songs of yours in the published data for this day.</p>'}</div>`;
-  h+=`<div class="c"><b>🎤 All songs performed</b><p class="m" style="margin:2px 0 0">${ls.length} songs, in song ID order</p>${ls.length?sTable(ls,sk):'<p class="m">No songs published for this day.</p>'}</div>`;
+  h+=`<div class="c"><b>All songs performed</b><p class="m" style="margin:2px 0 0">${ls.length} songs, in song ID order</p>${ls.length?sTable(ls,sk):'<p class="m">No songs published for this day.</p>'}</div>`;
   return h;
 }
 
@@ -330,7 +330,7 @@ function vSotd(){
   const sk=(P.singer||'').toUpperCase();
   const stars=Object.entries(PUB.stars||{}).filter(([n,o])=>o.t>0).sort((a,b)=>b[1].t-a[1].t||a[0].localeCompare(b[0]));
 
-  let h=`<div class="c"><b>🏆 Singer of the Month</b>${somE.length?`<div class="tbl"><table><tr><th style="width:110px">Month</th><th>Singer of the Month</th><th>Declared date</th></tr>${somE.slice(0,6).map(([m,n])=>`<tr><td><b>${e(fm(m))}</b></td><td><b>${e(n)}</b></td><td><span class="m">${somd[m]?fd(somd[m]):'-'}</span></td></tr>`).join('')}</table></div>`:'<p class="m">Not declared yet.</p>'}</div>`;
+  let h=`<div class="c"><b>Singer of the Month</b>${somE.length?`<div class="tbl"><table><tr><th style="width:110px">Month</th><th>Singer of the Month</th><th>Declared date</th></tr>${somE.slice(0,6).map(([m,n])=>`<tr><td><b>${e(fm(m))}</b></td><td><b>${e(n)}</b></td><td><span class="m">${somd[m]?fd(somd[m]):'-'}</span></td></tr>`).join('')}</table></div>`:'<p class="m">Not declared yet.</p>'}</div>`;
 
   h+=`<div class="c"><b>⭐ Singers of the Day${lm?' since the Singer of the Month '+e(fm(lm))+(ld?' ('+fd(ld)+')':''):''}</b><p class="m" style="margin:2px 0 8px">This list stays until the next Singer of the Month is declared.</p>${cyc.length?`<div class="tbl"><table><tr><th style="width:95px;min-width:95px">Date</th><th>Singer name</th></tr>${cyc.map(x=>`<tr><td style="width:95px;min-width:95px"><span class="m">${fd(x.d)}</span></td><td>${nmL(x.l)}</td></tr>`).join('')}</table></div>`:'<p class="m">None yet in this round.</p>'}</div>`;
 
