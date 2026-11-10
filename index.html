@@ -276,10 +276,13 @@ onAuthStateChanged(auth, async u => {
   const em = (u.email || '').toLowerCase();
   const verified = u.emailVerified === true;
   IS_SUPER = (CFG.superadmins || []).map(x => x.toLowerCase()).includes(em) && verified;
-  IS_ADMIN = IS_SUPER || ((CFG.admins || []).map(x => x.toLowerCase()).includes(em) && verified);
-  ADM = IS_ADMIN; // Keeps backward compatibility with existing admin functions
 
   await load();
+
+  // Evaluate admin status from the user's Firestore profile
+  IS_ADMIN = IS_SUPER || (P && P.status == 'approved' && P.role == 'admin');
+  ADM = IS_ADMIN;
+
   draw();
   setTimeout(runCards, 400);
 });
@@ -368,7 +371,7 @@ function vHome(){
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
         <div style="flex:1;min-width:0">
           <b>Your position</b>
-          ${sk?`<p class="big" style="margin:3px 0 2px 0">${e(sk)}</p>
+          ${sk?`<p class="big" style="margin:3px 0 2px 0">${e(sk)}${IS_SUPER?' <span style="font-size:12px;color:#b30000;font-weight:700">(Superadmin)</span>':(IS_ADMIN?' <span style="font-size:12px;color:var(--ac);font-weight:700">(Admin)</span>':'')}</p>
           <p style="margin:2px 0 0 0;line-height:1.35">Your stars: <b>${s?s.t:0}</b>${(s&&s.t>=4)?' <span style="color:var(--ac);font-weight:600">– eligible for the Singer of the Month round</span>':''}${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m" style="margin:3px 0 0">Your name is not linked yet. Please ask the host.</p>'}
         </div>
         <div class="ph" style="width:52px;height:52px;border-radius:50%;flex:none">
