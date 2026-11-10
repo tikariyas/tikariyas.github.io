@@ -94,7 +94,7 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {getAuth,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import {getFirestore, doc, getDoc, setDoc} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import {getFirestore,doc,getDoc,setDoc} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const CFG = {
   firebase: {
@@ -124,10 +124,8 @@ let LIVE = {
 };
 
 let syncTimer = null;
-
 function syncToFirestore() {
   clearTimeout(syncTimer);
-  // Debounce (150ms) to bundle rapid keystrokes into a single write
   syncTimer = setTimeout(async () => {
     try {
       await setDoc(doc(fs, 'live', 'session'), {
@@ -140,44 +138,13 @@ function syncToFirestore() {
         active: true
       });
     } catch (err) {
-      console.error('Live sync error:', err);
+      console.error('Live cloud sync error:', err);
     }
   }, 150);
 }
 
-let syncTimer = null;
-
-function syncToFirestore() {
-  clearTimeout(syncTimer);
-  // Debounce (150ms) to bundle rapid keystrokes into a single write
-  syncTimer = setTimeout(async () => {
-    try {
-      await setDoc(doc(fs, 'live', 'session'), {
-        date: LIVE.date,
-        currentRound: currentRound,
-        singers: LIVE.singers,
-        performances: LIVE.performances,
-        sotd: SOTD,
-        updatedAt: Date.now(),
-        active: true
-      });
-    } catch (err) {
-      console.error('Live sync error:', err);
-    }
-  }, 150);
-}
-
-function saveLocal() {
-  // 1. Keep offline backup in browser storage
-  try {
-    localStorage.setItem('sfh_live_session_' + LIVE.date, JSON.stringify({LIVE, currentRound, SOTD}));
-  } catch (x) {}
-
-  // 2. Push to Firestore for all participants
-  syncToFirestore();
-}
-
-  // 2. Push to Firestore for all participants
+function saveLocal(){
+  try{ localStorage.setItem('sfh_live_session_'+LIVE.date, JSON.stringify({LIVE, currentRound, SOTD})); }catch(x){}
   syncToFirestore();
 }
 
