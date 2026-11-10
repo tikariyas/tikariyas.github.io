@@ -273,7 +273,21 @@ onAuthStateChanged(auth, async u => {
   IS_SUPER = (CFG.superadmins || []).map(x => x.toLowerCase()).includes(em) && verified;
   ADM = IS_SUPER;
 
-  await load();
+  await load();// Real-time live session listener for all users
+  onSnapshot(doc(fs, 'live', 'session'), snap => {
+    if (snap.exists()) {
+      const data = snap.data();
+      // Only treat as live if it belongs to today's date and is active
+      if (data.date === tdy() && data.active) {
+        LIVE_SESSION = data;
+      } else {
+        LIVE_SESSION = null;
+      }
+    } else {
+      LIVE_SESSION = null;
+    }
+    if (tab === 'home') draw();
+  });
 
   IS_ADMIN = IS_SUPER || (P && P.status == 'approved' && P.role == 'admin');
   ADM = IS_ADMIN;
