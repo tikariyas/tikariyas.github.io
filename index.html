@@ -274,14 +274,20 @@ onAuthStateChanged(auth, async u => {
   }
   const em = (u.email || '').toLowerCase();
   const verified = u.emailVerified === true;
+  
+  // Superadmin check
   IS_SUPER = (CFG.superadmins || []).map(x => x.toLowerCase()).includes(em) && verified;
-  IS_ADMIN = IS_SUPER || ((CFG.admins || []).map(x => x.toLowerCase()).includes(em) && verified);
-  ADM = IS_ADMIN; // Keeps backward compatibility with existing admin functions
 
   await load();
+
+  // Admin check: either Superadmin or user profile has role == 'admin'
+  IS_ADMIN = IS_SUPER || (P && P.status == 'approved' && P.role == 'admin');
+  ADM = IS_ADMIN;
+
   draw();
   setTimeout(runCards, 400);
 });
+  
 
 window.login=async()=>{
   if(!$('#cs')||!$('#cs').checked){alert('Please tick the consent box first.');return}
