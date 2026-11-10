@@ -170,7 +170,6 @@ const CFG = {
   admins: []
 };
 
-
 const ABOUT = {
   foundation: {
     name: "B. S. Tikariya Cultural Foundation",
@@ -276,10 +275,10 @@ onAuthStateChanged(auth, async u => {
   const em = (u.email || '').toLowerCase();
   const verified = u.emailVerified === true;
   IS_SUPER = (CFG.superadmins || []).map(x => x.toLowerCase()).includes(em) && verified;
+  ADM = IS_SUPER;
 
   await load();
 
-  // Evaluate admin status from the user's Firestore profile
   IS_ADMIN = IS_SUPER || (P && P.status == 'approved' && P.role == 'admin');
   ADM = IS_ADMIN;
 
@@ -287,14 +286,13 @@ onAuthStateChanged(auth, async u => {
   setTimeout(runCards, 400);
 });
 
-
 window.login=async()=>{
   if(!$('#cs')||!$('#cs').checked){alert('Please tick the consent box first.');return}
   try{await signInWithPopup(auth,new GoogleAuthProvider())}
   catch(x){alert('Sign-in failed ('+(x.code||'error')+'). Please open this page in Chrome (not inside WhatsApp) and try again.')}
 };
 window.out=()=>signOut(auth);
-window.refresh=async()=>{await load();if(tab=='adm')await loadAdm();draw()};
+window.refresh=async()=>{await load();if(P&&P.status=='approved'&&P.role=='admin'){IS_ADMIN=ADM=true;}if(tab=='adm')await loadAdm();draw()};
 window.go=async t=>{tab=t;if(t=='adm')await loadAdm();if(t=='adm')setTimeout(()=>{seenAdm=Date.now();try{localStorage.setItem('sfh_seen_adm',String(seenAdm))}catch(x){}},500);if(t=='msg'){seenPrev=seen;seen=Date.now();try{localStorage.setItem('sfh_seen',String(seen))}catch(x){}}draw()};
 
 function draw(){
@@ -316,6 +314,7 @@ const vLogin=()=>`<div class="c"><h2>Welcome</h2><p>Sign in to see the Singer of
 <p><button onclick="about()">ℹ About us</button></p></div>`;
 const vWait=()=>`<div class="c"><h2>${P.status=='pending'?'Waiting for approval':'Access not active'}</h2>
 <p>${P.status=='pending'?'Your request has been sent to the host. You will get access once the host approves you. Tap Check approval below.':'Your access is not active. Please contact the host.'}</p><p class="m">Signed in as ${e(idOf(U.email))}</p><p><button class="pri" onclick="refresh()">↻ Check approval</button> <button onclick="about()">ℹ About us</button></p></div>`;
+
 const tabs = () => {
   let list = [];
   if (IS_SUPER) {
@@ -367,7 +366,7 @@ function vHome(){
   const un=MSGS.filter(m=>m.ts>seen).length;if(!ADM&&un)h+=`<div class="c" style="border-left:4px solid var(--ac)">📩 You have <b>${un}</b> new message${un>1?'s':''} <button style="margin-left:8px" onclick="go('msg')">Read</button></div>`;
   h+=bdCard();
 
-    if(!ADM)h+=`<div class="c" style="padding:10px 14px">
+  h+=`<div class="c" style="padding:10px 14px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
         <div style="flex:1;min-width:0">
           <b>Your position</b>
@@ -599,6 +598,7 @@ window.addGreet=async()=>{const t=$('#gt').value.trim(),x=$('#gx').value.trim(),
 window.delGreet=async id=>{if(!confirm('Delete this greeting?'))return;try{await deleteDoc(doc(fs,'greet',id));await loadGreet();draw()}catch(y){alert('Failed ('+(y.code||'error')+')')}};
 
 async function loadAdm(){try{const q=await getDocs(collection(fs,'users'));AU=q.docs.map(x=>({id:x.id,...x.data()}));try{const mq=await getDocs(collection(fs,'msgs'));AM=mq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AM=[]}try{const iq=await getDocs(collection(fs,'inbox'));AIN=iq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AIN=[]}await loadPlans()}catch(x){AU=[];alert('Could not load participants ('+(x.code||'error')+'). Check the admin email in firestore.rules.')}}
+
 function vAdm(){
   const names=(PUB&&PUB.singers)||[],opt='<option value="">Link to singer…</option>'+names.map(n=>`<option>${e(n)}</option>`).join('');
   const pend=AU.filter(u=>u.status!='approved'),ok=AU.filter(u=>u.status=='approved');
