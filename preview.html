@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sing From Home - Portal</title>
   
-  <!-- Firebase SDKs (Compat version for stable drop-in implementation) -->
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -43,7 +43,7 @@
 
     .container { max-width: 1100px; margin: 0 auto; }
     
-    /* Login Screen */
+    /* Login Form */
     #authSection { max-width: 400px; margin: 80px auto; }
     .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
     .card h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 14px; }
@@ -53,7 +53,7 @@
     input { width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); background: #0b1120; color: var(--text); font-size: 0.9rem; }
     input:focus { outline: none; border-color: var(--primary); }
 
-    /* Dashboard Layout */
+    /* Dashboard Header */
     .dashboard-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; gap: 20px; }
     .user-badge-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 20px; flex: 1; }
     .badge-label { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; }
@@ -66,39 +66,38 @@
     .tab-btn { background: none; border: none; color: var(--text-muted); font-size: 0.9rem; font-weight: 600; padding: 10px 16px; cursor: pointer; border-bottom: 2px solid transparent; }
     .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
 
-    /* Data Table */
+    /* Tables */
     table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
     th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--border); }
     th { color: var(--text-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; }
     tr:hover { background: rgba(255, 255, 255, 0.02); }
     .status-pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; text-transform: capitalize; }
     .status-approved { background: rgba(16, 185, 129, 0.15); color: var(--success); }
-    .status-pending { background: rgba(245, 158, 11, 0.15); color: var(--accent); }
     .action-group { display: flex; gap: 6px; }
   </style>
 </head>
 <body>
 
   <div class="container">
-    <!-- Main Top Navigation -->
+    <!-- Top Header -->
     <header>
       <div>
         <span class="brand-title">Sing From Home</span>
         <span class="brand-sub">B. S. Tikariya Cultural Foundation</span>
       </div>
       <div id="navControls" class="nav-controls" style="display: none;">
-        <!-- Admin Management Panel Button -->
+        <!-- Admin Panel Switch -->
         <button id="adminBtn" class="btn btn-outline" style="display: none;" onclick="switchMainTab('admin')">Admin Panel</button>
         
-        <!-- Live Session Button (Opens live.html) -->
+        <!-- Live Session Window -->
         <button id="liveSessionBtn" class="btn btn-primary" style="display: none;" onclick="window.open('live.html', '_blank')">Live Session</button>
         
-        <!-- Logout Button -->
+        <!-- Logout -->
         <button class="btn btn-outline" onclick="handleLogout()">Sign Out</button>
       </div>
     </header>
 
-    <!-- Sign In Screen -->
+    <!-- Sign In View -->
     <div id="authSection">
       <div class="card">
         <h2>Member Sign In</h2>
@@ -115,7 +114,7 @@
       </div>
     </div>
 
-    <!-- Main Dashboard -->
+    <!-- Authenticated Dashboard -->
     <div id="dashboardSection" style="display: none;">
       
       <!-- User Position Card -->
@@ -130,14 +129,14 @@
         </div>
       </div>
 
-      <!-- Tab Navigation -->
+      <!-- Navigation Tabs -->
       <div class="tab-bar">
         <button id="tabToday" class="tab-btn active" onclick="switchMainTab('today')">Today</button>
         <button id="tabMembers" class="tab-btn" onclick="switchMainTab('members')">Members</button>
         <button id="tabAdmin" class="tab-btn" style="display: none;" onclick="switchMainTab('admin')">Administration</button>
       </div>
 
-      <!-- Tab 1: Today (Participants View) -->
+      <!-- Participant View: Today -->
       <div id="viewToday">
         <div class="card">
           <h2>Daily Session Information</h2>
@@ -146,7 +145,7 @@
         </div>
       </div>
 
-      <!-- Tab 2: Members Directory -->
+      <!-- Members Directory -->
       <div id="viewMembers" style="display: none;">
         <div class="card">
           <h2>Member Roster</h2>
@@ -159,13 +158,12 @@
               </tr>
             </thead>
             <tbody id="membersTableBody">
-              <!-- Dynamically populated -->
             </tbody>
           </table>
         </div>
       </div>
 
-      <!-- Tab 3: Admin & User Permissions View -->
+      <!-- Administration View: Role Management -->
       <div id="viewAdmin" style="display: none;">
         <div class="card">
           <h2>Member & Role Management</h2>
@@ -180,7 +178,6 @@
               </tr>
             </thead>
             <tbody id="adminUsersTableBody">
-              <!-- Dynamically populated with make/revoke admin controls -->
             </tbody>
           </table>
         </div>
@@ -190,16 +187,14 @@
   </div>
 
   <script>
-    // ----------------------------------------------------
-    // Firebase Configuration
-    // ----------------------------------------------------
+    // Paste your Firebase Config keys here
     const firebaseConfig = {
       apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
-      authDomain: "sing-from-home.firebaseapp.com",
-      projectId: "sing-from-home",
-      storageBucket: "sing-from-home.firebasestorage.app",
-      messagingSenderId: "848212321051",
-      appId: "1:848212321051:web:bb26a98a842eb16f21e9be"
+  authDomain: "sing-from-home.firebaseapp.com",
+  projectId: "sing-from-home",
+  storageBucket: "sing-from-home.firebasestorage.app",
+  messagingSenderId: "848212321051",
+  appId: "1:848212321051:web:bb26a98a842eb16f21e9be",
     };
 
     if (!firebase.apps.length) {
@@ -211,9 +206,7 @@
     const SUPERADMIN_EMAIL = 'musicsnsounds@gmail.com';
     let currentUserProfile = null;
 
-    // ----------------------------------------------------
-    // Auth Listener
-    // ----------------------------------------------------
+    // Authentication State Handler
     auth.onAuthStateChanged(async (user) => {
       const authSection = document.getElementById('authSection');
       const dashboardSection = document.getElementById('dashboardSection');
@@ -234,9 +227,7 @@
       }
     });
 
-    // ----------------------------------------------------
-    // Load User Profile & Configure Roles
-    // ----------------------------------------------------
+    // Load User Document & Setup Roles
     async function loadUserProfile(user) {
       try {
         const docRef = db.collection('users').doc(user.uid);
@@ -245,7 +236,6 @@
         if (doc.exists) {
           currentUserProfile = { uid: user.uid, ...doc.data() };
         } else {
-          // Fallback if record does not have a doc yet
           currentUserProfile = {
             uid: user.uid,
             email: user.email,
@@ -258,7 +248,7 @@
         const isSuperAdmin = currentUserProfile.email === SUPERADMIN_EMAIL;
         const isAdmin = currentUserProfile.role === 'admin' || isSuperAdmin;
 
-        // Render Your Position Card
+        // Position Card Labels
         const singerNameEl = document.getElementById('displaySingerName');
         const roleTagEl = document.getElementById('displayRoleTag');
         const userEmailEl = document.getElementById('displayUserEmail');
@@ -277,7 +267,7 @@
           roleTagEl.className = 'badge-tag';
         }
 
-        // Configure Navigation Buttons & Tabs based on role
+        // Configure Navigation & Tabs
         const adminBtn = document.getElementById('adminBtn');
         const liveSessionBtn = document.getElementById('liveSessionBtn');
         const tabAdmin = document.getElementById('tabAdmin');
@@ -288,7 +278,6 @@
           liveSessionBtn.style.display = 'inline-flex';
           tabAdmin.style.display = 'inline-block';
           
-          // Admins/Superadmin do not need the redundant "Today" tab
           tabToday.style.display = 'none';
           switchMainTab('admin');
           loadAdminUserTable();
@@ -301,13 +290,11 @@
         }
 
       } catch (err) {
-        console.error("Error reading user profile:", err);
+        console.error("Error reading profile:", err);
       }
     }
 
-    // ----------------------------------------------------
-    // Tab Switching
-    // ----------------------------------------------------
+    // Tab Switching Logic
     function switchMainTab(tab) {
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       document.getElementById('viewToday').style.display = 'none';
@@ -326,9 +313,7 @@
       }
     }
 
-    // ----------------------------------------------------
-    // Authentication Actions
-    // ----------------------------------------------------
+    // Login Action
     async function handleLogin() {
       const email = document.getElementById('loginEmail').value.trim();
       const password = document.getElementById('loginPassword').value;
@@ -347,9 +332,7 @@
       auth.signOut();
     }
 
-    // ----------------------------------------------------
-    // Load Members Directory
-    // ----------------------------------------------------
+    // Members Directory List
     function loadMembersDirectory() {
       db.collection('users').onSnapshot(snapshot => {
         const tbody = document.getElementById('membersTableBody');
@@ -368,9 +351,7 @@
       });
     }
 
-    // ----------------------------------------------------
-    // Admin User & Role Controls
-    // ----------------------------------------------------
+    // Admin & Role Table
     function loadAdminUserTable() {
       db.collection('users').onSnapshot(snapshot => {
         const tbody = document.getElementById('adminUsersTableBody');
@@ -411,9 +392,7 @@
       });
     }
 
-    // ----------------------------------------------------
-    // Role Modification Handlers
-    // ----------------------------------------------------
+    // Role Modification Functions
     async function makeAdmin(uid) {
       if (currentUserProfile.email !== SUPERADMIN_EMAIL) {
         alert("Only the Superadmin can promote users to Admin.");
