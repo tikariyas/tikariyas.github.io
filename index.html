@@ -283,7 +283,7 @@ function draw(){
   if(!ADM&&P.status!='approved'){$('#app').innerHTML=vWait();return}
   $('#app').innerHTML=tabs()+(tab=='home'?vHome():tab=='sotd'?vSotd():tab=='prof'?vProf():tab=='pdf'?vPdf():tab=='today'?vToday():tab=='msg'?vMsg():tab=='about'?vAbout(false):vAdm());
 }
-const idOf=em=>(em||'').endsWith('@singfromhome-phone.app')?'📱 '+em.split('@')[0]:(em||'');
+const idOf=em=>(em||'').endsWith('@singfromhome-phone.app')?em.split('@')[0]:(em||'');
 const vLogin=()=>`<div class="c"><h2>Welcome</h2><p>Sign in to see the Singer of the Day, declare your songs, message the host and join the session.</p>
 <label style="display:flex;gap:12px;align-items:flex-start;border:2px solid var(--ac);border-radius:10px;padding:12px;font-size:14px;cursor:pointer;background:var(--ac-light)"><input type="checkbox" id="cs" class="chk"><span>I agree that my name, email or phone number, photo, city and notes are stored online by Tikariya’s School of Music for this app, and that my songs and stars may be shown to other approved participants.</span></label>
 <p style="margin-top:14px"><button class="pri" style="width:100%;padding:12px;font-size:15px" onclick="login()">Sign in with Google</button></p>
@@ -311,7 +311,7 @@ function vHome(){
   const un=MSGS.filter(m=>m.ts>seen).length;if(!ADM&&un)h+=`<div class="c" style="border-left:4px solid var(--ac)">📩 You have <b>${un}</b> new message${un>1?'s':''} <button style="margin-left:8px" onclick="go('msg')">Read</button></div>`;
   h+=bdCard();
 
-        if(!ADM)h+=`<div class="c" style="padding:10px 14px">
+    if(!ADM)h+=`<div class="c" style="padding:10px 14px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
         <div style="flex:1;min-width:0">
           <b>Your position</b>
@@ -323,6 +323,7 @@ function vHome(){
         </div>
       </div>
     </div>`;
+
 
   h+=`<div class="c"><div class="row" style="justify-content:center;flex-wrap:nowrap"><button onclick="stepHD(-1)">◀</button><input type="date" value="${e(d)}" min="${e(ds[0]||'')}" max="${e(ds[ds.length-1]||'')}" onchange="setHD(this.value)"><button onclick="stepHD(1)">▶</button><button onclick="setHD('')">Latest</button></div><p class="m" style="text-align:center;margin:6px 0 0">${fd(d)}</p></div>`;
   const ls=SONGS.filter(r=>r[1]==d).sort(cmpS),mine=ls.filter(r=>r[2]==sk),sd=(PUB.sotd||[]).find(x=>x.d==d);
@@ -547,19 +548,19 @@ function vAdm(){
   const names=(PUB&&PUB.singers)||[],opt='<option value="">Link to singer…</option>'+names.map(n=>`<option>${e(n)}</option>`).join('');
   const pend=AU.filter(u=>u.status!='approved'),ok=AU.filter(u=>u.status=='approved');
   const img=u=>okImg(u.photo)?`<div class="ph" style="width:44px;height:44px"><img src="${u.photo}"></div>`:'';
-  return `${EDU?vEdU():''}<div class="c"><b>1. Publish data</b><p class="m">${PUB?'Last published: '+e(PUB.ts||''):'Nothing published yet.'} (${SONGS.length} songs)</p>
+  return `${EDU?vEdU():''}<div class="c"><b>Publish data</b><p class="m">${PUB?'Last published: '+e(PUB.ts||''):'Nothing published yet.'} (${SONGS.length} songs)</p>
 <label class="up">⬆ Choose the file from the host app<input type="file" accept=".json,application/json" hidden onchange="pubUp(this)"></label></div>
-<div class="c"><b>2. Zoom link</b><input id="zl" style="width:100%" value="${e(CONF.zoom||'')}"><p style="margin-top:10px"><button onclick="saveZ()">Save link</button></p></div>
+<div class="c"><b>Zoom link</b><input id="zl" style="width:100%" value="${e(CONF.zoom||'')}"><p style="margin-top:10px"><button onclick="saveZ()">Save link</button></p></div>
 <div class="c"><b>Festival greetings</b><p class="m" style="margin:2px 0 6px">A pop-up shown once a day to everyone who opens the app between the two dates.</p><select id="gf" onchange="fillFest(this.value)"><option value="">Choose a festival…</option>${FEST.map((f,i)=>`<option value="${i}">${e(f.t)}</option>`).join('')}</select><input id="gt" placeholder="Title" style="width:100%;margin-top:8px"><input id="gh" placeholder="Hindi / Marathi line (optional)" style="width:100%;margin-top:8px"><textarea id="gx" rows="3" placeholder="Message" style="width:100%;margin-top:8px"></textarea><div class="f"><label>Show from<input type="date" id="gfrom" value="${tdy()}"></label><label>Show until<input type="date" id="gto" value="${tdy()}"></label></div><p style="margin-top:10px"><button class="pri" onclick="addGreet()">Add greeting</button> <button onclick="prevGreet()">Preview</button></p>${GRT.length?GRT.slice().sort((a,b)=>a.from<b.from?1:-1).map(g=>`<p style="margin:6px 0"><b>${e(g.title)}</b> <span class="m">${fd(g.from)} – ${fd(g.to)}</span> <button onclick="delGreet('${e(g.id)}')">Delete</button></p>`).join(''):'<p class="m">No greetings added yet. The Diwali greeting for 5 to 12 Nov 2026 is built in.</p>'}</div>
 <div class="c"><b>Songs declared by participants</b><div class="f"><input type="date" value="${PD||tdy()}" onchange="setPD(this.value)"></div>${PL.length?PL.map((p,i)=>`<p style="margin:6px 0"><b>${i+1}. ${e(p.singer)}</b> <span class="m">${fdt(p.ts)}</span><br>${(p.songs||[]).map(x=>e(x)).join(' / ')}</p>`).join(''):'<p class="m">Nothing declared for this date.</p>'}<button onclick="copyPlans()">Copy list</button></div>
 <div class="c"><b>Messages from participants (${AIN.length})</b>${AIN.slice(0,30).map(m=>`<div style="margin:8px 0;border-top:1px solid var(--bd);padding-top:8px"><b>${e(m.name||'?')}</b> <span class="m">${fdt(m.ts)}</span>${m.ts>seenAdm?' <span class="zm" style="padding:1px 6px;font-size:11px;border-radius:6px">NEW</span>':''}<div style="white-space:pre-wrap">${e(m.text)}</div><p style="margin-top:6px"><button onclick="replyTo('${e(m.uid)}')">Reply</button> <button onclick="delIn('${e(m.id)}')">Delete</button></p></div>`).join('')||'<p class="m">No messages yet.</p>'}</div>
 <div class="c"><b>Send a message</b><input id="mt" placeholder="Title" style="width:100%;margin-top:8px"><textarea id="mb" rows="4" placeholder="Message" style="width:100%;margin-top:8px"></textarea><div class="f"><select id="mto"><option value="all">All approved participants</option>${ok.map(u=>`<option value="${e(u.id)}">${e(u.singer||u.name)}</option>`).join('')}</select></div><button class="pri" onclick="sendMsg()">Send</button><p class="m">Participants can only read it. ${AM.length} sent so far.</p></div>
 ${AM.length?`<div class="c"><b>Sent messages</b>${AM.slice(0,20).map(m=>`<p style="margin:8px 0"><b>${e(m.title)}</b> <span class="m">→ ${e(m.toName||m.to)} · ${fdt(m.ts)}</span> <button onclick="delMsg('${e(m.id)}')">Delete</button></p>`).join('')}</div>`:''}
-<div class="c"><b>3. Waiting for approval (${pend.length})</b></div>
+<div class="c"><b>Waiting for approval (${pend.length})</b></div>
 ${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b><br><span class="m">${e(idOf(u.email))} · ${e(u.status||'')}</span></div></div>
 <div class="f"><select id="lk_${e(u.id)}">${opt}</select><input id="lt_${e(u.id)}" placeholder="or type singer name"></div>
 <p style="margin-top:8px"><button class="pri" onclick="appr('${e(u.id)}')">Approve</button> <button onclick="rej('${e(u.id)}')">Reject</button> <button onclick="editU('${e(u.id)}')">Profile</button></p></div>`).join('')}
-<div class="c"><b>4. Approved (${ok.length})</b>${ok.map(u=>`<p style="margin:6px 0">${e(u.singer||'(not linked)')} <span class="m">${e(idOf(u.email))}</span> <button onclick="rej('${e(u.id)}')">Revoke</button> <button onclick="editU('${e(u.id)}')">Profile</button></p>`).join('')}</div>`;
+<div class="c"><b>Approved (${ok.length})</b>${ok.length?`<div class="tbl"><table><tr><th>Singer name</th><th>Login / Phone</th><th style="text-align:center">Actions</th></tr>${ok.map(u=>`<tr><td><b>${e(u.singer||'(not linked)')}</b></td><td><span class="m">${e(idOf(u.email))}</span></td><td style="text-align:center;white-space:nowrap"><button onclick="editU('${e(u.id)}')">Profile</button> <button onclick="rej('${e(u.id)}')">Revoke</button></td></tr>`).join('')}</table></div>`:'<p class="m">No approved participants yet.</p>'}</div>`;
 }
 window.appr=async id=>{const v=(($('#lt_'+id).value||'').trim()||$('#lk_'+id).value||'').toUpperCase();if(!v){alert('Choose or type the singer name to link');return}
   try{await updateDoc(doc(fs,'users',id),{status:'approved',singer:v});await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
