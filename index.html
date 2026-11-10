@@ -383,7 +383,50 @@ function vHome(){
   const som=Object.entries(PUB.som||{}).sort().reverse();
   let h='';
   const un=MSGS.filter(m=>m.ts>seen).length;if(!ADM&&un)h+=`<div class="c" style="border-left:4px solid var(--ac)">📩 You have <b>${un}</b> new message${un>1?'s':''} <button style="margin-left:8px" onclick="go('msg')">Read</button></div>`;
-  h+=bdCard();
+  h+=bdCard();// Live Session Banner for Participants
+  if (LIVE_SESSION && LIVE_SESSION.singers && LIVE_SESSION.singers.length) {
+    const ls = LIVE_SESSION;
+    h += `<div class="c" style="border:2px solid var(--ac);background:var(--ac-light)">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#16a34a;margin-right:6px"></span>
+          <b style="color:var(--ac)">Live Session in Progress</b>
+        </div>
+        <span class="zm" style="padding:2px 8px;font-size:12px;border-radius:6px">Round ${ls.currentRound || 1}</span>
+      </div>
+
+      ${ls.sotd && ls.sotd.winner ? `
+        <div style="margin:10px 0;padding:8px;background:var(--card);border-radius:8px;border:1px solid var(--bd);text-align:center">
+          <span class="m" style="font-size:11px;text-transform:uppercase;font-weight:700">Declared Singer of the Day</span>
+          <p class="big" style="margin:2px 0">${e(ls.sotd.winner)} <span style="font-size:13px;color:var(--ac)">(${e(ls.sotd.mode.toUpperCase())})</span></p>
+        </div>
+      ` : ''}
+
+      <div class="tbl" style="margin-top:10px;background:var(--card)"><table>
+        <tr>
+          <th class="n">#</th>
+          <th>Singer Name</th>
+          <th>Song Title (Round ${ls.currentRound || 1})</th>
+          <th style="text-align:center">Score</th>
+        </tr>
+        ${ls.singers.map((sg, idx) => {
+          const perf = (ls.performances || []).find(p => p.singer === sg.name && p.round === (ls.currentRound || 1));
+          const stars = perf && perf.stars ? perf.stars.filter(Boolean).length : 0;
+          return `<tr>
+            <td class="n">${idx + 1}</td>
+            <td><b>${e(sg.name)}</b></td>
+            <td>
+              ${perf && perf.song ? `<b>${e(perf.song)}</b>` : '<span class="m">Waiting...</span>'}
+              ${perf && perf.repeatCount > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${perf.repeatCount})</span>` : ''}
+            </td>
+            <td style="text-align:center">
+              ${perf && perf.song && stars ? `<span style="color:#f59e0b;letter-spacing:1px">${'★'.repeat(stars)}</span>` : '<span class="m">-</span>'}
+            </td>
+          </tr>`;
+        }).join('')}
+      </table></div>
+    </div>`;
+  }
 
   h+=`<div class="c" style="padding:10px 14px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
