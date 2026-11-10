@@ -619,6 +619,28 @@ function vAdm(){
 <div class="c"><b>Send a message</b><input id="mt" placeholder="Title" style="width:100%;margin-top:8px"><textarea id="mb" rows="4" placeholder="Message" style="width:100%;margin-top:8px"></textarea><div class="f"><select id="mto"><option value="all">All approved participants</option>${ok.map(u=>`<option value="${e(u.id)}">${e(u.singer||u.name)}</option>`).join('')}</select></div><button class="pri" onclick="sendMsg()">Send</button><p class="m">Participants can only read it. ${AM.length} sent so far.</p></div>
 ${AM.length?`<div class="c"><b>Sent messages</b>${AM.slice(0,20).map(m=>`<p style="margin:8px 0"><b>${e(m.title)}</b> <span class="m">→ ${e(m.toName||m.to)} · ${fdt(m.ts)}</span> <button onclick="delMsg('${e(m.id)}')">Delete</button></p>`).join('')}</div>`:''}
 <div class="c"><b>Waiting for approval (${pend.length})</b></div>
+<div class="c"><b>Approved (${ok.length})</b>${ok.length ? `<div class="tbl"><table>
+  <tr>
+    <th>Singer name</th>
+    <th>Login / Phone</th>
+    <th>Role</th>
+    <th style="text-align:center">Actions</th>
+  </tr>
+  ${ok.map(u => `<tr>
+    <td><b>${e(u.singer || '(not linked)')}</b></td>
+    <td><span class="m">${e(idOf(u.email))}</span></td>
+    <td><span class="m" style="font-weight:600;color:${u.role == 'admin' ? 'var(--ac)' : 'inherit'}">${u.role == 'admin' ? 'Admin' : 'Participant'}</span></td>
+    <td style="text-align:center;white-space:nowrap">
+      ${IS_SUPER ? (
+        u.role == 'admin' 
+          ? `<button onclick="revokeAdmin('${e(u.id)}','${e(u.singer||u.name)}')">Revoke Admin</button> `
+          : `<button onclick="makeAdmin('${e(u.id)}','${e(u.singer||u.name)}')">Make Admin</button> `
+      ) : ''}
+      <button onclick="editU('${e(u.id)}')">Profile</button>
+      <button onclick="rej('${e(u.id)}')">Revoke Access</button>
+    </td>
+  </tr>`).join('')}
+</table></div>` : '<p class="m">No approved participants yet.</p>'}</div>
 ${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b><br><span class="m">${e(idOf(u.email))} · ${e(u.status||'')}</span></div></div>
 <div class="f"><select id="lk_${e(u.id)}">${opt}</select><input id="lt_${e(u.id)}" placeholder="or type singer name"></div>
 <p style="margin-top:8px"><button class="pri" onclick="appr('${e(u.id)}')">Approve</button> <button onclick="rej('${e(u.id)}')">Reject</button> <button onclick="editU('${e(u.id)}')">Profile</button></p></div>`).join('')}
@@ -627,6 +649,45 @@ ${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b>
 window.appr=async id=>{const v=(($('#lt_'+id).value||'').trim()||$('#lk_'+id).value||'').toUpperCase();if(!v){alert('Choose or type the singer name to link');return}
   try{await updateDoc(doc(fs,'users',id),{status:'approved',singer:v});await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
 window.rej=async id=>{if(!confirm('Remove access for this person?'))return;try{await updateDoc(doc(fs,'users',id),{status:'rejected'});await loadAdm();draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
+window.makeAdmin = async (id, name) => {
+  // 1. Guard check: Only Superadmin can execute this
+  if (!IS_SUPER) return;
+
+  // 2. Confirmation prompt so you don't promote anyone by mistake
+  if (!confirm('Promote ' + name + ' to Admin? They will be able to manage daily sessions, approve singers, and send messages.')) return;
+
+  try {
+    // 3. Update the Firestore user document
+    await updateDoc(doc(fs, 'users', id), { role: 'admin' });
+
+    // 4. Reload admin list from Firestore and redraw the view
+    await loadAdm();
+    draw();
+    alert(name + ' is now an Admin.');
+  } catch (x) {
+    alert('Failed (' + (x.code || 'error') + ')');
+  }
+};
+
+window.revokeAdmin = async (id, name) => {
+  // 1. Guard check: Only Superadmin can execute this
+  if (!IS_SUPER) return;
+
+  // 2. Confirmation prompt
+  if (!confirm('Remove Admin role from ' + name + '? They will become a standard participant.')) return;
+
+  try {
+    // 3. Demote role back to participant in Firestore
+    await updateDoc(doc(fs, 'users', id), { role: 'participant' });
+
+    // 4. Reload admin list from Firestore and redraw the view
+    await loadAdm();
+    draw();
+    alert('Admin privileges removed for ' + name);
+  } catch (x) {
+    alert('Failed (' + (x.code || 'error') + ')');
+  }
+};  
 window.saveZ=async()=>{try{await setDoc(doc(fs,'config','app'),{zoom:$('#zl').value.trim()});CONF.zoom=$('#zl').value.trim();alert('Zoom link saved');draw()}catch(x){alert('Failed ('+(x.code||'error')+')')}};
 const hsh=t=>{let h=5381;for(let i=0;i<t.length;i++)h=((h<<5)+h+t.charCodeAt(i))|0;return String(h>>>0)};
 window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=async()=>{
