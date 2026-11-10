@@ -38,7 +38,7 @@ h1{
 }
 @media (prefers-color-scheme:dark){.sub-fnd{color:#e2e8f0}}
 h2{margin:4px 0 8px;font-size:18px;font-weight:700}
-main{padding:12px;max-width:880px;margin:auto}
+main{padding:12px;max-width:920px;margin:auto}
 .c{
   background:var(--card);border:1px solid var(--bd);border-radius:12px;
   padding:12px 14px;margin-bottom:12px;box-shadow:var(--shadow);
@@ -55,7 +55,6 @@ button.on,button.pri{
   background:var(--btn-pri-bg);color:#fff;border-color:transparent;
   box-shadow:0 3px 12px -2px rgba(15,52,96,0.35);
 }
-button.danger{background:#dc2626;color:#fff;border-color:transparent}
 input,select,textarea{
   font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--bd);
   border-radius:8px;padding:8px 10px;box-sizing:border-box;min-width:0;max-width:100%;
@@ -64,7 +63,6 @@ input,select,textarea{
 input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,96,0.18)}
 .f{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:8px 0}
 .m{color:var(--mut);font-size:13px}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.big{font-size:18px;font-weight:800;color:var(--ac);letter-spacing:-0.2px}
 .tbl{
   overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:6px;border-radius:8px;border:1px solid var(--bd);
 }
@@ -96,7 +94,7 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {getAuth,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import {getFirestore,doc,getDoc,setDoc,getDocs,collection} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import {getFirestore,doc,getDoc} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const CFG = {
   firebase: {
@@ -119,17 +117,16 @@ let U=null, IS_SUPER=false, IS_ADMIN=false, KNOWN_SINGERS=[], ALL_SONGS=[], MAX_
 let currentRound = 1;
 let SOTD = {winner:'', mode:'score', reason:''};
 
-// Session state structure
 let LIVE = {
   date: tdy(),
-  singers: [], // { name, joinTime, eligible: true/false }
-  performances: [] // { round, singer, song, songId, stars: [1..5], repeatCount: 0 }
+  singers: [],
+  performances: []
 };
 
-// Local storage backup
 function saveLocal(){
   try{ localStorage.setItem('sfh_live_session_'+LIVE.date, JSON.stringify({LIVE, currentRound, SOTD})); }catch(x){}
 }
+
 function loadLocal(){
   try{
     const d = localStorage.getItem('sfh_live_session_'+LIVE.date);
@@ -184,7 +181,6 @@ onAuthStateChanged(auth, async u => {
 });
 
 function getNextSongId(){
-  // Determine next song ID
   let highest = MAX_ID_NUM;
   LIVE.performances.forEach(p => {
     const num = parseInt(String(p.songId||'').replace(/\D/g,'')) || 0;
@@ -206,11 +202,11 @@ window.addSinger = () => {
   const inp = $('#in_singer');
   const name = (inp.value || '').trim().toUpperCase();
   if(!name){ alert('Please enter or select singer name.'); return; }
-  if(LIVE.singers.some(s => s.name === name)){ alert('Singer already added in session.'); return; }
+  if(LIVE.singers.some(s => s.name === name)){ alert('Singer already in session.'); return; }
 
   const now = new Date();
   const cutoff = new Date();
-  cutoff.setHours(20, 45, 0, 0); // 8:45 PM cutoff
+  cutoff.setHours(20, 45, 0, 0);
 
   const eligible = now <= cutoff;
   LIVE.singers.push({
@@ -232,12 +228,25 @@ window.removeSinger = (idx) => {
   draw();
 };
 
-window.saveSong = (singerName, round) => {
-  const songInp = $('#sg_' + round + '_' + singerName.replace(/[^a-zA-Z0-9]/g, '_'));
+window.onSongInput = (singerName, round) => {
+  const sIdSanitized = round + '_' + singerName.replace(/[^a-zA-Z0-9]/g, '_');
+  const songInp = $('#sg_' + sIdSanitized);
   const song = (songInp.value || '').trim().toUpperCase();
-  if(!song){ alert('Please enter song title.'); return; }
 
   let p = LIVE.performances.find(x => x.singer === singerName && x.round === round);
+  const repEl = $('#rep_' + sIdSanitized);
+  const idEl = $('#id_' + sIdSanitized);
+
+  if(!song){
+    if(p){
+      LIVE.performances = LIVE.performances.filter(x => !(x.singer === singerName && x.round === round));
+    }
+    if(repEl) repEl.innerHTML = '';
+    if(idEl) idEl.innerHTML = '<span class="m">-</span>';
+    saveLocal();
+    return;
+  }
+
   const rep = checkRepeat(song);
 
   if(!p){
@@ -255,8 +264,14 @@ window.saveSong = (singerName, round) => {
     p.repeatCount = rep;
   }
 
+  if(repEl){
+    repEl.innerHTML = rep > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${rep})</span>` : '';
+  }
+  if(idEl){
+    idEl.innerHTML = `<b>${p.songId}</b>`;
+  }
+
   saveLocal();
-  draw();
 };
 
 window.toggleStar = (perfIdx, starIdx) => {
@@ -303,7 +318,7 @@ window.downloadLivePDF = () => {
     y += 8;
   }
 
-  const rows = LIVE.performances.map((p, i) => {
+  const rows = LIVE.performances.filter(p => p.song).map((p, i) => {
     const starCount = p.stars.filter(Boolean).length;
     return [
       String(i + 1),
@@ -312,13 +327,13 @@ window.downloadLivePDF = () => {
       p.song,
       p.songId,
       starCount + ' / 5',
-      p.repeatCount > 0 ? 'Repeated (' + p.repeatCount + 'x)' : 'Original'
+      p.repeatCount > 0 ? '(' + p.repeatCount + ')' : 'Original'
     ].map(a);
   });
 
   d.autoTable({
     startY: y,
-    head: [['#', 'Round', 'Singer name', 'Song name', 'Song ID', 'Score', 'Status']],
+    head: [['#', 'Round', 'Singer name', 'Song name', 'Song ID', 'Score', 'Repeat']],
     body: rows,
     styles: {fontSize: 8.5, cellPadding: 2},
     headStyles: {fillColor: [15, 52, 96]}
@@ -337,7 +352,7 @@ function draw(){
     <div class="row" style="justify-content:space-between">
       <div>
         <h2>Live Session · ${fd(LIVE.date)}</h2>
-        <p class="m">Order is locked in as singers arrive between 8:25 PM - 8:30 PM. 8:45 PM is SOTD cutoff.</p>
+        <p class="m">Join order locked in as singers arrive (8:25 PM - 8:30 PM). 8:45 PM is SOTD cutoff.</p>
       </div>
       <div><span class="badge-round">Current: Round ${currentRound}</span></div>
     </div>
@@ -375,7 +390,7 @@ function draw(){
         </tr>
         ${LIVE.singers.map((s, idx) => {
           const p = LIVE.performances.find(x => x.singer === s.name && x.round === currentRound);
-          const pIdx = LIVE.performances.indexOf(p);
+          const pIdx = p ? LIVE.performances.indexOf(p) : -1;
           const sKey = 'sg_' + currentRound + '_' + s.name.replace(/[^a-zA-Z0-9]/g, '_');
           const isEligible = s.eligible;
 
@@ -385,17 +400,21 @@ function draw(){
             <td><span class="m">${e(s.joinTime)}</span></td>
             <td>${isEligible ? '<span class="badge-ok">Eligible</span>' : '<span class="badge-late">Ineligible (>8:45)</span>'}</td>
             <td>
-              <input id="${sKey}" list="dl_allsongs" value="${e(p ? p.song : '')}" placeholder="Type letters to recall..." style="width:220px;text-transform:uppercase" onchange="saveSong('${e(s.name)}', ${currentRound})">
-              ${p && p.repeatCount > 0 ? `<br><span class="m" style="color:#d97706;font-size:11px">Sung ${p.repeatCount} time(s) before</span>` : ''}
+              <div style="display:flex;align-items:center;white-space:nowrap">
+                <input id="${sKey}" list="dl_allsongs" value="${e(p ? p.song : '')}" placeholder="Type song..." style="width:200px;text-transform:uppercase" oninput="onSongInput('${e(s.name)}', ${currentRound})">
+                <span id="rep_${currentRound}_${s.name.replace(/[^a-zA-Z0-9]/g, '_')}">${p && p.repeatCount > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${p.repeatCount})</span>` : ''}</span>
+              </div>
             </td>
-            <td><b>${p ? p.songId : '<span class="m">-</span>'}</b></td>
+            <td id="id_${currentRound}_${s.name.replace(/[^a-zA-Z0-9]/g, '_')}">
+              ${p && p.song ? `<b>${p.songId}</b>` : '<span class="m">-</span>'}
+            </td>
             <td>
-              ${p ? `
+              ${p && p.song ? `
                 <div class="score-box" title="1: Announced | 2: Turn ready | 3: No mic noise | 4: Good singing | 5: Better singing">
                   ${[0,1,2,3,4].map(sIdx => `<span class="score-star ${p.stars[sIdx]?'active':''}" onclick="toggleStar(${pIdx}, ${sIdx})">★</span>`).join('')}
                 </div>
                 <span class="m" style="font-size:11px;margin-left:4px">(${p.stars.filter(Boolean).length}/5)</span>
-              ` : '<span class="m">Enter song first</span>'}
+              ` : '<span class="m">-</span>'}
             </td>
             <td style="text-align:center">
               <button onclick="removeSinger(${idx})">Remove</button>
