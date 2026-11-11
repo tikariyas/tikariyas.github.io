@@ -142,7 +142,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 .tbl tr.me td:first-child{border-left:3px solid var(--ac)}
 .badge-round{color:var(--ac);background:var(--ac-light);font-weight:800;padding:2px 8px;border-radius:6px;font-size:12px}
 
-/* Equal Sized Bottom Song Nav Buttons */
 .song-nav{
   display:grid;grid-template-columns:repeat(5, 1fr);gap:6px;margin:10px 0 12px;
 }
@@ -160,7 +159,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 }
 #custom-modal .box h3{margin:0 0 10px;font-size:17px;color:var(--ac)}
 
-/* Off-Screen Container for Devanagari PDF Exports */
 #pdf-render-slot{
   position:absolute;left:-9999px;top:0;width:800px;background:#ffffff;color:#0f172a;padding:24px;
   font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif;
@@ -199,7 +197,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-11 b17';
+const VER='2026-11-11 b18';
 const CFG = {
   firebase: {
     apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
@@ -298,7 +296,6 @@ const nowM=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth(
 const okImg=s=>typeof s=='string'&&s.startsWith('data:image/');
 let U=null,P=null,PUB=null,SONGS=[],CONF={},AU=[],tab='home',ADM=false,IS_SUPER=false,IS_ADMIN=false,LIVE_SESSION=null,loadErr='',HDATE='',EDU='',GRT=[],BD=[],GQ=[],showAbout=location.hash=='#about',MSGS=[],AM=[],AIN=[],PL=[],PD='',PLAN=null,pendingName='',seenAdm=(()=>{try{return +localStorage.getItem('sfh_seen_adm')||0}catch(x){return 0}})(),seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
 
-// State for Bottom Song List Section
 let songListTab = 'today';
 let selectedSingerFilter = '';
 let searchSongKeyword = '';
@@ -369,7 +366,6 @@ window.login=async()=>{
 window.out=()=>signOut(auth);
 window.refresh=async()=>{await load();if(P&&P.status=='approved'&&P.role=='admin'){IS_ADMIN=ADM=true;}if(tab=='adm')await loadAdm();draw()};
 
-// Superadmin Swipe Trigger directly from Home Screen
 window.swipeLiveSession = () => {
   showConfirm("Reset and wipe today's trial live session data completely?\n\nThis will clear all registered singers, performances, and test SOTDs for today from the live screen so you can start fresh at 8:30 PM.", async () => {
     try {
@@ -392,7 +388,6 @@ window.swipeLiveSession = () => {
   }, "Swipe Today's Data");
 };
 
-// Uses window.location.href to stay inside the same window/PWA on Android mobile
 window.go=async t=>{
   if(t=='live'){
     window.location.href = 'live.html';
@@ -477,7 +472,6 @@ window.stepHD=n=>{const ds=sdates(),cur=HDATE||ds[ds.length-1]||'';const c=n<0?d
 const idn=r=>parseInt(String(r[0]||'').split('-')[1])||0,cmpS=(a,b)=>a[1]<b[1]?-1:a[1]>b[1]?1:idn(a)-idn(b);
 const sTable=(rows,me)=>rows.length?`<div class="tbl"><table><tr><th class="n">Order</th><th>Singer name</th><th>Song name</th><th>Song ID</th></tr>${rows.map((r,i)=>`<tr class="${me&&r[2]==me?'me':''}"><td class="n">${i+1}</td><td><b>${e(r[2])}</b></td><td>${e(r[3])}</td><td>${e(r[0])}</td></tr>`).join('')}</table></div>`:'';
 
-/* Bottom Songs Controls & Rendering */
 function getAllArchiveSongs() {
   const t = tdy();
   const hist = SONGS.filter(r => r[1] !== t);
@@ -559,7 +553,6 @@ function renderBottomSongListHTML() {
   let tableHTML = '';
   let subControls = '';
 
-  // 1. TODAY'S SONGS
   if (songListTab === 'today') {
     let todayRows = [];
     if (LIVE_SESSION && LIVE_SESSION.date === tdy() && LIVE_SESSION.performances) {
@@ -601,8 +594,6 @@ function renderBottomSongListHTML() {
       </table></div>
     ` : '<p class="m">No songs recorded for today yet.</p>';
   }
-
-  // 2. THIS MONTH'S SONGS
   else if (songListTab === 'month') {
     const monthRows = allArchive.filter(r => String(r[1]||'').slice(0, 7) === curMo);
     tableHTML = monthRows.length ? `
@@ -626,8 +617,6 @@ function renderBottomSongListHTML() {
       </table></div>
     ` : '<p class="m">No songs recorded for this month yet.</p>';
   }
-
-  // 3. INDIVIDUAL SINGER'S SONGS
   else if (songListTab === 'singer') {
     const allSingers = [...new Set(allArchive.map(r => r[2]))].filter(Boolean).sort();
     if(!selectedSingerFilter) {
@@ -663,8 +652,6 @@ function renderBottomSongListHTML() {
       </table></div>
     ` : '<p class="m">No songs found for this singer.</p>';
   }
-
-  // 4. SEPARATE LIST OF UNIQUE SONGS (NO REPETITION)
   else if (songListTab === 'unique') {
     const uniqueMap = new Map();
     allArchive.forEach(r => {
@@ -702,8 +689,6 @@ function renderBottomSongListHTML() {
       </table></div>
     ` : '<p class="m">No songs cataloged yet.</p>';
   }
-
-  // 5. FULL SONG LIST WITH SEARCH & PDF
   else if (songListTab === 'all') {
     subControls = `
       <div class="row" style="margin-bottom:8px;justify-content:space-between">
@@ -747,7 +732,6 @@ function renderBottomSongListHTML() {
         ${songListTab !== 'all' ? `<button onclick="downloadSongListPDF()" style="font-size:11.5px;padding:4px 8px">Export PDF</button>` : ''}
       </div>
 
-      <!-- Equal Sized Short Button Navigation Bar -->
       <div class="song-nav">
         <button class="${songListTab==='today'?'on':''}" onclick="setSongTab('today')">Today</button>
         <button class="${songListTab==='month'?'on':''}" onclick="setSongTab('month')">Month</button>
@@ -833,7 +817,6 @@ function vHome(){
   if(!ADM)h+=`<div class="c"><b>Your songs on this day</b>${mine.length?sTable(mine,sk):'<p class="m">No songs of yours in the published data for this day.</p>'}</div>`;
   h+=`<div class="c"><b>All songs performed</b><p class="m" style="margin:2px 0 0">${ls.length} songs, in song ID order</p>${ls.length?sTable(ls,sk):'<p class="m">No songs published for this day.</p>'}</div>`;
 
-  // Attach Dedicated Bottom Song List Section directly below
   h+=renderBottomSongListHTML();
 
   return h;
