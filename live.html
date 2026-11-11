@@ -26,7 +26,7 @@ body{
   padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);
 }
 
-/* Header with Main Page Typography & Disciplined Equal Buttons */
+/* Header with Strict Red Restriction & Equal Buttons */
 header{
   display:flex;flex-direction:column;gap:10px;
   padding:12px 16px;border-bottom:1px solid var(--bd);background:var(--card);
@@ -72,13 +72,7 @@ button.on,button.pri{
   background:var(--btn-pri-bg);color:#fff;border-color:transparent;
   box-shadow:0 3px 12px -2px rgba(15,52,96,0.35);
 }
-button.danger{
-  background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;border-color:transparent;
-  box-shadow:0 3px 12px -2px rgba(220,38,38,0.35);
-}
-button.warn{
-  background:linear-gradient(135deg,#d97706,#b45309);color:#fff;border-color:transparent;
-}
+
 input,select,textarea{
   font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--bd);
   border-radius:8px;padding:8px 10px;box-sizing:border-box;min-width:0;max-width:100%;
@@ -101,7 +95,7 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
 .tbl tr:last-child td{border-bottom:none}
 .tbl .n{text-align:center}
 .badge-ok{color:#15803d;background:#dcfce7;font-weight:700;padding:2px 6px;border-radius:6px;font-size:11px}
-.badge-late{color:#b91c1c;background:#fee2e2;font-weight:700;padding:2px 6px;border-radius:6px;font-size:11px}
+.badge-late{color:var(--mut);background:var(--ac-light);font-weight:700;padding:2px 6px;border-radius:6px;font-size:11px}
 .badge-round{color:var(--ac);background:var(--ac-light);font-weight:800;padding:2px 8px;border-radius:6px;font-size:12px}
 
 .score-box{display:inline-flex;gap:3px}
@@ -109,7 +103,7 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
 .score-star.active{opacity:1;color:#f59e0b}
 .btn-meta{padding:2px 6px;font-size:11px;border-radius:6px;background:var(--ac-light);color:var(--ac);border:1px solid var(--bd)}
 
-/* Equal Sized Song List Navigation Buttons */
+/* Equal Sized Bottom Song Nav Buttons */
 .song-nav{
   display:grid;grid-template-columns:repeat(5, 1fr);gap:6px;margin:10px 0 12px;
 }
@@ -141,21 +135,6 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
   cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .15s ease;
 }
 .sotd-sug-chip:hover{border-color:var(--ac);background:var(--ac-light)}
-
-/* Off-Screen Container for Devanagari / Unicode PDF Rendering */
-#pdf-render-slot{
-  position:absolute;left:-9999px;top:0;width:800px;background:#ffffff;color:#0f172a;padding:24px;
-  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif;
-}
-#pdf-render-slot table{
-  width:100%;border-collapse:collapse;margin-top:12px;font-size:12px;
-}
-#pdf-render-slot th,#pdf-render-slot td{
-  border:1px solid #cbd5e1;padding:6px 8px;text-align:left;
-}
-#pdf-render-slot th{
-  background:#0f3460;color:#ffffff;font-weight:700;
-}
 </style></head><body>
 
 <header>
@@ -175,10 +154,8 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
   <div class="box" id="custom-modal-body"></div>
 </div>
 
-<div id="pdf-render-slot"></div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {getAuth,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
@@ -217,7 +194,7 @@ window.showNotice = (msg, title="Sing From Home") => {
 
 window.showConfirm = (msg, onOk, title="Confirmation") => {
   const m = $('#custom-modal');
-  $('#custom-modal-body').innerHTML = `<h3>${e(title)}</h3><p style="margin:12px 0 16px;white-space:pre-line">${e(msg)}</p><p style="text-align:right;margin:0;display:flex;gap:8px;justify-content:flex-end"><button onclick="closeModal()">Cancel</button><button class="danger" id="modal-ok-btn">Confirm</button></p>`;
+  $('#custom-modal-body').innerHTML = `<h3>${e(title)}</h3><p style="margin:12px 0 16px;white-space:pre-line">${e(msg)}</p><p style="text-align:right;margin:0;display:flex;gap:8px;justify-content:flex-end"><button onclick="closeModal()">Cancel</button><button class="pri" id="modal-ok-btn">Confirm</button></p>`;
   $('#modal-ok-btn').onclick = () => { closeModal(); onOk(); };
   m.style.display = 'flex';
 };
@@ -226,7 +203,7 @@ window.closeModal = () => { $('#custom-modal').style.display = 'none'; };
 let U=null, IS_SUPER=false, IS_ADMIN=false, KNOWN_SINGERS=[], ALL_SONGS=[], MAX_ID_NUM=167;
 let currentRound = 1;
 let SOTD_LIST = [];
-let songListTab = 'today'; // 'today', 'month', 'singer', 'unique', 'all'
+let songListTab = 'today';
 let selectedSingerFilter = '';
 let searchSongKeyword = '';
 
@@ -441,7 +418,7 @@ window.onSongInput = (singerName, round) => {
   }
 
   if(repEl){
-    repEl.innerHTML = rep > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${rep})</span>` : '';
+    repEl.innerHTML = rep > 0 ? `<span style="font-weight:700;margin-left:6px">(${rep})</span>` : '';
   }
   if(idEl){
     idEl.innerHTML = `<b>${p.songId}</b>`;
@@ -615,95 +592,85 @@ window.swipeTodayData = () => {
   }, "Swipe Today's Data");
 };
 
-/* HTML2Canvas PDF Generator: 100% accurate Marathi/Hindi matras and typography */
-window.downloadLivePDF = async () => {
-  if(!window.html2canvas || !window.jspdf){
-    showNotice('PDF engine loading, please wait a moment.');
-    return;
-  }
-
-  const renderSlot = document.getElementById('pdf-render-slot');
-  const rows = LIVE.performances.filter(p => p.song);
-
-  renderSlot.innerHTML = `
-    <div style="text-align:center;border-bottom:2px solid #0f3460;padding-bottom:12px;margin-bottom:14px">
-      <h2 style="margin:0;font-size:22px;color:#0f3460">SING FROM HOME</h2>
-      <p style="margin:4px 0;font-size:13px;color:#475569">A project of B. S. Tikariya Cultural Foundation ® (CIN: U88900MH2025NPL454435)</p>
-      <p style="margin:2px 0;font-size:12px"><b>Live Session Record · ${fd(LIVE.date)}</b> | Exported: ${curTime()}</p>
-    </div>
-
-    ${SOTD_LIST.length ? `
-      <div style="background:#e8eef7;padding:10px 12px;border-radius:8px;margin-bottom:14px;border:1px solid #cbd5e1">
-        <b style="color:#0f3460">Singers of the Day (SOTD):</b>
-        <p style="margin:4px 0 0;font-size:13px">${SOTD_LIST.map(x => `<b>${e(x.n)}</b> (${e(x.h)}${x.reason ? ' - ' + e(x.reason) : ''})`).join(' · ')}</p>
-      </div>
-    ` : ''}
-
-    <table>
-      <thead>
-        <tr>
-          <th style="width:30px;text-align:center">#</th>
-          <th style="width:55px">Round</th>
-          <th style="width:130px">Singer Name</th>
-          <th>Song Title</th>
-          <th style="width:70px">Song ID</th>
-          <th style="width:75px;text-align:center">Score</th>
-          <th style="width:65px">Repeat</th>
-          <th>Movie / Metadata</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows.map((p, i) => {
-          const starCount = p.stars.filter(Boolean).length;
-          const metaParts = [];
-          if(p.meta){
-            if(p.meta.mov) metaParts.push('Film: ' + p.meta.mov);
-            if(p.meta.comp) metaParts.push('Music: ' + p.meta.comp);
-            if(p.meta.orig) metaParts.push('Orig: ' + p.meta.orig);
-            if(p.meta.yr) metaParts.push('(' + p.meta.yr + ')');
-          }
-          return `
-            <tr>
-              <td style="text-align:center"><b>${i + 1}</b></td>
-              <td>Round ${p.round}</td>
-              <td><b>${e(p.singer)}</b></td>
-              <td><b>${e(p.song)}</b></td>
-              <td>${p.songId || '-'}</td>
-              <td style="text-align:center">${'★'.repeat(starCount)} (${starCount}/5)</td>
-              <td>${p.repeatCount > 0 ? `(${p.repeatCount})` : '1st Time'}</td>
-              <td style="font-size:11px;color:#475569">${metaParts.length ? e(metaParts.join(' | ')) : '-'}</td>
-            </tr>
-          `;
-        }).join('')}
-      </tbody>
-    </table>
-
-    <div style="margin-top:20px;font-size:11px;color:#64748b;display:flex;justify-content:space-between">
-      <span>Conducted by TIKARIYA'S SCHOOL OF MUSIC</span>
-      <span>Director: MANOJ TIKARIYA</span>
-    </div>
-  `;
-
+/* Vector Font Loader for jsPDF (Lightweight, <50KB output, Devanagari capable) */
+async function loadDevanagariFont(doc) {
   try {
-    const canvas = await window.html2canvas(renderSlot, {
-      scale: 2,
-      useCORS: true,
-      logging: false
-    });
-
-    const imgData = canvas.toDataURL('image/png');
-    const {jsPDF} = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = 210;
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`SFH_Live_${LIVE.date}.pdf`);
+    if (!window._devanagariVfs) {
+      const resp = await fetch('https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@main/hinted/ttf/NotoSansDevanagari/NotoSansDevanagari-Regular.ttf');
+      if (resp.ok) {
+        const buf = await resp.arrayBuffer();
+        let binary = '';
+        const bytes = new Uint8Array(buf);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        window._devanagariVfs = btoa(binary);
+      }
+    }
+    if (window._devanagariVfs) {
+      doc.addFileToVFS('NotoSansDevanagari.ttf', window._devanagariVfs);
+      doc.addFont('NotoSansDevanagari.ttf', 'Devanagari', 'normal');
+      doc.setFont('Devanagari');
+      return 'Devanagari';
+    }
   } catch (err) {
-    showNotice('PDF generation failed: ' + err.message);
-  } finally {
-    renderSlot.innerHTML = '';
+    console.warn('Devanagari font load fallback:', err);
   }
+  return 'helvetica';
+}
+
+/* Lightweight Pure jsPDF Live Session Record */
+window.downloadLivePDF = async () => {
+  if(!window.jspdf){ showNotice('PDF tool loading, please wait.'); return; }
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({unit:'mm',format:'a4'});
+  const fontName = await loadDevanagariFont(doc);
+
+  doc.setFont(fontName);
+  doc.setFontSize(18);
+  doc.text('SING FROM HOME', 105, 14, {align:'center'});
+
+  doc.setFontSize(9);
+  doc.text('A Project of B. S. Tikariya Cultural Foundation (R) - CIN: U88900MH2025NPL454435', 105, 19, {align:'center'});
+  doc.text('Session Date: ' + fd(LIVE.date) + ' | Generated: ' + curTime(), 105, 23.5, {align:'center'});
+
+  let y = 30;
+  if(SOTD_LIST.length){
+    doc.setFontSize(10);
+    const sotdText = 'Singers of the Day: ' + SOTD_LIST.map(x => x.n + ' (' + x.h + (x.reason?' - '+x.reason:'') + ')').join(', ');
+    doc.text(doc.splitTextToSize(sotdText, 180), 14, y);
+    y += 10;
+  }
+
+  const rows = LIVE.performances.filter(p => p.song).map((p, i) => {
+    const starCount = p.stars.filter(Boolean).length;
+    const metaTxt = p.meta && (p.meta.mov || p.meta.comp) ? [p.meta.mov, p.meta.comp].filter(Boolean).join(' | ') : '-';
+    return [
+      String(i + 1),
+      'Round ' + p.round,
+      p.singer,
+      p.song,
+      p.songId || '-',
+      starCount + ' / 5',
+      p.repeatCount > 0 ? '(' + p.repeatCount + ')' : '1st Time',
+      metaTxt
+    ];
+  });
+
+  doc.autoTable({
+    startY: y,
+    head: [['#', 'Round', 'Singer name', 'Song name', 'Song ID', 'Score', 'Repeat', 'Details']],
+    body: rows,
+    styles: {font: fontName, fontSize: 8, cellPadding: 1.8},
+    headStyles: {fillColor: [15, 52, 96]},
+    didDrawPage: () => {
+      doc.setFontSize(8);
+      doc.text('Page ' + doc.internal.getNumberOfPages(), 105, 290, {align:'center'});
+    }
+  });
+
+  doc.save('Live_Session_' + LIVE.date + '.pdf');
 };
 
 window.endSession = async () => {
@@ -804,7 +771,7 @@ function renderSOTDHTML() {
 
     ${topSuggestions.length ? `
       <div style="margin:8px 0 10px;padding:8px 10px;background:var(--ac-light);border-radius:8px;border:1px solid var(--bd)">
-        <span style="font-size:12px;font-weight:700;color:var(--ac)">⭐ Top Suggestions (Highest Score & Average):</span>
+        <span style="font-size:12px;font-weight:700;color:var(--ac)">Top Suggestions (Highest Score & Average):</span>
         <div class="row" style="margin-top:6px;gap:6px">
           ${topSuggestions.slice(0, 4).map(c => `
             <button type="button" class="sotd-sug-chip" onclick="selectSuggestedSOTD('${e(c.name)}')">
@@ -857,7 +824,6 @@ function drawSOTDSection() {
   }
 }
 
-/* Master Songs Combiner: History + Today's Live Songs */
 function getAllArchiveSongs() {
   const t = LIVE.date;
   const hist = ALL_SONGS.filter(r => r[1] !== t);
@@ -886,47 +852,78 @@ window.setSongSearchKeyword = (kw) => {
   renderSongListSection();
 };
 
-/* Export Filtered Song List using HTML2Canvas (Marathi/Hindi clean rendering) */
+/* Lightweight jsPDF Song List Export */
 window.downloadSongListPDF = async () => {
-  if(!window.html2canvas || !window.jspdf){
-    showNotice('PDF engine loading, please wait a moment.');
-    return;
+  if(!window.jspdf){ showNotice('PDF tool loading, please wait.'); return; }
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({unit:'mm',format:'a4'});
+  const fontName = await loadDevanagariFont(doc);
+
+  const allArchive = getAllArchiveSongs();
+  const curMo = LIVE.date.slice(0, 7);
+
+  let title = "Song Directory";
+  let rows = [];
+  let headers = ['#', 'Date', 'Singer Name', 'Song Title', 'Song ID'];
+
+  if (songListTab === 'today') {
+    title = `Songs Performed Today (${fd(LIVE.date)})`;
+    headers = ['#', 'Round', 'Singer Name', 'Song Title', 'Song ID'];
+    rows = LIVE.performances.filter(p => p.song).map((p, i) => [String(i + 1), 'Round ' + p.round, p.singer, p.song, p.songId || '-']);
+  } else if (songListTab === 'month') {
+    title = `Songs Performed in Month (${curMo})`;
+    rows = allArchive.filter(r => String(r[1]||'').slice(0, 7) === curMo).map((r, i) => [String(i + 1), fd(r[1]), r[2], r[3], r[0]]);
+  } else if (songListTab === 'singer') {
+    title = `Song Record: ${selectedSingerFilter || 'All'}`;
+    headers = ['#', 'Date', 'Song Title', 'Song ID'];
+    rows = allArchive.filter(r => r[2] === selectedSingerFilter).map((r, i) => [String(i + 1), fd(r[1]), r[3], r[0]]);
+  } else if (songListTab === 'unique') {
+    title = `Unique Songs Catalog (No Repetition)`;
+    headers = ['#', 'Song Title', 'Sung', 'Performers with ID'];
+    const uniqueMap = new Map();
+    allArchive.forEach(r => {
+      const t = (r[3] || '').trim().toUpperCase();
+      if(!t) return;
+      if(!uniqueMap.has(t)) uniqueMap.set(t, { title: r[3], count: 0, singers: [] });
+      const item = uniqueMap.get(t);
+      item.count++;
+      item.singers.push(`${r[2]} (${r[0]})`);
+    });
+    rows = Array.from(uniqueMap.values()).sort((a,b) => a.title.localeCompare(b.title)).map((u, i) => [
+      String(i + 1), u.title, u.count + 'x', u.singers.join(', ')
+    ]);
+  } else {
+    title = `Master Song Directory`;
+    let filtered = allArchive;
+    if(searchSongKeyword){
+      filtered = allArchive.filter(r => String(r[3]||'').toUpperCase().includes(searchSongKeyword) || String(r[2]||'').toUpperCase().includes(searchSongKeyword) || String(r[0]||'').toUpperCase().includes(searchSongKeyword));
+    }
+    rows = filtered.map((r, i) => [String(i + 1), fd(r[1]), r[2], r[3], r[0]]);
   }
 
-  const renderSlot = document.getElementById('pdf-render-slot');
-  const tableContent = document.getElementById('song_list_table_wrap');
-  if(!tableContent){ return; }
+  doc.setFont(fontName);
+  doc.setFontSize(16);
+  doc.text('SING FROM HOME', 105, 14, {align:'center'});
+  doc.setFontSize(9);
+  doc.text('A Project of B. S. Tikariya Cultural Foundation (R) - CIN: U88900MH2025NPL454435', 105, 19, {align:'center'});
+  doc.setFontSize(11);
+  doc.text(title, 14, 28);
+  doc.setFontSize(8);
+  doc.text(`Total Records: ${rows.length} | Generated: ${curTime()}`, 14, 33);
 
-  let title = "Song List";
-  if(songListTab === 'today') title = `Songs Performed Today (${fd(LIVE.date)})`;
-  if(songListTab === 'month') title = `Songs Performed in Month (${LIVE.date.slice(0,7)})`;
-  if(songListTab === 'singer') title = `Song Record: ${selectedSingerFilter || 'All'}`;
-  if(songListTab === 'unique') title = `Unique Song List (No Repetition)`;
-  if(songListTab === 'all') title = `Full Master Song Directory`;
+  doc.autoTable({
+    startY: 36,
+    head: [headers],
+    body: rows,
+    styles: {font: fontName, fontSize: 8, cellPadding: 1.6},
+    headStyles: {fillColor: [15, 52, 96]},
+    didDrawPage: () => {
+      doc.setFontSize(8);
+      doc.text('Page ' + doc.internal.getNumberOfPages(), 105, 290, {align:'center'});
+    }
+  });
 
-  renderSlot.innerHTML = `
-    <div style="text-align:center;border-bottom:2px solid #0f3460;padding-bottom:10px;margin-bottom:12px">
-      <h2 style="margin:0;font-size:20px;color:#0f3460">SING FROM HOME</h2>
-      <p style="margin:3px 0;font-size:12px;color:#475569">A project of B. S. Tikariya Cultural Foundation ® (CIN: U88900MH2025NPL454435)</p>
-      <p style="margin:2px 0;font-size:13px"><b>${e(title)}</b> | Generated: ${curTime()}</p>
-    </div>
-    ${tableContent.innerHTML}
-  `;
-
-  try {
-    const canvas = await window.html2canvas(renderSlot, { scale: 2, useCORS: true, logging: false });
-    const imgData = canvas.toDataURL('image/png');
-    const {jsPDF} = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = 210;
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`SFH_${songListTab.toUpperCase()}_Songs_${LIVE.date}.pdf`);
-  } catch(err) {
-    showNotice('PDF export failed: ' + err.message);
-  } finally {
-    renderSlot.innerHTML = '';
-  }
+  doc.save(`SFH_${songListTab.toUpperCase()}_Songs_${LIVE.date}.pdf`);
 };
 
 function renderSongListSection() {
@@ -938,7 +935,6 @@ function renderSongListSection() {
   let tableHTML = '';
   let subControls = '';
 
-  // 1. TODAY'S SONGS
   if (songListTab === 'today') {
     const todayRows = LIVE.performances.filter(p => p.song);
     tableHTML = todayRows.length ? `
@@ -962,8 +958,6 @@ function renderSongListSection() {
       </table></div>
     ` : '<p class="m">No songs entered for today yet.</p>';
   }
-
-  // 2. THIS MONTH'S SONGS
   else if (songListTab === 'month') {
     const monthRows = allArchive.filter(r => String(r[1]||'').slice(0, 7) === curMo);
     tableHTML = monthRows.length ? `
@@ -987,8 +981,6 @@ function renderSongListSection() {
       </table></div>
     ` : '<p class="m">No songs recorded for this month yet.</p>';
   }
-
-  // 3. INDIVIDUAL SINGER'S SONGS
   else if (songListTab === 'singer') {
     const allSingers = [...new Set(allArchive.map(r => r[2]))].filter(Boolean).sort();
     if(!selectedSingerFilter && allSingers.length) selectedSingerFilter = allSingers[0];
@@ -1022,8 +1014,6 @@ function renderSongListSection() {
       </table></div>
     ` : '<p class="m">No songs found for this singer.</p>';
   }
-
-  // 4. SEPARATE LIST OF UNIQUE SONGS (NO REPETITION)
   else if (songListTab === 'unique') {
     const uniqueMap = new Map();
     allArchive.forEach(r => {
@@ -1061,13 +1051,11 @@ function renderSongListSection() {
       </table></div>
     ` : '<p class="m">No songs cataloged yet.</p>';
   }
-
-  // 5. FULL SONG LIST WITH SEARCH & PDF
   else if (songListTab === 'all') {
     subControls = `
       <div class="row" style="margin-bottom:8px;justify-content:space-between">
         <input placeholder="Search title or singer..." value="${e(searchSongKeyword)}" oninput="setSongSearchKeyword(this.value)" style="max-width:240px">
-        <button class="pri" onclick="downloadSongListPDF()">Download PDF</button>
+        <button class="pri" onclick="downloadSongListPDF()">Export PDF</button>
       </div>
     `;
 
@@ -1105,7 +1093,6 @@ function renderSongListSection() {
       ${songListTab !== 'all' ? `<button onclick="downloadSongListPDF()" style="font-size:11.5px;padding:4px 8px">Export PDF</button>` : ''}
     </div>
 
-    <!-- Equal Sized Short Button Navigation Bar -->
     <div class="song-nav">
       <button class="${songListTab==='today'?'on':''}" onclick="setSongTab('today')">Today</button>
       <button class="${songListTab==='month'?'on':''}" onclick="setSongTab('month')">Month</button>
@@ -1120,18 +1107,16 @@ function renderSongListSection() {
 }
 
 function draw(){
-  // Strict equal 5-column button toolbar
   $('#hb').innerHTML = `
     <button onclick="downloadLivePDF()">PDF</button>
     <button onclick="downloadBackupJSON()">Backup</button>
-    <button class="warn" onclick="swipeTodayData()">Swipe</button>
-    <button class="danger" onclick="endSession()">End</button>
+    <button onclick="swipeTodayData()">Swipe</button>
+    <button onclick="endSession()">End</button>
     <button class="pri" onclick="location.href='index.html'">Home</button>
   `;
 
   let h = '';
 
-  // 1. Session Setup Card
   h += `<div class="c">
     <div class="row" style="justify-content:space-between">
       <div>
@@ -1148,7 +1133,6 @@ function draw(){
     </div>
   </div>`;
 
-  // 2. Singing Order & Live Performance Table
   h += `<div class="c">
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
       <b>Singing Order & Performance Sheet</b>
@@ -1185,7 +1169,7 @@ function draw(){
             <td>
               <div style="display:flex;align-items:center;white-space:nowrap">
                 <input id="sg_${sKey}" list="dl_allsongs" value="${e(p.song || '')}" placeholder="Type song..." style="width:200px;text-transform:uppercase" oninput="onSongInput('${e(s.name)}', ${currentRound})">
-                <span id="rep_${sKey}">${p.repeatCount > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${p.repeatCount})</span>` : ''}</span>
+                <span id="rep_${sKey}">${p.repeatCount > 0 ? `<span style="font-weight:700;margin-left:6px">(${p.repeatCount})</span>` : ''}</span>
                 <button class="btn-meta" style="margin-left:6px" onclick="openMeta('${e(s.name)}', ${currentRound})" title="Metadata (Original singer, composer, lyricist, movie)">ℹ Details</button>
               </div>
             </td>
@@ -1211,10 +1195,8 @@ function draw(){
     </datalist>
   </div>`;
 
-  // 3. SOTD Section
   h += `<div class="c" id="sotd_section_card">${renderSOTDHTML()}</div>`;
 
-  // 4. Session Rules Reference
   h += `<div class="c">
     <b>Rules & Star Scoring Reference</b>
     <div class="m" style="margin-top:6px;line-height:1.7">
@@ -1225,7 +1207,6 @@ function draw(){
     </div>
   </div>`;
 
-  // 5. Song Archives & Lists Section (At Bottom)
   h += `<div class="c" id="song_archives_card"></div>`;
 
   $('#app').innerHTML = h;
