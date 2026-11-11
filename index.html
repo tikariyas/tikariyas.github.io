@@ -57,8 +57,16 @@ button.on,button.pri{
   box-shadow:0 3px 12px -2px rgba(15,52,96,0.35);
 }
 button.on:hover,button.pri:hover{box-shadow:0 5px 15px -2px rgba(15,52,96,0.45)}
+
+/* New button style: looks like other buttons, text is orange */
 button.warn{
-  background:linear-gradient(135deg,#d97706,#b45309);color:#fff;border-color:transparent;
+  background:var(--card);
+  color:#ea580c;
+  border:1px solid var(--bd);
+  font-weight:700;
+}
+button.warn:hover{
+  border-color:#ea580c;
 }
 
 nav{
@@ -151,6 +159,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
   padding:20px 18px;border:1px solid var(--bd);box-shadow:var(--shadow);
 }
 #custom-modal .box h3{margin:0 0 10px;font-size:17px;color:var(--ac)}
+
+/* Offscreen container for clean html2canvas PDF rendering */
+#pdf-print-area{
+  position:absolute;left:-9999px;top:-9999px;width:794px;background:#ffffff;color:#0f172a;
+  padding:36px;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif;
+  box-sizing:border-box;
+}
 </style></head><body>
 <header>
   <div>
@@ -166,15 +181,17 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
   <div class="box" id="custom-modal-body"></div>
 </div>
 
+<div id="pdf-print-area"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script type="module">
 
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-11 b16';
+const VER='2026-11-11 b17';
 const CFG = {
   firebase: {
     apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
@@ -339,7 +356,7 @@ window.login=async()=>{
 window.out=()=>signOut(auth);
 window.refresh=async()=>{await load();if(P&&P.status=='approved'&&P.role=='admin'){IS_ADMIN=ADM=true;}if(tab=='adm')await loadAdm();draw()};
 
-// Swipe trial live session directly from Superadmin screen
+// Swipe trial live session directly from Super Admin screen
 window.swipeLiveSession = () => {
   showConfirm("Reset and wipe today's trial live session data completely?\n\nThis will clear all registered singers, performances, and test SOTDs for today from the live screen so you can start fresh at 8:30 PM.", async () => {
     try {
@@ -362,7 +379,6 @@ window.swipeLiveSession = () => {
   }, "Swipe Today's Data");
 };
 
-// Uses window.location.href to stay inside the same window/PWA on Android mobile
 window.go=async t=>{
   if(t=='live'){
     window.location.href = 'live.html';
@@ -398,7 +414,7 @@ const vWait=()=>`<div class="c"><h2>${P.status=='pending'?'Waiting for approval'
 const tabs = () => {
   let list = [];
   if (IS_SUPER) {
-    // 4-column grid: Row 1 = Home, SOTD, PDF, About; Row 2 = Refresh, Admin, Live Session, Swipe (directly below About)
+    // 4 columns: Row 1 = Home, SOTD, PDF, About; Row 2 = Refresh, Admin, Live Session, Swipe (directly below About)
     list = [
       ['home', 'Home'],
       ['sotd', 'Singer of the Day'],
@@ -500,11 +516,12 @@ function vHome(){
     </div>`;
   }
 
+  // Superadmin text set to indigo color (#4f46e5)
   h+=`<div class="c" style="padding:10px 14px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
         <div style="flex:1;min-width:0">
           <b>Your position</b>
-          ${sk?`<p class="big" style="margin:3px 0 2px 0">${e(sk)}${IS_SUPER?' <span style="font-size:12px;color:#b30000;font-weight:700">(Superadmin)</span>':(IS_ADMIN?' <span style="font-size:12px;color:var(--ac);font-weight:700">(Admin)</span>':'')}</p>
+          ${sk?`<p class="big" style="margin:3px 0 2px 0">${e(sk)}${IS_SUPER?' <span style="font-size:12px;color:#4f46e5;font-weight:800">(Superadmin)</span>':(IS_ADMIN?' <span style="font-size:12px;color:var(--ac);font-weight:700">(Admin)</span>':'')}</p>
           <p style="margin:2px 0 0 0;line-height:1.35">Your stars: <b>${s?s.t:0}</b>${(s&&s.t>=4)?' <span style="color:var(--ac);font-weight:600">– eligible for the Singer of the Month round</span>':''}${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m" style="margin:3px 0 0">Your name is not linked yet. Please ask the host.</p>'}
         </div>
         <div class="ph" style="width:52px;height:52px;border-radius:50%;flex:none">
@@ -552,29 +569,104 @@ function vProf(){const p=P;return`<div class="c"><div class="row"><div class="ph
 window.pic=el=>{const f=el.files[0];if(!f)return;grab();const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const S=240,c=document.createElement('canvas');c.width=c.height=S;const m=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)*0.2,m,m,0,0,S,S);P.photo=c.toDataURL('image/jpeg',0.75);draw()};im.src=r.result};r.readAsDataURL(f)};
 window.saveP=async()=>{grab();try{await updateDoc(doc(fs,'users',U.uid),{phone:P.phone||'',city:P.city||'',note:P.note||'',photo:P.photo||'',dob:P.dob||'',updatedAt:Date.now()});await setBd(U.uid,P.singer||P.name||'',P.dob,P.bshow);showNotice('Saved');}catch(x){showNotice('Could not save ('+(x.code||'error')+')')}};
 
-const vPdf=()=>`<div class="c"><b>PDF downloads</b><p class="m">Both PDFs show your position (Singer of the Day, Singer of the Month and stars).</p>
+const vPdf=()=>`<div class="c"><b>PDF downloads</b><p class="m">Both PDFs show your position (Singer of the Day, Singer of the Month and stars) with complete Hindi/Marathi support.</p>
 <p><button class="pri" onclick="pdf('all')">⬇ All songs list till now</button></p><p><button class="pri" onclick="pdf('my')">⬇ My songs till now</button></p></div>`;
-window.pdf=kind=>{
-  if(!PUB||!window.jspdf){showNotice('Data or PDF tool not ready. Check your internet and try again.');return}
-  const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'}),a=s=>String(s==null?'':s).replace(/[^\x20-\xff]/g,'?');
-  const sk=(P.singer||'').toUpperCase(),s=(PUB.stars||{})[sk]||{t:0,m:{},d:[]},mo=nowM();
-  const som=Object.entries(PUB.som||{}).filter(x=>x[1]==sk).map(x=>fm(x[0]));
-  const rows=SONGS.filter(r=>kind=='all'||r[2]==sk).slice().sort(cmpS);
-  d.setFontSize(20);d.text('SING FROM HOME',105,14,{align:'center'});
-  d.setFontSize(9);d.text('Online Singing Session on Zoom',105,19,{align:'center'});
-  d.text("Conducted by TIKARIYA'S SCHOOL OF MUSIC - Director: Manoj Tikariya",105,23.5,{align:'center'});
-  const cc=d.splitTextToSize('Core Committee: RAJESH GARJE, SANTOSH BHAROTE, VIJAY SUTRAVE, SUREKHA TIKARIYA, MANOJ TIKARIYA, NITIN POL, SURESH GHADSING, SHILA RAITHATHA',182);
-  d.setFontSize(8);d.text(cc,105,28,{align:'center'});d.setFontSize(9);
-  const yp=28+cc.length*3.4+1.5;
-  d.text('A Project of B. S. Tikariya Cultural Foundation \xAE - CIN: U88900MH2025NPL454435',105,yp,{align:'center'});
-  d.setFontSize(13);d.text(kind=='all'?'All Songs List':'My Songs',14,yp+9);
-  d.setFontSize(9);
-  const info=[sk?'Singer: '+sk:'',sk?'Stars: '+s.t:'',sk?'Singer of the Day: '+((s.d&&s.d.length)||0)+' time(s)'+(s.d&&s.d.length?' - '+s.d.map(fd).join(', '):''):'',sk?'Singer of the Month: '+(som.length?som.join(', '):'-'):'','Total songs: '+rows.length+'   Date: '+fd(new Date().toISOString().slice(0,10))].filter(Boolean);
-  let y=yp+15;info.forEach(t=>{const ls=d.splitTextToSize(a(t),182);d.text(ls,14,y);y+=ls.length*4.5});
-  d.autoTable({startY:y+2,head:[['Order','Date','Singer name','Song name','Song ID']],body:rows.map((r,i)=>[String(i+1),fd(r[1]),r[2],r[3],r[0]].map(a)),styles:{fontSize:8,cellPadding:1.5,minCellHeight:8,valign:'middle',overflow:'ellipsize'},columnStyles:{0:{cellWidth:14,halign:'center'},1:{cellWidth:24},2:{cellWidth:48},3:{cellWidth:70},4:{cellWidth:26}},headStyles:{fillColor:[15,52,96]},didDrawPage:()=>{d.setFontSize(8);d.text('Page '+d.internal.getNumberOfPages(),105,291,{align:'center'})}});
-  const who=(P.singer||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''),base=kind=='all'?'all_songs':(who||'my_songs');
-  let cn=1;try{const m=JSON.parse(localStorage.getItem('sfh_pdfn')||'{}');cn=(m[base]||0)+1;m[base]=cn;localStorage.setItem('sfh_pdfn',JSON.stringify(m))}catch(x){cn=Math.floor(Date.now()/1000)%100000}
-  d.save(base+'_'+cn+'.pdf');
+
+/* html2canvas PDF Export Engine: Clean Devanagari text, matras and ligatures */
+window.pdf = async (kind) => {
+  if(!PUB || !window.jspdf || !window.html2canvas){
+    showNotice('PDF generator components loading. Please wait a second and try again.');
+    return;
+  }
+  const sk = (P.singer || '').toUpperCase();
+  const s = (PUB.stars || {})[sk] || {t: 0, m: {}, d: []};
+  const mo = nowM();
+  const som = Object.entries(PUB.som || {}).filter(x => x[1] === sk).map(x => fm(x[0]));
+  const rows = SONGS.filter(r => kind === 'all' || r[2] === sk).slice().sort(cmpS);
+
+  const container = document.getElementById('pdf-print-area');
+  container.innerHTML = `
+    <div style="text-align:center;border-bottom:2px solid #0f3460;padding-bottom:12px;margin-bottom:16px">
+      <h1 style="font-size:24px;font-weight:900;color:#0f3460;margin:0 0 4px">SING FRO<span style="color:#b30000">M</span> HO<span style="color:#b30000">M</span>E</h1>
+      <div style="font-size:12px;font-weight:700;color:#475569">Online Singing Session on Zoom</div>
+      <div style="font-size:11px;color:#64748b;margin-top:2px">Conducted by TIKARIYA'S SCHOOL OF MUSIC · Director: Manoj Tikariya</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Core Committee: RAJESH GARJE, SANTOSH BHAROTE, VIJAY SUTRAVE, SUREKHA TIKARIYA, MANOJ TIKARIYA, NITIN POL, SURESH GHADSING, SHILA RAITHATHA</div>
+      <div style="font-size:11px;font-weight:600;color:#0f3460;margin-top:4px">A Project of B. S. Tikariya Cultural Foundation ® · CIN: U88900MH2025NPL454435</div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;background:#f8fafc;padding:10px 14px;border-radius:8px;border:1px solid #cbd5e1">
+      <div>
+        <h2 style="font-size:16px;color:#0f3460;margin:0 0 4px">${kind === 'all' ? 'All Songs List' : 'My Songs Record'}</h2>
+        ${sk ? `<div style="font-size:13px;font-weight:700">Singer: ${e(sk)}</div>` : ''}
+        ${sk ? `<div style="font-size:12px">Total Stars: <b>${s.t}</b> · SOTD: <b>${(s.d && s.d.length) || 0} time(s)</b></div>` : ''}
+        ${som.length ? `<div style="font-size:12px">Singer of the Month: <b>${som.join(', ')}</b></div>` : ''}
+      </div>
+      <div style="text-align:right;font-size:12px;color:#64748b">
+        <div>Total Songs: <b>${rows.length}</b></div>
+        <div>Date: <b>${fd(tdy())}</b></div>
+      </div>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;font-size:11.5px">
+      <thead>
+        <tr style="background:#0f3460;color:#ffffff;text-align:left">
+          <th style="padding:6px 8px;border:1px solid #cbd5e1;text-align:center;width:40px">#</th>
+          <th style="padding:6px 8px;border:1px solid #cbd5e1;width:75px">Date</th>
+          <th style="padding:6px 8px;border:1px solid #cbd5e1">Singer Name</th>
+          <th style="padding:6px 8px;border:1px solid #cbd5e1">Song Title</th>
+          <th style="padding:6px 8px;border:1px solid #cbd5e1;width:65px">Song ID</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map((r, i) => `
+          <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8fafc'}">
+            <td style="padding:6px 8px;border:1px solid #cbd5e1;text-align:center"><b>${i + 1}</b></td>
+            <td style="padding:6px 8px;border:1px solid #cbd5e1">${fd(r[1])}</td>
+            <td style="padding:6px 8px;border:1px solid #cbd5e1"><b>${e(r[2])}</b></td>
+            <td style="padding:6px 8px;border:1px solid #cbd5e1">${e(r[3])}</td>
+            <td style="padding:6px 8px;border:1px solid #cbd5e1"><b>${e(r[0])}</b></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
+  try {
+    const canvas = await window.html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      windowWidth: 794
+    });
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const { jsPDF } = window.jspdf;
+    const pdfDoc = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = 210;
+    const pageHeight = 297;
+    const imgHeight = (canvas.height * pageWidth) / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdfDoc.addImage(imgData, 'JPEG', 0, position, pageWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdfDoc.addPage();
+      pdfDoc.addImage(imgData, 'JPEG', 0, position, pageWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    const who = (P.singer || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    const base = kind === 'all' ? 'all_songs' : (who || 'my_songs');
+    pdfDoc.save(`${base}_${tdy()}.pdf`);
+    container.innerHTML = '';
+  } catch (err) {
+    container.innerHTML = '';
+    showNotice('Could not generate PDF: ' + (err.message || 'Error'));
+  }
 };
 
 const phoneDigits=id=>{const dg=(id||'').replace(/\D/g,'').slice(-10);return dg.length==10?dg:''};
@@ -767,7 +859,7 @@ ${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b>
   ${ok.map(u => {
     const isSup = (CFG.superadmins || []).map(x => x.toLowerCase()).includes((u.email || '').toLowerCase());
     const roleTxt = isSup ? 'Superadmin' : (u.role == 'admin' ? 'Admin' : 'Participant');
-    const roleStyle = isSup ? 'color:#b30000;font-weight:800' : (u.role == 'admin' ? 'color:var(--ac);font-weight:700' : 'color:var(--mut)');
+    const roleStyle = isSup ? 'color:#4f46e5;font-weight:800' : (u.role == 'admin' ? 'color:var(--ac);font-weight:700' : 'color:var(--mut)');
     return `<tr>
       <td><b>${e(u.singer || '(not linked)')}</b></td>
       <td><span class="m">${e(idOf(u.email))}</span></td>
