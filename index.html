@@ -737,15 +737,12 @@ window.downloadSongListPDF = () => {
 function renderBottomSongListHTML() {
   if (!songArchivesExpanded) {
     return `
-      <div class="c" style="margin-top:14px">
-        <div class="row" style="justify-content:space-between">
-          <div>
-            <b>Song Archives & Performance Lists</b>
-            <p class="m" style="margin:2px 0 0">Cataloged strictly by Song ID.</p>
-          </div>
+            <div class="c" style="margin-top:14px">
+        <div class="row" style="justify-content:flex-end">
           <button class="pri" onclick="toggleSongArchives()">Show Archives ▼</button>
         </div>
       </div>
+
     `;
   }
 
