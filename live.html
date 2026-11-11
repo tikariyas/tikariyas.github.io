@@ -137,20 +137,6 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
   cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .15s ease;
 }
 .sotd-sug-chip:hover{border-color:var(--ac);background:var(--ac-light)}
-
-#pdf-render-slot{
-  position:absolute;left:-9999px;top:0;width:800px;background:#ffffff;color:#0f172a;padding:24px;
-  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif;
-}
-#pdf-render-slot table{
-  width:100%;border-collapse:collapse;margin-top:12px;font-size:12px;
-}
-#pdf-render-slot th,#pdf-render-slot td{
-  border:1px solid #cbd5e1;padding:6px 8px;text-align:left;
-}
-#pdf-render-slot th{
-  background:#0f3460;color:#ffffff;font-weight:700;
-}
 </style></head><body>
 
 <header>
@@ -170,10 +156,8 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
   <div class="box" id="custom-modal-body"></div>
 </div>
 
-<div id="pdf-render-slot"></div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {getAuth,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
@@ -235,7 +219,7 @@ let U=null, IS_SUPER=false, IS_ADMIN=false, KNOWN_SINGERS=[], ALL_SONGS=[], MAX_
 let currentRound = 1;
 let SOTD_LIST = [];
 let songListTab = 'today';
-let songArchivesExpanded = false; // Collapsed by default
+let songArchivesExpanded = false;
 let selectedSingerFilter = '';
 let searchSongKeyword = '';
 
@@ -597,7 +581,7 @@ window.downloadBackupJSON = () => {
   showNotice("Backup JSON downloaded! You can upload this manually under the Admin tab if needed.");
 };
 
-// 100% Comprehensive Wipe: Resets live session, clears local storage, and strips today's trial records from pub collections
+// 100% Comprehensive Wipe
 window.swipeTodayData = () => {
   showConfirm("Reset and wipe today's trial session data completely?\n\nThis will permanently clear today's test queue, remove any trial songs published today, and reset test stars so you start 100% clean at 8:30 PM.", async () => {
     try {
@@ -671,95 +655,88 @@ window.swipeTodayData = () => {
   }, "Swipe Today's Data");
 };
 
-// PDF sorted purely by Song ID
-window.downloadLivePDF = async () => {
-  if(!window.html2canvas || !window.jspdf){
-    showNotice('PDF engine loading, please wait a moment.');
+// Pure Vector PDF generation without html2canvas
+window.downloadLivePDF = () => {
+  if(!window.jspdf || !window.jspdf.jsPDF){
+    showNotice('PDF library loading, please try again.');
     return;
   }
 
-  const renderSlot = document.getElementById('pdf-render-slot');
-  const rows = LIVE.performances.filter(p => p.song).slice().sort(cmpBySongId);
+  const {jsPDF} = window.jspdf;
+  const docPdf = new jsPDF({unit:'mm', format:'a4'});
+  const cleanStr = s => String(s==null?'':s).replace(/[^\x20-\x7E]/g, '');
 
-  renderSlot.innerHTML = `
-    <div style="text-align:center;border-bottom:2px solid #0f3460;padding-bottom:12px;margin-bottom:14px">
-      <h2 style="margin:0;font-size:22px;color:#0f3460">SING FROM HOME</h2>
-      <p style="margin:4px 0;font-size:13px;color:#475569">A project of B. S. Tikariya Cultural Foundation ® (CIN: U88900MH2025NPL454435)</p>
-      <p style="margin:2px 0;font-size:12px"><b>Live Session Record · ${fd(LIVE.date)}</b> | Sorted by Song ID | Exported: ${curTime()}</p>
-    </div>
+  docPdf.setFontSize(18);
+  docPdf.setTextColor(15, 52, 96);
+  docPdf.text('SING FROM HOME', 105, 14, {align:'center'});
 
-    ${SOTD_LIST.length ? `
-      <div style="background:#e8eef7;padding:10px 12px;border-radius:8px;margin-bottom:14px;border:1px solid #cbd5e1">
-        <b style="color:#0f3460">Singers of the Day (SOTD):</b>
-        <p style="margin:4px 0 0;font-size:13px">${SOTD_LIST.map(x => `<b>${e(x.n)}</b> (${e(x.h)}${x.reason ? ' - ' + e(x.reason) : ''})`).join(' · ')}</p>
-      </div>
-    ` : ''}
+  docPdf.setFontSize(8.5);
+  docPdf.setTextColor(71, 85, 105);
+  docPdf.text('A project of B. S. Tikariya Cultural Foundation \xAE (CIN: U88900MH2025NPL454435)', 105, 19, {align:'center'});
+  docPdf.text("Conducted by TIKARIYA'S SCHOOL OF MUSIC \xB7 Director: Manoj Tikariya", 105, 23.5, {align:'center'});
 
-    <table>
-      <thead>
-        <tr>
-          <th style="width:30px;text-align:center">#</th>
-          <th style="width:70px">Song ID</th>
-          <th style="width:55px">Round</th>
-          <th style="width:130px">Singer Name</th>
-          <th>Song Title</th>
-          <th style="width:75px;text-align:center">Score</th>
-          <th style="width:65px">Repeat</th>
-          <th>Movie / Metadata</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows.map((p, i) => {
-          const starCount = p.stars.filter(Boolean).length;
-          const metaParts = [];
-          if(p.meta){
-            if(p.meta.mov) metaParts.push('Film: ' + p.meta.mov);
-            if(p.meta.comp) metaParts.push('Music: ' + p.meta.comp);
-            if(p.meta.orig) metaParts.push('Orig: ' + p.meta.orig);
-            if(p.meta.yr) metaParts.push('(' + p.meta.yr + ')');
-          }
-          return `
-            <tr>
-              <td style="text-align:center"><b>${i + 1}</b></td>
-              <td><b>${p.songId || '-'}</b></td>
-              <td>Round ${p.round}</td>
-              <td><b>${e(p.singer)}</b></td>
-              <td><b>${e(p.song)}</b></td>
-              <td style="text-align:center">${'★'.repeat(starCount)} (${starCount}/5)</td>
-              <td>${p.repeatCount > 0 ? `(${p.repeatCount})` : '1st Time'}</td>
-              <td style="font-size:11px;color:#475569">${metaParts.length ? e(metaParts.join(' | ')) : '-'}</td>
-            </tr>
-          `;
-        }).join('')}
-      </tbody>
-    </table>
+  docPdf.setFontSize(9.5);
+  docPdf.setTextColor(15, 23, 42);
+  docPdf.text(`Live Session Record \xB7 ${fd(LIVE.date)} | Sorted by Song ID | Exported: ${curTime()}`, 14, 30);
 
-    <div style="margin-top:20px;font-size:11px;color:#64748b;display:flex;justify-content:space-between">
-      <span>Conducted by TIKARIYA'S SCHOOL OF MUSIC</span>
-      <span>Director: MANOJ TIKARIYA</span>
-    </div>
-  `;
+  let startY = 34;
 
-  try {
-    const canvas = await window.html2canvas(renderSlot, {
-      scale: 2,
-      useCORS: true,
-      logging: false
-    });
-
-    const imgData = canvas.toDataURL('image/png');
-    const {jsPDF} = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = 210;
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`SFH_Live_${LIVE.date}.pdf`);
-  } catch (err) {
-    showNotice('PDF generation failed: ' + err.message);
-  } finally {
-    renderSlot.innerHTML = '';
+  if (SOTD_LIST.length) {
+    const sotdText = SOTD_LIST.map(x => `${cleanStr(x.n)} (${cleanStr(x.h)}${x.reason ? ' - ' + cleanStr(x.reason) : ''})`).join('  \xB7  ');
+    docPdf.setFillColor(232, 238, 247);
+    docPdf.roundedRect(14, startY, 182, 10, 2, 2, 'F');
+    docPdf.setFontSize(8.5);
+    docPdf.setTextColor(15, 52, 96);
+    docPdf.text('Singers of the Day (SOTD): ' + sotdText, 17, startY + 6.5);
+    startY += 14;
   }
+
+  const rows = LIVE.performances.filter(p => p.song).slice().sort(cmpBySongId);
+  const tableData = rows.map((p, idx) => {
+    const starCount = (p.stars || []).filter(Boolean).length;
+    const metaParts = [];
+    if(p.meta){
+      if(p.meta.mov) metaParts.push('Film: ' + p.meta.mov);
+      if(p.meta.comp) metaParts.push('Music: ' + p.meta.comp);
+      if(p.meta.orig) metaParts.push('Orig: ' + p.meta.orig);
+      if(p.meta.yr) metaParts.push('(' + p.meta.yr + ')');
+    }
+    return [
+      idx + 1,
+      cleanStr(p.songId || '-'),
+      'R-' + (p.round || 1),
+      cleanStr(p.singer),
+      cleanStr(p.song),
+      starCount + '/5',
+      p.repeatCount > 0 ? `(${p.repeatCount})` : '1st',
+      cleanStr(metaParts.join(' | ') || '-')
+    ];
+  });
+
+  docPdf.autoTable({
+    startY: startY,
+    head: [['#', 'Song ID', 'Round', 'Singer Name', 'Song Title', 'Score', 'Repeat', 'Metadata']],
+    body: tableData,
+    styles: {fontSize: 8, cellPadding: 2, valign: 'middle'},
+    headStyles: {fillColor: [15, 52, 96], textColor: [255, 255, 255], fontStyle: 'bold'},
+    columnStyles: {
+      0: {cellWidth: 10, halign: 'center'},
+      1: {cellWidth: 20},
+      2: {cellWidth: 15, halign: 'center'},
+      3: {cellWidth: 35},
+      4: {cellWidth: 42},
+      5: {cellWidth: 16, halign: 'center'},
+      6: {cellWidth: 16, halign: 'center'},
+      7: {cellWidth: 28}
+    },
+    didDrawPage: data => {
+      docPdf.setFontSize(8);
+      docPdf.setTextColor(100, 116, 139);
+      docPdf.text(`Page ${docPdf.internal.getNumberOfPages()}`, 105, 290, {align: 'center'});
+    }
+  });
+
+  docPdf.save(`SFH_Live_${LIVE.date}.pdf`);
 };
 
 window.endSession = async () => {
@@ -942,15 +919,16 @@ window.setSongSearchKeyword = (kw) => {
   renderSongListSection();
 };
 
-window.downloadSongListPDF = async () => {
-  if(!window.html2canvas || !window.jspdf){
-    showNotice('PDF engine loading, please wait a moment.');
+// Pure Vector Song List PDF download
+window.downloadSongListPDF = () => {
+  if(!window.jspdf || !window.jspdf.jsPDF){
+    showNotice('PDF library loading, please try again.');
     return;
   }
 
-  const renderSlot = document.getElementById('pdf-render-slot');
-  const tableContent = document.getElementById('song_list_table_wrap');
-  if(!tableContent){ return; }
+  const {jsPDF} = window.jspdf;
+  const docPdf = new jsPDF({unit:'mm', format:'a4'});
+  const cleanStr = s => String(s==null?'':s).replace(/[^\x20-\x7E]/g, '');
 
   let title = "Song List";
   if(songListTab === 'today') title = `Songs Performed Today (${fd(LIVE.date)})`;
@@ -959,29 +937,102 @@ window.downloadSongListPDF = async () => {
   if(songListTab === 'unique') title = `Unique Song List (No Repetition)`;
   if(songListTab === 'all') title = `Full Master Song Directory`;
 
-  renderSlot.innerHTML = `
-    <div style="text-align:center;border-bottom:2px solid #0f3460;padding-bottom:10px;margin-bottom:12px">
-      <h2 style="margin:0;font-size:20px;color:#0f3460">SING FROM HOME</h2>
-      <p style="margin:3px 0;font-size:12px;color:#475569">A project of B. S. Tikariya Cultural Foundation ® (CIN: U88900MH2025NPL454435)</p>
-      <p style="margin:2px 0;font-size:13px"><b>${e(title)}</b> | Sorted by Song ID | Generated: ${curTime()}</p>
-    </div>
-    ${tableContent.innerHTML}
-  `;
+  docPdf.setFontSize(18);
+  docPdf.setTextColor(15, 52, 96);
+  docPdf.text('SING FROM HOME', 105, 14, {align:'center'});
 
-  try {
-    const canvas = await window.html2canvas(renderSlot, { scale: 2, useCORS: true, logging: false });
-    const imgData = canvas.toDataURL('image/png');
-    const {jsPDF} = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = 210;
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`SFH_${songListTab.toUpperCase()}_Songs_${LIVE.date}.pdf`);
-  } catch(err) {
-    showNotice('PDF export failed: ' + err.message);
-  } finally {
-    renderSlot.innerHTML = '';
+  docPdf.setFontSize(8.5);
+  docPdf.setTextColor(71, 85, 105);
+  docPdf.text('A project of B. S. Tikariya Cultural Foundation \xAE (CIN: U88900MH2025NPL454435)', 105, 19, {align:'center'});
+  docPdf.text("Conducted by TIKARIYA'S SCHOOL OF MUSIC \xB7 Director: Manoj Tikariya", 105, 23.5, {align:'center'});
+
+  docPdf.setFontSize(10);
+  docPdf.setTextColor(15, 23, 42);
+  docPdf.text(`${cleanStr(title)} | Sorted by Song ID | Exported: ${curTime()}`, 14, 30);
+
+  const allArchive = getAllArchiveSongs();
+  let headCols = [];
+  let tableRows = [];
+
+  if (songListTab === 'today') {
+    headCols = [['#', 'Song ID', 'Round', 'Singer Name', 'Song Title']];
+    const todayRows = LIVE.performances.filter(p => p.song).slice().sort(cmpBySongId);
+    tableRows = todayRows.map((p, i) => [
+      i + 1,
+      cleanStr(p.songId || '-'),
+      'Round ' + p.round,
+      cleanStr(p.singer),
+      cleanStr(p.song)
+    ]);
+  } else if (songListTab === 'month') {
+    headCols = [['#', 'Song ID', 'Date', 'Singer Name', 'Song Title']];
+    const monthRows = allArchive.filter(r => String(r[1]||'').slice(0, 7) === LIVE.date.slice(0, 7)).slice().sort(cmpBySongId);
+    tableRows = monthRows.map((r, i) => [
+      i + 1,
+      cleanStr(r[0]),
+      fd(r[1]),
+      cleanStr(r[2]),
+      cleanStr(r[3])
+    ]);
+  } else if (songListTab === 'singer') {
+    headCols = [['#', 'Song ID', 'Date', 'Song Title']];
+    const singerRows = allArchive.filter(r => r[2] === selectedSingerFilter).slice().sort(cmpBySongId);
+    tableRows = singerRows.map((r, i) => [
+      i + 1,
+      cleanStr(r[0]),
+      fd(r[1]),
+      cleanStr(r[3])
+    ]);
+  } else if (songListTab === 'unique') {
+    headCols = [['#', 'Song ID', 'Song Title (No Repetition)', 'Sung', 'Performers']];
+    const uniqueMap = new Map();
+    allArchive.forEach(r => {
+      const t = (r[3] || '').trim().toUpperCase();
+      if(!t) return;
+      if(!uniqueMap.has(t)) {
+        uniqueMap.set(t, { title: r[3], count: 0, firstId: r[0], singers: [] });
+      }
+      const item = uniqueMap.get(t);
+      item.count++;
+      item.singers.push({ singer: r[2], id: r[0] });
+    });
+    const uniqueList = Array.from(uniqueMap.values()).sort((a,b) => parseSongNum(a.firstId) - parseSongNum(b.firstId));
+    tableRows = uniqueList.map((u, i) => [
+      i + 1,
+      cleanStr(u.firstId),
+      cleanStr(u.title),
+      u.count + 'x',
+      cleanStr(u.singers.map(s => `${s.singer} (${s.id})`).join(', '))
+    ]);
+  } else {
+    headCols = [['#', 'Song ID', 'Date', 'Singer Name', 'Song Title']];
+    let filtered = allArchive.slice().sort(cmpBySongId);
+    if(searchSongKeyword){
+      filtered = filtered.filter(r => String(r[3]||'').toUpperCase().includes(searchSongKeyword) || String(r[2]||'').toUpperCase().includes(searchSongKeyword) || String(r[0]||'').toUpperCase().includes(searchSongKeyword));
+    }
+    tableRows = filtered.map((r, i) => [
+      i + 1,
+      cleanStr(r[0]),
+      fd(r[1]),
+      cleanStr(r[2]),
+      cleanStr(r[3])
+    ]);
   }
+
+  docPdf.autoTable({
+    startY: 34,
+    head: headCols,
+    body: tableRows,
+    styles: {fontSize: 8, cellPadding: 2, valign: 'middle'},
+    headStyles: {fillColor: [15, 52, 96], textColor: [255, 255, 255], fontStyle: 'bold'},
+    didDrawPage: data => {
+      docPdf.setFontSize(8);
+      docPdf.setTextColor(100, 116, 139);
+      docPdf.text(`Page ${docPdf.internal.getNumberOfPages()}`, 105, 290, {align: 'center'});
+    }
+  });
+
+  docPdf.save(`SFH_${songListTab.toUpperCase()}_Songs_${LIVE.date}.pdf`);
 };
 
 function renderSongListSection() {
@@ -1006,7 +1057,7 @@ function renderSongListSection() {
   let tableHTML = '';
   let subControls = '';
 
-  // 1. TODAY'S SONGS (Sorted by Song ID)
+  // 1. TODAY'S SONGS
   if (songListTab === 'today') {
     const todayRows = LIVE.performances.filter(p => p.song).slice().sort(cmpBySongId);
     tableHTML = todayRows.length ? `
@@ -1031,7 +1082,7 @@ function renderSongListSection() {
     ` : '<p class="m">No songs entered for today yet.</p>';
   }
 
-  // 2. THIS MONTH'S SONGS (Sorted by Song ID)
+  // 2. THIS MONTH'S SONGS
   else if (songListTab === 'month') {
     const monthRows = allArchive.filter(r => String(r[1]||'').slice(0, 7) === curMo).slice().sort(cmpBySongId);
     tableHTML = monthRows.length ? `
@@ -1056,7 +1107,7 @@ function renderSongListSection() {
     ` : '<p class="m">No songs recorded for this month yet.</p>';
   }
 
-  // 3. INDIVIDUAL SINGER'S SONGS (Sorted by Song ID)
+  // 3. INDIVIDUAL SINGER'S SONGS
   else if (songListTab === 'singer') {
     const allSingers = [...new Set(allArchive.map(r => r[2]))].filter(Boolean).sort();
     if(!selectedSingerFilter && allSingers.length) selectedSingerFilter = allSingers[0];
@@ -1091,7 +1142,7 @@ function renderSongListSection() {
     ` : '<p class="m">No songs found for this singer.</p>';
   }
 
-  // 4. UNIQUE SONGS WITHOUT REPETITION (Sorted by first Song ID)
+  // 4. UNIQUE SONGS
   else if (songListTab === 'unique') {
     const uniqueMap = new Map();
     allArchive.forEach(r => {
@@ -1132,7 +1183,7 @@ function renderSongListSection() {
     ` : '<p class="m">No songs cataloged yet.</p>';
   }
 
-  // 5. ALL SONGS ARCHIVE (Sorted strictly by Song ID)
+  // 5. ALL SONGS ARCHIVE
   else if (songListTab === 'all') {
     subControls = `
       <div class="row" style="margin-bottom:8px;justify-content:space-between">
