@@ -57,6 +57,9 @@ button.on,button.pri{
   box-shadow:0 3px 12px -2px rgba(15,52,96,0.35);
 }
 button.on:hover,button.pri:hover{box-shadow:0 5px 15px -2px rgba(15,52,96,0.45)}
+button.warn{
+  background:linear-gradient(135deg,#d97706,#b45309);color:#fff;border-color:transparent;
+}
 
 nav{
   display:grid;
@@ -171,7 +174,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-11 b15';
+const VER='2026-11-11 b16';
 const CFG = {
   firebase: {
     apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
@@ -336,6 +339,29 @@ window.login=async()=>{
 window.out=()=>signOut(auth);
 window.refresh=async()=>{await load();if(P&&P.status=='approved'&&P.role=='admin'){IS_ADMIN=ADM=true;}if(tab=='adm')await loadAdm();draw()};
 
+// Swipe trial live session directly from Superadmin screen
+window.swipeLiveSession = () => {
+  showConfirm("Reset and wipe today's trial live session data completely?\n\nThis will clear all registered singers, performances, and test SOTDs for today from the live screen so you can start fresh at 8:30 PM.", async () => {
+    try {
+      await setDoc(doc(fs, 'live', 'session'), {
+        date: tdy(),
+        currentRound: 1,
+        singers: [],
+        performances: [],
+        sotdList: [],
+        active: false,
+        updatedAt: Date.now()
+      });
+      try { localStorage.removeItem('sfh_live_session_' + tdy()); } catch(x){}
+      showNotice("Today's trial records have been wiped clean.", "Clean Slate");
+      await load();
+      draw();
+    } catch(err) {
+      showNotice("Error resetting session: " + (err.code || err.message));
+    }
+  }, "Swipe Today's Data");
+};
+
 // Uses window.location.href to stay inside the same window/PWA on Android mobile
 window.go=async t=>{
   if(t=='live'){
@@ -372,6 +398,7 @@ const vWait=()=>`<div class="c"><h2>${P.status=='pending'?'Waiting for approval'
 const tabs = () => {
   let list = [];
   if (IS_SUPER) {
+    // 4-column grid: Row 1 = Home, SOTD, PDF, About; Row 2 = Refresh, Admin, Live Session, Swipe (directly below About)
     list = [
       ['home', 'Home'],
       ['sotd', 'Singer of the Day'],
@@ -379,7 +406,8 @@ const tabs = () => {
       ['about', 'About'],
       ['refresh', 'Refresh'],
       ['adm', 'Admin'],
-      ['live', 'Live Session']
+      ['live', 'Live Session'],
+      ['swipe', 'Swipe']
     ];
   } else if (IS_ADMIN) {
     list = [
@@ -404,7 +432,7 @@ const tabs = () => {
     ];
   }
 
-  return `<nav>${list.map(([k, t]) => k == 'refresh' ? `<button onclick="refresh()">${t}</button>` : `<button class="${tab == k ? 'on' : ''}" onclick="go('${k}')">${t}</button>`).join('')}${CONF.zoom ? `<a class="zm" href="${e(CONF.zoom)}" target="_blank" rel="noopener">Start Zoom</a>` : ''}</nav>`;
+  return `<nav>${list.map(([k, t]) => k == 'refresh' ? `<button onclick="refresh()">${t}</button>` : (k == 'swipe' ? `<button class="warn" onclick="swipeLiveSession()">${t}</button>` : `<button class="${tab == k ? 'on' : ''}" onclick="go('${k}')">${t}</button>`)).join('')}${CONF.zoom ? `<a class="zm" href="${e(CONF.zoom)}" target="_blank" rel="noopener">Start Zoom</a>` : ''}</nav>`;
 };
 
 const nmL = l => (l||[]).map(x => '<b>' + e(x.n) + '</b>' + (x.h === 'Special' ? ' (special)' : x.h === 'Quiz' ? ' (quiz)' : '')).join(', ');
