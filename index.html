@@ -887,7 +887,7 @@ function vHome(){
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
         <div style="flex:1;min-width:0">
           <b>Your position</b>
-          ${sk?`<p class="big" style="margin:3px 0 2px 0">${e(sk)}${IS_SUPER?' <span style="font-size:12px;color:#b30000;font-weight:700">(Superadmin)</span>':(IS_ADMIN?' <span style="font-size:12px;color:var(--ac);font-weight:700">(Admin)</span>':'')}</p>
+          ${sk?`<p class="big" style="margin:3px 0 2px 0">${e(sk)}${IS_SUPER?' <span style="font-size:12px;color:#0284c7;font-weight:700">(Superadmin)</span>':(IS_ADMIN?' <span style="font-size:12px;color:var(--ac);font-weight:700">(Admin)</span>':'')}</p>
           <p style="margin:2px 0 0 0;line-height:1.35">Your stars: <b>${s?s.t:0}</b>${(s&&s.t>=4)?' <span style="color:var(--ac);font-weight:600">– eligible for the Singer of the Month round</span>':''}${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m" style="margin:3px 0 0">Your name is not linked yet. Please ask the host.</p>'}
         </div>
         <div class="ph" style="width:52px;height:52px;border-radius:50%;flex:none">
@@ -1155,7 +1155,8 @@ ${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b>
   ${ok.map(u => {
     const isSup = (CFG.superadmins || []).map(x => x.toLowerCase()).includes((u.email || '').toLowerCase());
     const roleTxt = isSup ? 'Superadmin' : (u.role == 'admin' ? 'Admin' : 'Participant');
-    const roleStyle = isSup ? 'color:#b30000;font-weight:800' : (u.role == 'admin' ? 'color:var(--ac);font-weight:700' : 'color:var(--mut)');
+    const roleStyle = isSup ? 'color:#0284c7;font-weight:800' : (u.role == 'admin' ? 'color:var(--ac);font-weight:700' : 'color:var(--mut)');
+font-weight:700' : 'color:var(--mut)');
     return `<tr>
       <td><b>${e(u.singer || '(not linked)')}</b></td>
       <td><span class="m">${e(idOf(u.email))}</span></td>
