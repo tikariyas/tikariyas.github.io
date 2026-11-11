@@ -25,11 +25,23 @@ body{
   font:15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Inter",sans-serif;
   padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);
 }
+
+/* Disciplined, Two-Row Responsive Header */
 header{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:10px 16px;border-bottom:1px solid var(--bd);background:var(--card);
+  display:flex;flex-direction:column;gap:10px;
+  padding:12px 16px;border-bottom:1px solid var(--bd);background:var(--card);
   position:sticky;top:0;z-index:40;backdrop-filter:blur(10px);box-shadow:0 1px 3px rgba(0,0,0,0.03);
 }
+.header-top{
+  display:flex;justify-content:space-between;align-items:center;width:100%;
+}
+.header-toolbar{
+  display:flex;gap:6px;align-items:center;flex-wrap:wrap;width:100%;
+}
+.header-toolbar button{
+  flex:1;min-width:76px;padding:6px 4px;font-size:12px;white-space:nowrap;
+}
+
 h1{
   font-size:18px;font-weight:800;line-height:1.2;letter-spacing:-0.3px;margin:0;color:var(--ac);
 }
@@ -37,8 +49,8 @@ h1{
   font-size:10.5px;color:var(--mut);font-weight:500;margin-top:2px;letter-spacing:0.1px;
 }
 #live-clock{
-  font-size:14px;font-weight:800;color:var(--ac);font-variant-numeric:tabular-nums;
-  background:var(--ac-light);padding:4px 10px;border-radius:8px;border:1px solid var(--bd);
+  font-size:13px;font-weight:800;color:var(--ac);font-variant-numeric:tabular-nums;
+  background:var(--ac-light);padding:4px 8px;border-radius:8px;border:1px solid var(--bd);white-space:nowrap;
 }
 h2{margin:4px 0 8px;font-size:18px;font-weight:700}
 main{padding:12px;max-width:960px;margin:auto}
@@ -61,6 +73,9 @@ button.on,button.pri{
 button.danger{
   background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;border-color:transparent;
   box-shadow:0 3px 12px -2px rgba(220,38,38,0.35);
+}
+button.warn{
+  background:linear-gradient(135deg,#d97706,#b45309);color:#fff;border-color:transparent;
 }
 input,select,textarea{
   font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--bd);
@@ -89,23 +104,35 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
 .score-star.active{opacity:1;color:#f59e0b}
 .btn-meta{padding:2px 6px;font-size:11px;border-radius:6px;background:var(--ac-light);color:var(--ac);border:1px solid var(--bd)}
 
+/* Fixed Modal Styles with Clean Vertical Inputs */
 #custom-modal{
   position:fixed;inset:0;z-index:90;background:rgba(15,23,42,0.7);backdrop-filter:blur(6px);
   display:none;align-items:center;justify-content:center;padding:16px;
 }
 #custom-modal .box{
   background:var(--card);color:var(--fg);max-width:440px;width:100%;border-radius:14px;
-  padding:20px 18px;border:1px solid var(--bd);box-shadow:var(--shadow);
+  padding:20px 18px;border:1px solid var(--bd);box-shadow:var(--shadow);max-height:90vh;overflow-y:auto;
 }
-#custom-modal .box h3{margin:0 0 10px;font-size:17px;color:var(--ac)}
+#custom-modal .box h3{margin:0 0 12px;font-size:16px;color:var(--ac)}
+.meta-field-group{
+  display:flex;flex-direction:column;gap:10px;margin:12px 0;
+}
+.meta-field-group label{
+  display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:600;color:var(--mut);
+}
+.meta-field-group input{
+  width:100%;font-size:13.5px;padding:7px 9px;
+}
 </style></head><body>
 <header>
-  <div>
-    <h1>SING FRO<span style="color:#b30000;font-weight:900">M</span> HO<span style="color:#b30000;font-weight:900">M</span>E</h1>
-    <div class="sub-fnd">Live Session Host Console</div>
+  <div class="header-top">
+    <div>
+      <h1>SING FRO<span style="color:#b30000;font-weight:900">M</span> HO<span style="color:#b30000;font-weight:900">M</span>E</h1>
+      <div class="sub-fnd">Live Session Host Console</div>
+    </div>
+    <div id="live-clock">--:--:--</div>
   </div>
-  <div id="live-clock">--:--:--</div>
-  <div id="hb"></div>
+  <div class="header-toolbar" id="hb"></div>
 </header>
 <main id="app"><p class="m">Connecting to live console…</p></main>
 
@@ -159,7 +186,7 @@ window.showConfirm = (msg, onOk, title="Confirmation") => {
 };
 window.closeModal = () => { $('#custom-modal').style.display = 'none'; };
 
-let U=null, IS_SUPER=false, IS_ADMIN=false, KNOWN_SINGERS=[], ALL_SONGS=[], MAX_ID_NUM=168;
+let U=null, IS_SUPER=false, IS_ADMIN=false, KNOWN_SINGERS=[], ALL_SONGS=[], MAX_ID_NUM=167;
 let currentRound = 1;
 let SOTD_LIST = [];
 
@@ -231,7 +258,9 @@ async function init(){
       }
     }
     ALL_SONGS.forEach(r => {
-      const num = parseInt(String(r[0]||'').replace(/\D/g,'')) || 0;
+      let num = parseInt(String(r[0]||'').replace(/\D/g,'')) || 0;
+      // Missing S-0143 adjustment: renumber any above 143 down by 1 if encountered
+      if(num > 143 && String(r[0]).includes('0144')) num = 143;
       if(num > MAX_ID_NUM) MAX_ID_NUM = num;
     });
   } catch(x) {
@@ -289,7 +318,7 @@ function checkRepeat(songTitle){
 
 window.addSinger = () => {
   if(LIVE.singers.length >= 59){
-    showNotice('Maximum capacity of 59 singers reached for today.');
+    showNotice('Session capacity reached.');
     return;
   }
   const inp = $('#in_singer');
@@ -360,15 +389,13 @@ window.onSongInput = (singerName, round) => {
   }
 
   if(repEl){
-    repEl.innerHTML = rep > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${rep})</span>` : '';
-  }
-  if(idEl){
-    idEl.innerHTML = `<b>${p.songId}</b>`;
+    repEl.innerHTML = rep > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${rep})</span>` : ''; } if(idEl){ idEl.innerHTML = `<b>${p.songId}</b>`;
   }
 
   saveLocal();
 };
 
+/* Clean vertical-stack metadata modal */
 window.openMeta = (singerName, round) => {
   const p = LIVE.performances.find(x => x.singer === singerName && x.round === round);
   if(!p || !p.song){ showNotice('Please enter the song title first.'); return; }
@@ -376,19 +403,31 @@ window.openMeta = (singerName, round) => {
 
   const m = $('#custom-modal');
   $('#custom-modal-body').innerHTML = `
-    <h3>Song Metadata: ${e(p.song)}</h3>
-    <div class="f">
-      <label class="m">Original Singer<input id="meta_orig" value="${e(meta.orig||'')}"></label>
-      <label class="m">Music Composer<input id="meta_comp" value="${e(meta.comp||'')}"></label>
-      <label class="m">Lyricist<input id="meta_lyr" value="${e(meta.lyr||'')}"></label>
-      <label class="m">Movie / Album<input id="meta_mov" value="${e(meta.mov||'')}"></label>
-      <label class="m">Release Year<input id="meta_yr" type="number" placeholder="YYYY" value="${e(meta.yr||'')}"></label>
-      <label class="m">Actor / Star<input id="meta_act" value="${e(meta.act||'')}"></label>
+    <h3>Song Details: ${e(p.song)}</h3>
+    <div class="meta-field-group">
+      <label>Original Singer
+        <input id="meta_orig" value="${e(meta.orig||'')}" placeholder="e.g. Kishore Kumar, Lata Mangeshkar">
+      </label>
+      <label>Music Composer
+        <input id="meta_comp" value="${e(meta.comp||'')}" placeholder="e.g. R. D. Burman, Shankar Jaikishan">
+      </label>
+      <label>Lyricist
+        <input id="meta_lyr" value="${e(meta.lyr||'')}" placeholder="e.g. Anand Bakshi, Majrooh Sultanpuri">
+      </label>
+      <label>Movie / Album Name
+        <input id="meta_mov" value="${e(meta.mov||'')}" placeholder="e.g. Anari, Sholay">
+      </label>
+      <label>Releasing Year
+        <input id="meta_yr" type="number" placeholder="YYYY" value="${e(meta.yr||'')}">
+      </label>
+      <label>Lead Actor / Star
+        <input id="meta_act" value="${e(meta.act||'')}" placeholder="e.g. Raj Kapoor, Amitabh Bachchan">
+      </label>
     </div>
-    <p style="text-align:right;margin-top:14px">
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
       <button onclick="closeModal()">Cancel</button>
-      <button class="pri" onclick="saveMeta('${e(singerName)}', ${round})">Save Details</button>
-    </p>
+      <button class="pri" onclick="saveMeta('${e(singerName)}',${round})">Save Details</button>
+    </div>
   `;
   m.style.display = 'flex';
 };
@@ -445,6 +484,61 @@ window.removeSOTD = (idx) => {
   SOTD_LIST.splice(idx, 1);
   saveLocal();
   draw();
+};
+
+// Generates Downloadable JSON Backup matching Admin Uploader format
+window.downloadBackupJSON = () => {
+  const performed = LIVE.performances.filter(p => p.song);
+  const outSongs = ALL_SONGS.filter(r => r[1] !== LIVE.date);
+  performed.forEach(p => {
+    outSongs.push([p.songId, LIVE.date, p.singer, p.song]);
+  });
+
+  const exportObj = {
+    kind: 'sfh-pub',
+    ts: LIVE.date + ' ' + curTime(),
+    songs: outSongs,
+    singers: KNOWN_SINGERS,
+    sotd: SOTD_LIST.length ? [{d: LIVE.date, l: SOTD_LIST.map(x=>({n:x.n, h:x.h}))}] : []
+  };
+
+  const blob = new Blob([JSON.stringify(exportObj, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `SFH_Backup_${LIVE.date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showNotice("Backup JSON downloaded! You can upload this manually under the Admin tab if needed.");
+};
+
+// Swipe / Reset Today's Data (Clears trial sessions before 8 PM)
+window.swipeTodayData = () => {
+  showConfirm("Reset and wipe today's trial session data completely?\n\nThis will clear all registered singers, performances, and test SOTDs for today so you can start fresh at 8:30 PM.", async () => {
+    LIVE.singers = [];
+    LIVE.performances = [];
+    SOTD_LIST = [];
+    currentRound = 1;
+
+    try { localStorage.removeItem('sfh_live_session_' + LIVE.date); } catch(x){}
+
+    try {
+      await setDoc(doc(fs, 'live', 'session'), {
+        date: LIVE.date,
+        currentRound: 1,
+        singers: [],
+        performances: [],
+        sotdList: [],
+        active: false,
+        updatedAt: Date.now()
+      });
+    } catch(err) {
+      console.warn("Swipe cloud update:", err);
+    }
+
+    draw();
+    showNotice("Today's trial records have been wiped clean.", "Clean Slate");
+  }, "Swipe Today's Data");
 };
 
 window.downloadLivePDF = () => {
@@ -565,24 +659,27 @@ window.endSession = async () => {
 };
 
 function draw(){
-  $('#hb').innerHTML = `<div class="row">
+  // Clean Toolbar
+  $('#hb').innerHTML = `
     <button onclick="downloadLivePDF()">Export PDF</button>
+    <button onclick="downloadBackupJSON()">Backup JSON</button>
+    <button class="warn" onclick="swipeTodayData()">Swipe / Reset</button>
     <button class="danger" onclick="endSession()">End Session</button>
     <button class="pri" onclick="location.href='index.html'">Dashboard</button>
-  </div>`;
+  `;
 
   let h = '';
 
+  // 1. Session Setup & Singer Entry
   h += `<div class="c">
     <div class="row" style="justify-content:space-between">
       <div>
         <h2>Live Session · ${fd(LIVE.date)}</h2>
-        <p class="m">Order locked on entry (8:25–8:30 PM). Maximum 59 singers. 8:45 PM is star cutoff.</p>
       </div>
-      <div><span class="badge-round">Current: Round ${currentRound}</span></div>
+      <div><span class="badge-round">Round ${currentRound}</span></div>
     </div>
     <div class="f" style="margin-top:10px">
-      <input id="in_singer" list="dl_known" placeholder="Enter Singer Name (${LIVE.singers.length}/59)" style="text-transform:uppercase">
+      <input id="in_singer" list="dl_known" placeholder="Enter Singer Name" style="text-transform:uppercase">
       <datalist id="dl_known">
         ${KNOWN_SINGERS.map(s => `<option value="${e(s)}">`).join('')}
       </datalist>
@@ -590,6 +687,7 @@ function draw(){
     </div>
   </div>`;
 
+  // 2. Multi-Round Sing Order & Performance Sheet
   h += `<div class="c">
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
       <b>Singing Order & Performance Sheet</b>
@@ -625,9 +723,9 @@ function draw(){
             <td>${isEligible ? '<span class="badge-ok">Eligible</span>' : '<span class="badge-late">Ineligible (>8:45)</span>'}</td>
             <td>
               <div style="display:flex;align-items:center;white-space:nowrap">
-                <input id="${sKey}" list="dl_allsongs" value="${e(p ? p.song : '')}" placeholder="Type song..." style="width:200px;text-transform:uppercase" oninput="onSongInput('${e(s.name)}', ${currentRound})">
+                <input id="${sKey}" list="dl_allsongs" value="${e(p ? p.song : '')}" placeholder="Type song..." style="width:200px;text-transform:uppercase" oninput="onSongInput('${e(s.name)}',${currentRound})">
                 <span id="rep_${currentRound}_${s.name.replace(/[^a-zA-Z0-9]/g, '_')}">${p && p.repeatCount > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${p.repeatCount})</span>` : ''}</span>
-                <button class="btn-meta" style="margin-left:6px" onclick="openMeta('${e(s.name)}', ${currentRound})" title="Metadata (Original singer, composer, lyricist, movie)">ℹ Info</button>
+                <button class="btn-meta" style="margin-left:6px" onclick="openMeta('${e(s.name)}',${currentRound})" title="Metadata (Original singer, composer, lyricist, movie)">ℹ Details</button>
               </div>
             </td>
             <td id="id_${currentRound}_${s.name.replace(/[^a-zA-Z0-9]/g, '_')}">
@@ -636,7 +734,7 @@ function draw(){
             <td>
               ${p && p.song ? `
                 <div class="score-box" title="1: Announced | 2: Turn ready | 3: No mic noise | 4: Good singing | 5: Better singing">
-                  ${[0,1,2,3,4].map(sIdx => `<span class="score-star ${p.stars[sIdx]?'active':''}" onclick="toggleStar(${pIdx}, ${sIdx})">★</span>`).join('')}
+                  ${[0,1,2,3,4].map(sIdx => `<span class="score-star ${p.stars[sIdx]?'active':''}" onclick="toggleStar(${pIdx},${sIdx})">★</span>`).join('')}
                 </div>
                 <span class="m" style="font-size:11px;margin-left:4px">(${p.stars.filter(Boolean).length}/5)</span>
               ` : '<span class="m">-</span>'}
@@ -654,10 +752,10 @@ function draw(){
     </datalist>
   </div>`;
 
+  // 3. Declare Singer of the Day (SOTD)
   const eligibleSingers = LIVE.singers.filter(s => s.eligible);
   h += `<div class="c">
     <b>Declare Singer(s) of the Day (SOTD)</b>
-    <p class="m">Multiple winners allowed. Evaluated by Score, Quiz, or Special Moments.</p>
     <div class="f">
       <select id="sotd_winner">
         <option value="">Choose SOTD Singer…</option>
@@ -686,6 +784,7 @@ function draw(){
     ` : '<p class="m">No SOTD declared yet for today.</p>'}
   </div>`;
 
+  // 4. Scoring Guidelines
   h += `<div class="c">
     <b>Rules & Star Scoring Reference</b>
     <div class="m" style="margin-top:6px;line-height:1.7">
