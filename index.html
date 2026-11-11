@@ -171,7 +171,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-10 b12';
+const VER='2026-11-11 b14';
 const CFG = {
   firebase: {
     apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
@@ -335,8 +335,13 @@ window.login=async()=>{
 };
 window.out=()=>signOut(auth);
 window.refresh=async()=>{await load();if(P&&P.status=='approved'&&P.role=='admin'){IS_ADMIN=ADM=true;}if(tab=='adm')await loadAdm();draw()};
+
+// Uses window.location.href to stay inside the same window/PWA on Android mobile
 window.go=async t=>{
-  if(t=='live'){window.location.href='live.html';return;}
+  if(t=='live'){
+    window.location.href = 'live.html';
+    return;
+  }
   tab=t;
   if(t=='adm')await loadAdm();
   if(t=='adm')setTimeout(()=>{seenAdm=Date.now();try{localStorage.setItem('sfh_seen_adm',String(seenAdm))}catch(x){}},500);
@@ -715,10 +720,10 @@ function vAdm(){
   return `${EDU?vEdU():''}<div class="c"><b>Publish data</b><p class="m">${PUB?'Last published: '+e(PUB.ts||''):'Nothing published yet.'} (${SONGS.length} songs)</p>
 <label class="up">⬆ Choose the file from the host app<input type="file" accept=".json,application/json" hidden onchange="pubUp(this)"></label></div>
 <div class="c"><b>Zoom link</b><input id="zl" style="width:100%" value="${e(CONF.zoom||'')}"><p style="margin-top:10px"><button onclick="saveZ()">Save link</button></p></div>
-<div class="c"><b>Festival greetings</b><select id="gf" onchange="fillFest(this.value)"><option value="">Choose a festival…</option>${FEST.map((f,i)=>`<option value="${i}">${e(f.t)}</option>`).join('')}</select><input id="gt" placeholder="Title" style="width:100%;margin-top:8px"><input id="gh" placeholder="Hindi / Marathi line (optional)" style="width:100%;margin-top:8px"><textarea id="gx" rows="3" placeholder="Message" style="width:100%;margin-top:8px"></textarea><div class="f"><label>Show from<input type="date" id="gfrom" value="${tdy()}"></label><label>Show until<input type="date" id="gto" value="${tdy()}"></label></div><p style="margin-top:10px"><button class="pri" onclick="addGreet()">Add greeting</button> <button onclick="prevGreet()">Preview</button></p>${GRT.length?GRT.slice().sort((a,b)=>a.from<b.from?1:-1).map(g=>`<p style="margin:6px 0"><b>${e(g.title)}</b> <span class="m">${fd(g.from)} – ${fd(g.to)}</span> <button onclick="delGreet('${e(g.id)}')">Delete</button></p>`).join(''):'<p class="m">No greetings added yet. The Diwali greeting for 5 to 12 Nov 2026 is built in.</p>'}</div>
+<div class="c"><b>Festival greetings</b><p class="m" style="margin:2px 0 6px">A pop-up shown once a day to everyone who opens the app between the two dates.</p><select id="gf" onchange="fillFest(this.value)"><option value="">Choose a festival…</option>${FEST.map((f,i)=>`<option value="${i}">${e(f.t)}</option>`).join('')}</select><input id="gt" placeholder="Title" style="width:100%;margin-top:8px"><input id="gh" placeholder="Hindi / Marathi line (optional)" style="width:100%;margin-top:8px"><textarea id="gx" rows="3" placeholder="Message" style="width:100%;margin-top:8px"></textarea><div class="f"><label>Show from<input type="date" id="gfrom" value="${tdy()}"></label><label>Show until<input type="date" id="gto" value="${tdy()}"></label></div><p style="margin-top:10px"><button class="pri" onclick="addGreet()">Add greeting</button> <button onclick="prevGreet()">Preview</button></p>${GRT.length?GRT.slice().sort((a,b)=>a.from<b.from?1:-1).map(g=>`<p style="margin:6px 0"><b>${e(g.title)}</b> <span class="m">${fd(g.from)} – ${fd(g.to)}</span> <button onclick="delGreet('${e(g.id)}')">Delete</button></p>`).join(''):'<p class="m">No greetings added yet. The Diwali greeting for 5 to 12 Nov 2026 is built in.</p>'}</div>
 <div class="c"><b>Songs declared by participants</b><div class="f"><input type="date" value="${PD||tdy()}" onchange="setPD(this.value)"></div>${PL.length?PL.map((p,i)=>`<p style="margin:6px 0"><b>${i+1}. ${e(p.singer)}</b> <span class="m">${fdt(p.ts)}</span><br>${(p.songs||[]).map(x=>e(x)).join(' / ')}</p>`).join(''):'<p class="m">Nothing declared for this date.</p>'}<button onclick="copyPlans()">Copy list</button></div>
 <div class="c"><b>Messages from participants (${AIN.length})</b>${AIN.slice(0,30).map(m=>`<div style="margin:8px 0;border-top:1px solid var(--bd);padding-top:8px"><b>${e(m.name||'?')}</b> <span class="m">${fdt(m.ts)}</span>${m.ts>seenAdm?' <span class="zm" style="padding:1px 6px;font-size:11px;border-radius:6px">NEW</span>':''}<div style="white-space:pre-wrap">${e(m.text)}</div><p style="margin-top:6px"><button onclick="replyTo('${e(m.uid)}')">Reply</button> <button onclick="delIn('${e(m.id)}')">Delete</button></p></div>`).join('')||'<p class="m">No messages yet.</p>'}</div>
-<div class="c"><b>Send a message</b><input id="mt" placeholder="Title" style="width:100%;margin-top:8px"><textarea id="mb" rows="4" placeholder="Message" style="width:100%;margin-top:8px"></textarea><div class="f"><select id="mto"><option value="all">All approved participants</option>${ok.map(u=>`<option value="${e(u.id)}">${e(u.singer||u.name)}</option>`).join('')}</select></div><button class="pri" onclick="sendMsg()">Send</button><p class="m">${AM.length} sent so far.</p></div>
+<div class="c"><b>Send a message</b><input id="mt" placeholder="Title" style="width:100%;margin-top:8px"><textarea id="mb" rows="4" placeholder="Message" style="width:100%;margin-top:8px"></textarea><div class="f"><select id="mto"><option value="all">All approved participants</option>${ok.map(u=>`<option value="${e(u.id)}">${e(u.singer||u.name)}</option>`).join('')}</select></div><button class="pri" onclick="sendMsg()">Send</button><p class="m">Participants can only read it. ${AM.length} sent so far.</p></div>
 ${AM.length?`<div class="c"><b>Sent messages</b>${AM.slice(0,20).map(m=>`<p style="margin:8px 0"><b>${e(m.title)}</b> <span class="m">→ ${e(m.toName||m.to)} · ${fdt(m.ts)}</span> <button onclick="delMsg('${e(m.id)}')">Delete</button></p>`).join('')}</div>`:''}
 <div class="c"><b>Waiting for approval (${pend.length})</b></div>
 ${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b><br><span class="m">${e(idOf(u.email))} · ${e(u.status||'')}</span></div></div>
