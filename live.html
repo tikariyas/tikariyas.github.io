@@ -128,6 +128,21 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
 .sotd-sug-chip:hover{
   border-color:var(--ac);background:var(--ac-light);
 }
+
+/* Off-screen rendering container for perfect HTML2Canvas export with Hindi/Marathi fonts */
+#pdf-render-slot{
+  position:absolute;left:-9999px;top:0;width:800px;background:#ffffff;color:#0f172a;padding:24px;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif;
+}
+#pdf-render-slot table{
+  width:100%;border-collapse:collapse;margin-top:12px;font-size:12px;
+}
+#pdf-render-slot th,#pdf-render-slot td{
+  border:1px solid #cbd5e1;padding:6px 8px;text-align:left;
+}
+#pdf-render-slot th{
+  background:#0f3460;color:#ffffff;font-weight:700;
+}
 </style></head><body>
 <header>
   <div class="header-top">
@@ -145,8 +160,10 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
   <div class="box" id="custom-modal-body"></div>
 </div>
 
+<div id="pdf-render-slot"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {getAuth,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
@@ -295,7 +312,7 @@ onAuthStateChanged(auth, async u => {
   }
 
   if(!IS_ADMIN){
-    $('#app').innerHTML = `<div class="c"><h2>Access Restricted</h2><p>The Live Session Console is reserved for Superadmins and Admins.</p><p><button class="pri" onclick="location.href='index.html'">Back to Main App</button></p></div>`;
+    $('#app').innerHTML = `<div class="c"><h2>Access Restricted</h2><p>The Live Session Console is reserved for Superadmins and Admins.</p><button class="pri" onclick="location.href='index.html'">Back to Main App</button></div>`;
     return;
   }
 
@@ -578,48 +595,95 @@ window.swipeTodayData = () => {
   }, "Swipe Today's Data");
 };
 
-window.downloadLivePDF = () => {
-  if(!window.jspdf){ showNotice('PDF generator loading, please wait a second.'); return; }
-  const {jsPDF} = window.jspdf;
-  const d = new jsPDF({unit:'mm',format:'a4'});
-  const a = s => String(s||'').replace(/[^\x20-\xff]/g,'?');
-
-  d.setFontSize(18);
-  d.text('SING FROM HOME - Live Session Record', 105, 14, {align:'center'});
-  d.setFontSize(10);
-  d.text('Session Date: ' + fd(LIVE.date) + ' | Generated: ' + curTime(), 105, 20, {align:'center'});
-
-  let y = 28;
-  if(SOTD_LIST.length){
-    d.setFontSize(11);
-    d.text('Singers of the Day: ' + SOTD_LIST.map(x => x.n + ' (' + x.h + (x.reason?' - '+x.reason:'') + ')').join(', '), 14, y);
-    y += 8;
+// HTML2Canvas PDF Generator: 100% accurate Marathi/Hindi matras and conjuncts
+window.downloadLivePDF = async () => {
+  if(!window.html2canvas || !window.jspdf){
+    showNotice('PDF engine loading, please wait a moment.');
+    return;
   }
 
-  const rows = LIVE.performances.filter(p => p.song).map((p, i) => {
-    const starCount = p.stars.filter(Boolean).length;
-    const metaTxt = p.meta && (p.meta.mov || p.meta.comp) ? [p.meta.mov, p.meta.comp].filter(Boolean).join(' | ') : '-';
-    return [
-      String(i + 1),
-      'Round ' + p.round,
-      p.singer,
-      p.song,
-      p.songId,
-      starCount + ' / 5',
-      p.repeatCount > 0 ? '(' + p.repeatCount + ')' : '1st Time',
-      metaTxt
-    ].map(a);
-  });
+  const renderSlot = document.getElementById('pdf-render-slot');
+  const rows = LIVE.performances.filter(p => p.song);
 
-  d.autoTable({
-    startY: y,
-    head: [['#', 'Round', 'Singer name', 'Song name', 'Song ID', 'Score', 'Repeat', 'Movie / Details']],
-    body: rows,
-    styles: {fontSize: 8, cellPadding: 1.8},
-    headStyles: {fillColor: [15, 52, 96]}
-  });
+  renderSlot.innerHTML = `
+    <div style="text-align:center;border-bottom:2px solid #0f3460;padding-bottom:12px;margin-bottom:14px">
+      <h2 style="margin:0;font-size:22px;color:#0f3460">SING FROM HOME</h2>
+      <p style="margin:4px 0;font-size:13px;color:#475569">A project of B. S. Tikariya Cultural Foundation ® (CIN: U88900MH2025NPL454435)</p>
+      <p style="margin:2px 0;font-size:12px"><b>Live Session Record · ${fd(LIVE.date)}</b> | Exported: ${curTime()}</p>
+    </div>
 
-  d.save('Live_Session_' + LIVE.date + '.pdf');
+    ${SOTD_LIST.length ? `
+      <div style="background:#e8eef7;padding:10px 12px;border-radius:8px;margin-bottom:14px;border:1px solid #cbd5e1">
+        <b style="color:#0f3460">Singers of the Day (SOTD):</b>
+        <p style="margin:4px 0 0;font-size:13px">${SOTD_LIST.map(x => `<b>${e(x.n)}</b> (${e(x.h)}${x.reason ? ' - ' + e(x.reason) : ''})`).join(' · ')}</p>
+      </div>
+    ` : ''}
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:30px;text-align:center">#</th>
+          <th style="width:55px">Round</th>
+          <th style="width:130px">Singer Name</th>
+          <th>Song Title</th>
+          <th style="width:70px">Song ID</th>
+          <th style="width:75px;text-align:center">Score</th>
+          <th style="width:65px">Repeat</th>
+          <th>Movie / Metadata</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map((p, i) => {
+          const starCount = p.stars.filter(Boolean).length;
+          const metaParts = [];
+          if(p.meta){
+            if(p.meta.mov) metaParts.push('Film: ' + p.meta.mov);
+            if(p.meta.comp) metaParts.push('Music: ' + p.meta.comp);
+            if(p.meta.orig) metaParts.push('Orig: ' + p.meta.orig);
+            if(p.meta.yr) metaParts.push('(' + p.meta.yr + ')');
+          }
+          return `
+            <tr>
+              <td style="text-align:center"><b>${i + 1}</b></td>
+              <td>Round ${p.round}</td>
+              <td><b>${e(p.singer)}</b></td>
+              <td><b>${e(p.song)}</b></td>
+              <td>${p.songId || '-'}</td>
+              <td style="text-align:center">${'★'.repeat(starCount)} (${starCount}/5)</td>
+              <td>${p.repeatCount > 0 ? `(${p.repeatCount})` : '1st Time'}</td>
+              <td style="font-size:11px;color:#475569">${metaParts.length ? e(metaParts.join(' | ')) : '-'}</td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+
+    <div style="margin-top:20px;font-size:11px;color:#64748b;display:flex;justify-content:space-between">
+      <span>Conducted by TIKARIYA'S SCHOOL OF MUSIC</span>
+      <span>Director: MANOJ TIKARIYA</span>
+    </div>
+  `;
+
+  try {
+    const canvas = await window.html2canvas(renderSlot, {
+      scale: 2,
+      useCORS: true,
+      logging: false
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+    const {jsPDF} = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = 210;
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`SFH_Live_${LIVE.date}.pdf`);
+  } catch (err) {
+    showNotice('PDF generation failed: ' + err.message);
+  } finally {
+    renderSlot.innerHTML = '';
+  }
 };
 
 window.endSession = async () => {
@@ -695,7 +759,6 @@ window.endSession = async () => {
   }, "End & Publish Session");
 };
 
-// Generates SOTD candidates ranked by total stars and average stars
 function getRankedSOTDCandidates() {
   const eligibleSingers = LIVE.singers.filter(s => s.eligible);
   return eligibleSingers.map(s => {
@@ -863,10 +926,8 @@ function draw(){
     </datalist>
   </div>`;
 
-  // 3. Declare Singer of the Day (SOTD) Section Card
   h += `<div class="c" id="sotd_section_card">${renderSOTDHTML()}</div>`;
 
-  // 4. Scoring Guidelines
   h += `<div class="c">
     <b>Rules & Star Scoring Reference</b>
     <div class="m" style="margin-top:6px;line-height:1.7">
