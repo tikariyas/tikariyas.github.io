@@ -57,9 +57,6 @@ button.on,button.pri{
   box-shadow:0 3px 12px -2px rgba(15,52,96,0.35);
 }
 button.on:hover,button.pri:hover{box-shadow:0 5px 15px -2px rgba(15,52,96,0.45)}
-button.warn{
-  background:linear-gradient(135deg,#d97706,#b45309);color:#fff;border-color:transparent;
-}
 
 nav{
   display:grid;
@@ -160,8 +157,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 #custom-modal .box h3{margin:0 0 10px;font-size:17px;color:var(--ac)}
 
 #pdf-render-slot{
-  position:absolute;left:-9999px;top:0;width:800px;background:#ffffff;color:#0f172a;padding:24px;
+  position:fixed;left:0;top:0;width:794px;background:#ffffff;color:#0f172a;padding:24px;
   font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif;
+  z-index:-9999;pointer-events:none;box-sizing:border-box;
 }
 #pdf-render-slot table{
   width:100%;border-collapse:collapse;margin-top:12px;font-size:12px;
@@ -197,7 +195,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-11 b18';
+const VER='2026-11-11 b19';
 const CFG = {
   firebase: {
     apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
@@ -456,7 +454,7 @@ const tabs = () => {
     ];
   }
 
-  return `<nav>${list.map(([k, t]) => k == 'refresh' ? `<button onclick="refresh()">${t}</button>` : (k == 'swipe' ? `<button class="warn" onclick="swipeLiveSession()">${t}</button>` : `<button class="${tab == k ? 'on' : ''}" onclick="go('${k}')">${t}</button>`)).join('')}${CONF.zoom ? `<a class="zm" href="${e(CONF.zoom)}" target="_blank" rel="noopener">Start Zoom</a>` : ''}</nav>`;
+  return `<nav>${list.map(([k, t]) => k == 'refresh' ? `<button onclick="refresh()">${t}</button>` : (k == 'swipe' ? `<button onclick="swipeLiveSession()">${t}</button>` : `<button class="${tab == k ? 'on' : ''}" onclick="go('${k}')">${t}</button>`)).join('')}${CONF.zoom ? `<a class="zm" href="${e(CONF.zoom)}" target="_blank" rel="noopener">Start Zoom</a>` : ''}</nav>`;
 };
 
 const nmL = l => (l||[]).map(x => '<b>' + e(x.n) + '</b>' + (x.h === 'Special' ? ' (special)' : x.h === 'Quiz' ? ' (quiz)' : '')).join(', ');
@@ -532,7 +530,7 @@ window.downloadSongListPDF = async () => {
   `;
 
   try {
-    const canvas = await window.html2canvas(renderSlot, { scale: 2, useCORS: true, logging: false });
+    const canvas = await window.html2canvas(renderSlot, { scale: 2, useCORS: true, logging: false, windowWidth: 1000 });
     const imgData = canvas.toDataURL('image/png');
     const {jsPDF} = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
@@ -855,27 +853,63 @@ window.saveP=async()=>{grab();try{await updateDoc(doc(fs,'users',U.uid),{phone:P
 
 const vPdf=()=>`<div class="c"><b>PDF downloads</b><p class="m">Both PDFs show your position (Singer of the Day, Singer of the Month and stars).</p>
 <p><button class="pri" onclick="pdf('all')">⬇ All songs list till now</button></p><p><button class="pri" onclick="pdf('my')">⬇ My songs till now</button></p></div>`;
-window.pdf=kind=>{
-  if(!PUB||!window.jspdf){showNotice('Data or PDF tool not ready. Check your internet and try again.');return}
-  const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'}),a=s=>String(s==null?'':s).replace(/[^\x20-\xff]/g,'?');
+
+window.pdf=async kind=>{
+  if(!PUB||!window.jspdf||!window.html2canvas){showNotice('Data or PDF tool not ready. Check your internet and try again.');return}
   const sk=(P.singer||'').toUpperCase(),s=(PUB.stars||{})[sk]||{t:0,m:{},d:[]},mo=nowM();
   const som=Object.entries(PUB.som||{}).filter(x=>x[1]==sk).map(x=>fm(x[0]));
   const rows=SONGS.filter(r=>kind=='all'||r[2]==sk).slice().sort(cmpS);
-  d.setFontSize(20);d.text('SING FROM HOME',105,14,{align:'center'});
-  d.setFontSize(9);d.text('Online Singing Session on Zoom',105,19,{align:'center'});
-  d.text("Conducted by TIKARIYA'S SCHOOL OF MUSIC - Director: Manoj Tikariya",105,23.5,{align:'center'});
-  const cc=d.splitTextToSize('Core Committee: RAJESH GARJE, SANTOSH BHAROTE, VIJAY SUTRAVE, SUREKHA TIKARIYA, MANOJ TIKARIYA, NITIN POL, SURESH GHADSING, SHILA RAITHATHA',182);
-  d.setFontSize(8);d.text(cc,105,28,{align:'center'});d.setFontSize(9);
-  const yp=28+cc.length*3.4+1.5;
-  d.text('A Project of B. S. Tikariya Cultural Foundation \xAE - CIN: U88900MH2025NPL454435',105,yp,{align:'center'});
-  d.setFontSize(13);d.text(kind=='all'?'All Songs List':'My Songs',14,yp+9);
-  d.setFontSize(9);
-  const info=[sk?'Singer: '+sk:'',sk?'Stars: '+s.t:'',sk?'Singer of the Day: '+((s.d&&s.d.length)||0)+' time(s)'+(s.d&&s.d.length?' - '+s.d.map(fd).join(', '):''):'',sk?'Singer of the Month: '+(som.length?som.join(', '):'-'):'','Total songs: '+rows.length+'   Date: '+fd(new Date().toISOString().slice(0,10))].filter(Boolean);
-  let y=yp+15;info.forEach(t=>{const ls=d.splitTextToSize(a(t),182);d.text(ls,14,y);y+=ls.length*4.5});
-  d.autoTable({startY:y+2,head:[['Order','Date','Singer name','Song name','Song ID']],body:rows.map((r,i)=>[String(i+1),fd(r[1]),r[2],r[3],r[0]].map(a)),styles:{fontSize:8,cellPadding:1.5,minCellHeight:8,valign:'middle',overflow:'ellipsize'},columnStyles:{0:{cellWidth:14,halign:'center'},1:{cellWidth:24},2:{cellWidth:48},3:{cellWidth:70},4:{cellWidth:26}},headStyles:{fillColor:[15,52,96]},didDrawPage:()=>{d.setFontSize(8);d.text('Page '+d.internal.getNumberOfPages(),105,291,{align:'center'})}});
-  const who=(P.singer||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''),base=kind=='all'?'all_songs':(who||'my_songs');
-  let cn=1;try{const m=JSON.parse(localStorage.getItem('sfh_pdfn')||'{}');cn=(m[base]||0)+1;m[base]=cn;localStorage.setItem('sfh_pdfn',JSON.stringify(m))}catch(x){cn=Math.floor(Date.now()/1000)%100000}
-  d.save(base+'_'+cn+'.pdf');
+
+  const renderSlot = document.getElementById('pdf-render-slot');
+  renderSlot.innerHTML = `
+    <div style="text-align:center;border-bottom:2px solid #0f3460;padding-bottom:10px;margin-bottom:12px">
+      <h2 style="margin:0;font-size:22px;color:#0f3460">SING FROM HOME</h2>
+      <p style="margin:3px 0;font-size:12px;color:#475569">Online Singing Session on Zoom · Conducted by TIKARIYA'S SCHOOL OF MUSIC</p>
+      <p style="margin:2px 0;font-size:11px;color:#64748b">A Project of B. S. Tikariya Cultural Foundation ® (CIN: U88900MH2025NPL454435)</p>
+      <h3 style="margin:8px 0 4px;font-size:16px">${kind=='all'?'All Songs Directory':'My Songs Record'}</h3>
+      <div style="font-size:12px;color:#334155">
+        ${sk?`<b>Singer:</b> ${e(sk)} · <b>Stars:</b> ${s.t} · <b>SOTD:</b> ${(s.d&&s.d.length)||0} time(s)`:''}
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:30px;text-align:center">#</th>
+          <th style="width:80px">Date</th>
+          <th style="width:140px">Singer name</th>
+          <th>Song name</th>
+          <th style="width:80px">Song ID</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map((r,i)=>`
+          <tr>
+            <td style="text-align:center"><b>${i+1}</b></td>
+            <td>${fd(r[1])}</td>
+            <td><b>${e(r[2])}</b></td>
+            <td>${e(r[3])}</td>
+            <td>${e(r[0])}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
+  try {
+    const canvas = await window.html2canvas(renderSlot, { scale: 2, useCORS: true, logging: false, windowWidth: 1000 });
+    const imgData = canvas.toDataURL('image/png');
+    const {jsPDF} = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = 210;
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    const who=(P.singer||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+    pdf.save((kind=='all'?'all_songs':(who||'my_songs'))+'_'+tdy()+'.pdf');
+  } catch(err) {
+    showNotice('PDF generation failed: ' + err.message);
+  } finally {
+    renderSlot.innerHTML = '';
+  }
 };
 
 const phoneDigits=id=>{const dg=(id||'').replace(/\D/g,'').slice(-10);return dg.length==10?dg:''};
