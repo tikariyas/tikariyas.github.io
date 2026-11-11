@@ -197,7 +197,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-11 b19';
+const VER='2026-11-11 b20';
 const CFG = {
   firebase: {
     apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
@@ -467,7 +467,7 @@ function draw(){
   $('#app').innerHTML=tabs()+(tab=='home'?vHome():tab=='sotd'?vSotd():tab=='prof'?vProf():tab=='pdf'?vPdf():tab=='today'?vToday():tab=='msg'?vMsg():tab=='about'?vAbout(false):vAdm());
 }
 const idOf=em=>(em||'').endsWith('@singfromhome-phone.app')?em.split('@')[0]:(em||'');
-const vLogin=()=>`<div class="c"><h2>Welcome</h2><p>Sign in to see the Singer of the Day, declare your songs, message the host and join the session.</p>
+const vLogin=()=>`<div class="c"><h2>Welcome</h2><p>Sign in to see the SOTD, declare your songs, message the host and join the session.</p>
 <label style="display:flex;gap:12px;align-items:flex-start;border:2px solid var(--ac);border-radius:10px;padding:12px;font-size:14px;cursor:pointer;background:var(--ac-light)"><input type="checkbox" id="cs" class="chk"><span>I agree that my name, email or phone number, photo, city and notes are stored online by Tikariya’s School of Music for this app, and that my songs and stars may be shown to other approved participants.</span></label>
 <p style="margin-top:14px"><button class="pri" style="width:100%;padding:12px;font-size:15px" onclick="login()">Sign in with Google</button></p>
 <p class="m" style="text-align:center;margin:10px 0">or use a phone number / email and a password</p>
@@ -852,7 +852,7 @@ function vHome(){
 
       ${ls.sotdList && ls.sotdList.length ? `
         <div style="margin:10px 0;padding:8px;background:var(--card);border-radius:8px;border:1px solid var(--bd);text-align:center">
-          <span class="m" style="font-size:11px;text-transform:uppercase;font-weight:700">Declared Singer(s) of the Day</span>
+          <span class="m" style="font-size:11px;text-transform:uppercase;font-weight:700">Declared SOTD</span>
           <p class="big" style="margin:4px 0">${ls.sotdList.map(w => `<b>${e(w.n)}</b> <span style="font-size:12px;color:var(--ac)">(${e(w.h)})</span>`).join(' · ')}</p>
         </div>
       ` : ''}
@@ -888,7 +888,7 @@ function vHome(){
         <div style="flex:1;min-width:0">
           <b>Your position</b>
           ${sk?`<p class="big" style="margin:3px 0 2px 0">${e(sk)}${IS_SUPER?' <span style="font-size:12px;color:#0284c7;font-weight:700">(Superadmin)</span>':(IS_ADMIN?' <span style="font-size:12px;color:var(--ac);font-weight:700">(Admin)</span>':'')}</p>
-          <p style="margin:2px 0 0 0;line-height:1.35">Your stars: <b>${s?s.t:0}</b>${(s&&s.t>=4)?' <span style="color:var(--ac);font-weight:600">– eligible for the Singer of the Month round</span>':''}${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m" style="margin:3px 0 0">Your name is not linked yet. Please ask the host.</p>'}
+          <p style="margin:2px 0 0 0;line-height:1.35">Your stars: <b>${s?s.t:0}</b>${(s&&s.t>=4)?' <span style="color:var(--ac);font-weight:600">– eligible for the Singer of the Month round</span>':''}${s&&s.d&&s.d.length?'<br><span class="m">SOTD: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m" style="margin:3px 0 0">Your name is not linked yet. Please ask the host.</p>'}
         </div>
         <div class="ph" style="width:52px;height:52px;border-radius:50%;flex:none">
           ${okImg(P.photo)?`<img src="${P.photo}">`:'<span class="m" style="font-size:10px;text-align:center">No photo</span>'}
@@ -898,7 +898,7 @@ function vHome(){
 
   h+=`<div class="c"><div class="row" style="justify-content:center;flex-wrap:nowrap"><button onclick="stepHD(-1)">◀</button><input type="date" value="${e(d)}" min="${e(ds[0]||'')}" max="${e(ds[ds.length-1]||'')}" onchange="setHD(this.value)"><button onclick="stepHD(1)">▶</button><button onclick="setHD('')">Latest</button></div><p class="m" style="text-align:center;margin:6px 0 0">${fd(d)}</p></div>`;
   const ls=SONGS.filter(r=>r[1]==d).slice().sort(cmpBySongId),mine=ls.filter(r=>r[2]==sk),sd=(PUB.sotd||[]).find(x=>x.d==d);
-  h+=`<div class="c"><b>Singer of the Day</b><p class="big" style="margin:6px 0">${sd?nmL(sd.l):'<span class="m" style="font-weight:normal;font-size:15px">Not declared</span>'}</p></div>`;
+  h+=`<div class="c"><b>SOTD</b><p class="big" style="margin:6px 0">${sd?nmL(sd.l):'<span class="m" style="font-weight:normal;font-size:15px">Not declared</span>'}</p></div>`;
   if(!ADM)h+=`<div class="c"><b>Your songs on this day</b>${mine.length?sTable(mine,sk):'<p class="m">No songs of yours in the published data for this day.</p>'}</div>`;
   h+=`<div class="c"><b>All songs performed</b><p class="m" style="margin:2px 0 0">${ls.length} songs, in song ID order</p>${ls.length?sTable(ls,sk):'<p class="m">No songs published for this day.</p>'}</div>`;
 
@@ -938,7 +938,7 @@ function vProf(){const p=P;return`<div class="c"><div class="row"><div class="ph
 window.pic=el=>{const f=el.files[0];if(!f)return;grab();const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const S=240,c=document.createElement('canvas');c.width=c.height=S;const m=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)*0.2,m,m,0,0,S,S);P.photo=c.toDataURL('image/jpeg',0.75);draw()};im.src=r.result};r.readAsDataURL(f)};
 window.saveP=async()=>{grab();try{await updateDoc(doc(fs,'users',U.uid),{phone:P.phone||'',city:P.city||'',note:P.note||'',photo:P.photo||'',dob:P.dob||'',updatedAt:Date.now()});await setBd(U.uid,P.singer||P.name||'',P.dob,P.bshow);showNotice('Saved');}catch(x){showNotice('Could not save ('+(x.code||'error')+')')}};
 
-const vPdf=()=>`<div class="c"><b>PDF downloads</b><p class="m">Both PDFs show your position (Singer of the Day, Singer of the Month and stars).</p>
+const vPdf=()=>`<div class="c"><b>PDF downloads</b><p class="m">Both PDFs show your position (SOTD, Singer of the Month and stars).</p>
 <p><button class="pri" onclick="pdf('all')">⬇ All songs list till now</button></p><p><button class="pri" onclick="pdf('my')">⬇ My songs till now</button></p></div>`;
 
 // Standard PDF generator sorted purely by Song ID
@@ -957,7 +957,7 @@ window.pdf=kind=>{
   d.text('A Project of B. S. Tikariya Cultural Foundation \xAE - CIN: U88900MH2025NPL454435',105,yp,{align:'center'});
   d.setFontSize(13);d.text(kind=='all'?'All Songs List (Sorted by Song ID)':'My Songs (Sorted by Song ID)',14,yp+9);
   d.setFontSize(9);
-  const info=[sk?'Singer: '+sk:'',sk?'Stars: '+s.t:'',sk?'Singer of the Day: '+((s.d&&s.d.length)||0)+' time(s)'+(s.d&&s.d.length?' - '+s.d.map(fd).join(', '):''):'',sk?'Singer of the Month: '+(som.length?som.join(', '):'-'):'','Total songs: '+rows.length+'   Date: '+fd(new Date().toISOString().slice(0,10))].filter(Boolean);
+  const info=[sk?'Singer: '+sk:'',sk?'Stars: '+s.t:'',sk?'SOTD: '+((s.d&&s.d.length)||0)+' time(s)'+(s.d&&s.d.length?' - '+s.d.map(fd).join(', '):''):'',sk?'Singer of the Month: '+(som.length?som.join(', '):'-'):'','Total songs: '+rows.length+'   Date: '+fd(new Date().toISOString().slice(0,10))].filter(Boolean);
   let y=yp+15;info.forEach(t=>{const ls=d.splitTextToSize(a(t),182);d.text(ls,14,y);y+=ls.length*4.5});
   d.autoTable({startY:y+2,head:[['Order','Song ID','Date','Singer name','Song name']],body:rows.map((r,i)=>[String(i+1),r[0],fd(r[1]),r[2],r[3]].map(a)),styles:{fontSize:8,cellPadding:1.5,minCellHeight:8,valign:'middle',overflow:'ellipsize'},columnStyles:{0:{cellWidth:14,halign:'center'},1:{cellWidth:26},2:{cellWidth:24},3:{cellWidth:48},4:{cellWidth:70}},headStyles:{fillColor:[15,52,96]},didDrawPage:()=>{d.setFontSize(8);d.text('Page '+d.internal.getNumberOfPages(),105,291,{align:'center'})}});
   const who=(P.singer||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''),base=kind=='all'?'all_songs':(who||'my_songs');
@@ -1156,7 +1156,6 @@ ${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b>
     const isSup = (CFG.superadmins || []).map(x => x.toLowerCase()).includes((u.email || '').toLowerCase());
     const roleTxt = isSup ? 'Superadmin' : (u.role == 'admin' ? 'Admin' : 'Participant');
     const roleStyle = isSup ? 'color:#0284c7;font-weight:800' : (u.role == 'admin' ? 'color:var(--ac);font-weight:700' : 'color:var(--mut)');
-font-weight:700' : 'color:var(--mut)');
     return `<tr>
       <td><b>${e(u.singer || '(not linked)')}</b></td>
       <td><span class="m">${e(idOf(u.email))}</span></td>
@@ -1215,7 +1214,7 @@ window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.on
     const by={};x.songs.forEach(sg=>{const m=String(sg[1]).slice(0,7);(by[m]=by[m]||[]).push(sg)});
     const ms=Object.keys(by).sort(),js={};let tot=0;
     ms.forEach(m=>{js[m]=JSON.stringify(by[m]);tot+=js[m].length;if(js[m].length>900000)throw 'size'});
-    showConfirm('Publish '+x.songs.length+' songs ('+Math.round(tot/1024)+' KB in '+ms.length+' month'+(ms.length>1?'s':'')+'), '+(x.sotd||[]).length+' Singer of the Day dates and '+(x.singers||[]).length+' singers to participants?', async () => {
+    showConfirm('Publish '+x.songs.length+' songs ('+Math.round(tot/1024)+' KB in '+ms.length+' month'+(ms.length>1?'s':'')+'), '+(x.sotd||[]).length+' SOTD dates and '+(x.singers||[]).length+' singers to participants?', async () => {
       const ix=await getDoc(doc(fs,'pub','idx')),old=ix.exists()?(ix.data().months||{}):{},nw={};let wr=0;
       for(const m of ms){const hh=hsh(js[m]);nw[m]={n:by[m].length,h:hh};if(!old[m]||old[m].h!==hh){await setDoc(doc(fs,'pub','songs_'+m),{json:js[m],n:by[m].length,h:hh,ts:x.ts||''});wr++}}
       await setDoc(doc(fs,'pub','data'),{singers:x.singers||[],sotd:x.sotd||[],som:x.som||{},somd:x.somd||{},stars:x.stars||{},ts:x.ts||''});
