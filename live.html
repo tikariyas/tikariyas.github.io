@@ -121,6 +121,13 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
 .meta-field-group input{
   width:100%;font-size:13.5px;padding:7px 9px;
 }
+.sotd-sug-chip{
+  padding:5px 9px;font-size:12px;background:var(--card);border:1px solid var(--bd);border-radius:8px;
+  cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .15s ease;
+}
+.sotd-sug-chip:hover{
+  border-color:var(--ac);background:var(--ac-light);
+}
 </style></head><body>
 <header>
   <div class="header-top">
@@ -351,7 +358,6 @@ window.addSinger = () => {
     eligible
   });
 
-  // Pre-initialize performance objects for rounds 1, 2, 3 so stars are never missing
   getOrCreatePerf(name, 1);
   getOrCreatePerf(name, 2);
   getOrCreatePerf(name, 3);
@@ -387,6 +393,7 @@ window.onSongInput = (singerName, round) => {
     if(repEl) repEl.innerHTML = '';
     if(idEl) idEl.innerHTML = '<span class="m">-</span>';
     saveLocal();
+    drawSOTDSection();
     return;
   }
 
@@ -405,6 +412,7 @@ window.onSongInput = (singerName, round) => {
   }
 
   saveLocal();
+  drawSOTDSection();
 };
 
 window.openMeta = (singerName, round) => {
@@ -457,7 +465,6 @@ window.saveMeta = (singerName, round) => {
   closeModal();
 };
 
-/* In-place star toggling: Updates only the clicked star DOM without resetting table scroll position */
 window.toggleStar = (singerName, round, starIdx) => {
   const p = getOrCreatePerf(singerName, round);
   p.stars[starIdx] = !p.stars[starIdx];
@@ -478,12 +485,21 @@ window.toggleStar = (singerName, round, starIdx) => {
     const starCount = p.stars.filter(Boolean).length;
     scoreText.textContent = `(${starCount}/5)`;
   }
+
+  drawSOTDSection();
 };
 
 window.setRound = (r) => {
   currentRound = r;
   saveLocal();
   draw();
+};
+
+window.selectSuggestedSOTD = (name) => {
+  const sel = $('#sotd_winner');
+  if (sel) sel.value = name;
+  const mode = $('#sotd_mode');
+  if (mode) mode.value = 'score';
 };
 
 window.addSOTD = () => {
@@ -679,6 +695,85 @@ window.endSession = async () => {
   }, "End & Publish Session");
 };
 
+// Generates SOTD candidates ranked by total stars and average stars
+function getRankedSOTDCandidates() {
+  const eligibleSingers = LIVE.singers.filter(s => s.eligible);
+  return eligibleSingers.map(s => {
+    const perfs = LIVE.performances.filter(p => p.singer === s.name && p.song);
+    const count = perfs.length;
+    const totalStars = perfs.reduce((sum, p) => sum + (p.stars || []).filter(Boolean).length, 0);
+    const avg = count > 0 ? (totalStars / count) : 0;
+    return {
+      name: s.name,
+      songsSung: count,
+      totalStars,
+      avgStars: parseFloat(avg.toFixed(1))
+    };
+  }).sort((a, b) => b.totalStars - a.totalStars || b.avgStars - a.avgStars || b.songsSung - a.songsSung);
+}
+
+function renderSOTDHTML() {
+  const ranked = getRankedSOTDCandidates();
+  const topSuggestions = ranked.filter(r => r.totalStars > 0);
+
+  return `
+    <b>Declare Singer(s) of the Day (SOTD)</b>
+
+    ${topSuggestions.length ? `
+      <div style="margin:8px 0 10px;padding:8px 10px;background:var(--ac-light);border-radius:8px;border:1px solid var(--bd)">
+        <span style="font-size:12px;font-weight:700;color:var(--ac)">⭐ Top Suggestions (Highest Score & Average):</span>
+        <div class="row" style="margin-top:6px;gap:6px">
+          ${topSuggestions.slice(0, 4).map(c => `
+            <button type="button" class="sotd-sug-chip" onclick="selectSuggestedSOTD('${e(c.name)}')">
+              <b>${e(c.name)}</b>: ${c.totalStars}★ <span class="m">(Avg: ${c.avgStars}★)</span>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    ` : ''}
+
+    <div class="f">
+      <select id="sotd_winner">
+        <option value="">Choose SOTD Singer…</option>
+        ${ranked.map(c => `<option value="${e(c.name)}">${e(c.name)}${c.totalStars > 0 ? ` — ${c.totalStars}★ (Avg: ${c.avgStars})` : ''}</option>`).join('')}
+      </select>
+      <select id="sotd_mode">
+        <option value="score">By Score</option>
+        <option value="quiz">By Quiz</option>
+        <option value="special">Special Moments (Encouragement)</option>
+      </select>
+      <input id="sotd_reason" placeholder="Optional notes / Quiz song">
+    </div>
+    <p style="margin:8px 0"><button class="pri" onclick="addSOTD()">+ Add SOTD Winner</button></p>
+
+    ${SOTD_LIST.length ? `
+      <div class="tbl" style="margin-top:8px"><table>
+        <tr><th>#</th><th>Winner Singer</th><th>Selection Mode</th><th>Notes</th><th style="text-align:center">Action</th></tr>
+        ${SOTD_LIST.map((w, wIdx) => `<tr>
+          <td>${wIdx+1}</td>
+          <td><b>${e(w.n)}</b></td>
+          <td><span class="badge-ok">${e(w.h)}</span></td>
+          <td>${e(w.reason||'-')}</td>
+          <td style="text-align:center"><button onclick="removeSOTD(${wIdx})">Remove</button></td>
+        </tr>`).join('')}
+      </table></div>
+    ` : '<p class="m">No SOTD declared yet for today.</p>'}
+  `;
+}
+
+function drawSOTDSection() {
+  const container = document.getElementById('sotd_section_card');
+  if (container) {
+    const curVal = $('#sotd_winner') ? $('#sotd_winner').value : '';
+    const curMode = $('#sotd_mode') ? $('#sotd_mode').value : 'score';
+    const curReason = $('#sotd_reason') ? $('#sotd_reason').value : '';
+    container.innerHTML = renderSOTDHTML();
+    if (curVal && $('#sotd_winner')) $('#sotd_winner').value = curVal;
+    if (curMode && $('#sotd_mode')) $('#sotd_mode').value = curMode;
+    if (curReason && $('#sotd_reason')) $('#sotd_reason').value = curReason;
+  }
+}
+
 function draw(){
   $('#hb').innerHTML = `
     <button onclick="downloadLivePDF()">Export PDF</button>
@@ -768,37 +863,10 @@ function draw(){
     </datalist>
   </div>`;
 
-  const eligibleSingers = LIVE.singers.filter(s => s.eligible);
-  h += `<div class="c">
-    <b>Declare Singer(s) of the Day (SOTD)</b>
-    <div class="f">
-      <select id="sotd_winner">
-        <option value="">Choose SOTD Singer…</option>
-        ${eligibleSingers.map(s => `<option value="${e(s.name)}">${e(s.name)}</option>`).join('')}
-      </select>
-      <select id="sotd_mode">
-        <option value="score">By Score</option>
-        <option value="quiz">By Quiz</option>
-        <option value="special">Special Moments (Encouragement)</option>
-      </select>
-      <input id="sotd_reason" placeholder="Optional notes / Quiz song">
-    </div>
-    <p style="margin:8px 0"><button class="pri" onclick="addSOTD()">+ Add SOTD Winner</button></p>
+  // 3. Declare Singer of the Day (SOTD) Section Card
+  h += `<div class="c" id="sotd_section_card">${renderSOTDHTML()}</div>`;
 
-    ${SOTD_LIST.length ? `
-      <div class="tbl" style="margin-top:8px"><table>
-        <tr><th>#</th><th>Winner Singer</th><th>Selection Mode</th><th>Notes</th><th style="text-align:center">Action</th></tr>
-        ${SOTD_LIST.map((w, wIdx) => `<tr>
-          <td>${wIdx+1}</td>
-          <td><b>${e(w.n)}</b></td>
-          <td><span class="badge-ok">${e(w.h)}</span></td>
-          <td>${e(w.reason||'-')}</td>
-          <td style="text-align:center"><button onclick="removeSOTD(${wIdx})">Remove</button></td>
-        </tr>`).join('')}
-      </table></div>
-    ` : '<p class="m">No SOTD declared yet for today.</p>'}
-  </div>`;
-
+  // 4. Scoring Guidelines
   h += `<div class="c">
     <b>Rules & Star Scoring Reference</b>
     <div class="m" style="margin-top:6px;line-height:1.7">
