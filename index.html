@@ -735,6 +735,17 @@ window.downloadSongListPDF = () => {
 };
 
 function renderBottomSongListHTML() {
+  if (!songArchivesExpanded) {
+    return `
+            <div class="c" style="margin-top:14px">
+        <div class="row" style="justify-content:flex-end">
+          <button class="pri" onclick="toggleSongArchives()">Show Archives ▼</button>
+        </div>
+      </div>
+
+    `;
+  }
+
   const allArchive = getAllArchiveSongs();
   const curMo = nowM();
   let tableHTML = '';
@@ -779,7 +790,7 @@ function renderBottomSongListHTML() {
           </tr>
         `).join('')}
       </table></div>
-    ` : '<p class="m" style="margin-top:10px">No songs recorded for today yet.</p>';
+    ` : '<p class="m">No songs recorded for today yet.</p>';
   }
 
   // 2. THIS MONTH'S SONGS (Sorted by Song ID)
@@ -804,7 +815,7 @@ function renderBottomSongListHTML() {
           </tr>
         `).join('')}
       </table></div>
-    ` : '<p class="m" style="margin-top:10px">No songs recorded for this month yet.</p>';
+    ` : '<p class="m">No songs recorded for this month yet.</p>';
   }
 
   // 3. INDIVIDUAL SINGER'S SONGS (Sorted by Song ID)
@@ -841,7 +852,7 @@ function renderBottomSongListHTML() {
           </tr>
         `).join('')}
       </table></div>
-    ` : '<p class="m" style="margin-top:10px">No songs found for this singer.</p>';
+    ` : '<p class="m">No songs found for this singer.</p>';
   }
 
   // 4. UNIQUE SONGS WITHOUT REPETITION (Sorted by lowest Song ID)
@@ -882,7 +893,7 @@ function renderBottomSongListHTML() {
           </tr>
         `).join('')}
       </table></div>
-    ` : '<p class="m" style="margin-top:10px">No songs cataloged yet.</p>';
+    ` : '<p class="m">No songs cataloged yet.</p>';
   }
 
   // 5. ALL SONGS ARCHIVE (Sorted strictly by Song ID)
@@ -890,6 +901,7 @@ function renderBottomSongListHTML() {
     subControls = `
       <div class="row" style="margin-bottom:8px;justify-content:space-between">
         <input placeholder="Search title or singer..." value="${e(searchSongKeyword)}" oninput="setSongSearchKeyword(this.value)" style="max-width:240px">
+        <button class="pri" onclick="downloadSongListPDF()">Download PDF</button>
       </div>
     `;
 
@@ -918,14 +930,16 @@ function renderBottomSongListHTML() {
           </tr>
         `).join('')}
       </table></div>
-    ` : '<p class="m" style="margin-top:10px">No matching songs found.</p>';
+    ` : '<p class="m">No matching songs found.</p>';
   }
 
   return `
-    <div class="c" style="margin-top:14px">
-      <div class="row" style="justify-content:space-between;margin-bottom:10px">
-        <b>Song Directory & Reports</b>
-        <button class="pri" onclick="downloadSongListPDF()" style="font-size:12px;padding:5px 12px">Export PDF</button>
+        <div class="c" style="margin-top:14px">
+      <div class="row" style="justify-content:flex-end">
+        <div class="row">
+          ${songListTab !== 'all' ? `<button onclick="downloadSongListPDF()" style="font-size:11.5px;padding:4px 8px">Export PDF</button>` : ''}
+          <button onclick="toggleSongArchives()" style="font-size:11.5px;padding:4px 8px">Hide ▲</button>
+        </div>
       </div>
 
       <div class="song-nav">
@@ -1013,6 +1027,8 @@ function vHome(){
   if(!ADM)h+=`<div class="c"><b>Your songs on this day</b>${mine.length?sTable(mine,sk):'<p class="m">No songs of yours in the published data for this day.</p>'}</div>`;
   h+=`<div class="c"><b>All songs performed</b><p class="m" style="margin:2px 0 0">${ls.length} songs, in song ID order</p>${ls.length?sTable(ls,sk):'<p class="m">No songs published for this day.</p>'}</div>`;
 
+  h+=renderBottomSongListHTML();
+
   return h;
 }
 
@@ -1048,7 +1064,7 @@ window.pic=el=>{const f=el.files[0];if(!f)return;grab();const r=new FileReader()
 window.saveP=async()=>{grab();try{await updateDoc(doc(fs,'users',U.uid),{phone:P.phone||'',city:P.city||'',note:P.note||'',photo:P.photo||'',dob:P.dob||'',updatedAt:Date.now()});await setBd(U.uid,P.singer||P.name||'',P.dob,P.bshow);showNotice('Saved');}catch(x){showNotice('Could not save ('+(x.code||'error')+')')}};
 
 const vPdf=()=>`<div class="c"><b>PDF downloads</b><p class="m">Both PDFs show your position (SOTD, Singer of the Month and stars).</p>
-<p><button class="pri" onclick="pdf('all')">⬇ All songs list till now</button></p><p><button class="pri" onclick="pdf('my')">⬇ My songs till now</button></p></div>` + renderBottomSongListHTML();
+<p><button class="pri" onclick="pdf('all')">⬇ All songs list till now</button></p><p><button class="pri" onclick="pdf('my')">⬇ My songs till now</button></p></div>`;
 
 // Standard PDF generator sorted purely by Song ID
 window.pdf=kind=>{
@@ -1160,7 +1176,7 @@ function vAbout(pub){
   +((F.director||F.address)?`<div class="c">${F.director?`<b>${e(F.director.role||'Director')}</b><p style="margin:4px 0 10px">${e(F.director.name)}</p>`:''}${F.address?`<b>Registered office</b><p style="margin:4px 0">${e(F.address)}</p>`:''}</div>`:'')
   +sec('Our agenda',A.agenda,A.agendaPoints)+sec('How we work',A.how,A.howPoints)+sec('Registrations',null,A.registrations)
   +((S.intro||S.schedule||(S.rules&&S.rules.length)||(S.committee&&S.committee.length))?`<div class="c"><b>SING FROM HOME</b>${PP(S.intro)}${S.schedule?'<p><b>When:</b> '+e(S.schedule)+'</p>':''}${UL(S.rules)}${(S.committee&&S.committee.length)?`<p style="font-size:12px;line-height:1.6;margin:10px 0 0"><b>Core Committee:</b> ${S.committee.map(x=>e(x)).join(' · ')}</p>`:''}</div>`:'')
-  +(SP.upi?`<div class="c"><b>Support our work (voluntary)</b>${PP(SP.intro)}<p style="margin:6px 0"><b>UPI ID:</b> ${e(SP.upi)}</p>${SP.qrImage?`<p><img src="${e(SP.qrImage)}" alt="UPI QR code" style="width:200px;max-width:100%;border:1px solid var(--bd);border-radius:10px;background:#fff"></p>`:''}<p><a class="zm" style="background:var(--ac);border-color:var(--ac);color:#ffffff;font-weight:700" href="upi://pay?pa=${encodeURIComponent(SP.upi)}&amp;pn=${encodeURIComponent(SP.payeeName||F.name)}&amp;cu=INR">Pay with a UPI app</a></p>${SP.note?'<p class="m">'+e(SP.note)+'</p>'}</div>`:'')
+  +(SP.upi?`<div class="c"><b>Support our work (voluntary)</b>${PP(SP.intro)}<p style="margin:6px 0"><b>UPI ID:</b> ${e(SP.upi)}</p>${SP.qrImage?`<p><img src="${e(SP.qrImage)}" alt="UPI QR code" style="width:200px;max-width:100%;border:1px solid var(--bd);border-radius:10px;background:#fff"></p>`:''}<p><a class="zm" style="background:var(--ac);border-color:var(--ac);color:#ffffff;font-weight:700" href="upi://pay?pa=${encodeURIComponent(SP.upi)}&amp;pn=${encodeURIComponent(SP.payeeName||F.name)}&amp;cu=INR">Pay with a UPI app</a></p>${SP.note?'<p class="m">'+e(SP.note)+'</p>':''}</div>`:'')
   +sec('Message from the Director',A.message)
   +((A.faq&&A.faq.length)?`<div class="c"><b>Questions</b>${A.faq.map(x=>`<p><b>${e(x.q)}</b><br>${e(x.a)}</p>`).join('')}</div>`:'')
   +(ct.length?`<div class="c"><b>Contact</b>${ct.map(x=>'<p style="margin:4px 0">'+x+'</p>').join('')}</div>`:'')
