@@ -83,7 +83,7 @@ input,select,textarea{
   border-radius:8px;padding:8px 10px;box-sizing:border-box;min-width:0;max-width:100%;
   transition:border-color 0.15s ease,box-shadow 0.15s ease;outline:none;
 }
-input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,96,0.18)}
+input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,96,0.18)}
 .f{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:8px 0}
 .m{color:var(--mut);font-size:13px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 
@@ -105,7 +105,16 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
 .score-box{display:inline-flex;gap:3px}
 .score-star{cursor:pointer;font-size:18px;user-select:none;opacity:0.25;transition:opacity .15s;padding:2px 1px}
 .score-star.active{opacity:1;color:#f59e0b}
-.btn-meta{padding:2px 6px;font-size:11px;border-radius:6px;background:var(--ac-light);color:var(--ac);border:1px solid var(--bd)}
+.btn-meta{
+  min-width:24px;height:26px;padding:0 6px;font-size:13px;border-radius:6px;
+  background:var(--ac-light);color:var(--ac);border:1px solid var(--bd);
+  font-family:Georgia,"Times New Roman",serif;font-style:italic;font-weight:700;
+}
+.btn-pad{
+  min-width:26px;height:26px;padding:0 5px;font-size:12px;border-radius:6px;
+  background:var(--bg);color:var(--fg);border:1px solid var(--bd);
+}
+.btn-pad.has-note{background:#fef3c7;border-color:#f59e0b;color:#92400e}
 
 .song-nav{
   display:grid;grid-template-columns:repeat(5, 1fr);gap:6px;margin:10px 0 12px;
@@ -161,7 +170,7 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {getAuth,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import {getFirestore,doc,getDoc,setDoc,collection,getDocs,addDoc} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import {getFirestore,doc,getDoc,setDoc} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const CFG = {
   firebase: {
@@ -179,7 +188,6 @@ const e = s => String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt
 const fd = k => k.slice(8)+'/'+k.slice(5,7)+'/'+k.slice(0,4);
 const tdy = () => {const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 const curTime = () => new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', hour12:true});
-const fmtDate = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 
 // Pure Numeric Song ID Comparator: S-0001 < S-0002 < S-0168
 const parseSongNum = id => {
@@ -364,7 +372,8 @@ function getOrCreatePerf(singerName, round) {
       songId: '',
       stars: [false, false, false, false, false],
       repeatCount: 0,
-      meta: {}
+      meta: {},
+      note: ''
     };
     LIVE.performances.push(p);
   }
@@ -458,7 +467,7 @@ window.openMeta = (singerName, round) => {
 
   const m = $('#custom-modal');
   $('#custom-modal-body').innerHTML = `
-    <h3>Song Details: ${e(songTitle)}</h3>
+    <h3>Movie & Song Info: ${e(songTitle)}</h3>
     <div class="meta-field-group">
       <label>Original Singer
         <input id="meta_orig" value="${e(meta.orig||'')}" placeholder="e.g. Kishore Kumar, Lata Mangeshkar">
@@ -499,6 +508,50 @@ window.saveMeta = (singerName, round) => {
   };
   saveLocal();
   closeModal();
+};
+
+// Participant Writing Pad for short live notes
+window.openPad = (singerName, round) => {
+  const p = getOrCreatePerf(singerName, round);
+  const sObj = LIVE.singers.find(x => x.name === singerName);
+  const currentNote = p.note || (sObj && sObj.note) || '';
+
+  const m = $('#custom-modal');
+  $('#custom-modal-body').innerHTML = `
+    <h3>Writing Pad · ${e(singerName)} (Round ${round})</h3>
+    <p class="m" style="margin:2px 0 8px">Short remarks, scale/sur notes, or feedback during performance:</p>
+    <textarea id="pad_note_inp" rows="5" style="width:100%;resize:vertical" placeholder="Write short notes here…">${e(currentNote)}</textarea>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+      ${currentNote ? `<button onclick="clearPad('${e(singerName)}', ${round})">Clear</button>` : '<span></span>'}
+      <div style="display:flex;gap:8px">
+        <button onclick="closeModal()">Cancel</button>
+        <button class="pri" onclick="savePad('${e(singerName)}', ${round})">Save Note</button>
+      </div>
+    </div>
+  `;
+  m.style.display = 'flex';
+  setTimeout(() => { const el = $('#pad_note_inp'); if(el) el.focus(); }, 50);
+};
+
+window.savePad = (singerName, round) => {
+  const txt = ($('#pad_note_inp').value || '').trim();
+  const p = getOrCreatePerf(singerName, round);
+  p.note = txt;
+  const sObj = LIVE.singers.find(x => x.name === singerName);
+  if (sObj) sObj.note = txt;
+  saveLocal();
+  closeModal();
+  draw();
+};
+
+window.clearPad = (singerName, round) => {
+  const p = getOrCreatePerf(singerName, round);
+  p.note = '';
+  const sObj = LIVE.singers.find(x => x.name === singerName);
+  if (sObj) sObj.note = '';
+  saveLocal();
+  closeModal();
+  draw();
 };
 
 window.toggleStar = (singerName, round, starIdx) => {
@@ -547,7 +600,7 @@ window.addSOTD = () => {
 
   SOTD_LIST.push({
     n: winner,
-    h: mode === 'special' ? 'Special' : mode === 'quiz' ? 'Quiz' : 'Score',
+    h: mode === 'honorary' ? 'Honorary' : mode === 'special' ? 'Special' : mode === 'quiz' ? 'Quiz' : 'Score',
     reason
   });
   $('#sotd_reason').value = '';
@@ -770,6 +823,7 @@ window.downloadLivePDF = () => {
       if(p.meta.orig) metaParts.push('Orig: ' + p.meta.orig);
       if(p.meta.yr) metaParts.push('(' + p.meta.yr + ')');
     }
+    if(p.note) metaParts.push('Note: ' + p.note);
     return [
       idx + 1,
       cleanStr(p.songId || '-'),
@@ -808,63 +862,6 @@ window.downloadLivePDF = () => {
   docPdf.save(`SFH_Live_${LIVE.date}.pdf`);
 };
 
-// Helper: Evaluates a Mon-Fri week, deducts 1 SOTD star for existing star-holders with <3 days, and sends personal inbox message
-async function applyWeeklyPenalty(monStr, friStr, combinedSongs, starsObj, preWeekStars) {
-  const attendanceMap = {};
-  combinedSongs.forEach(r => {
-    const sDate = r[1];
-    const sName = String(r[2] || '').trim().toUpperCase();
-    if (sDate >= monStr && sDate <= friStr && sName) {
-      if (!attendanceMap[sName]) attendanceMap[sName] = new Set();
-      attendanceMap[sName].add(sDate);
-    }
-  });
-
-  let singerToUid = {};
-  try {
-    const uSnap = await getDocs(collection(fs, 'users'));
-    uSnap.docs.forEach(d => {
-      const u = d.data();
-      if (u.status === 'approved' && u.singer) {
-        singerToUid[u.singer.trim().toUpperCase()] = d.id;
-      }
-    });
-  } catch (err) {
-    console.warn('Could not load users for penalty messages:', err);
-  }
-
-  for (const sk of Object.keys(starsObj)) {
-    const priorStars = preWeekStars[sk] || 0;
-    const currentStars = starsObj[sk].t || 0;
-
-    if (priorStars > 0 && currentStars > 0) {
-      const daysAttended = attendanceMap[sk] ? attendanceMap[sk].size : 0;
-      if (daysAttended < 3) {
-        const newStars = Math.max(0, currentStars - 1);
-        starsObj[sk].t = newStars;
-        if (Array.isArray(starsObj[sk].d) && starsObj[sk].d.length > newStars) {
-          starsObj[sk].d.shift();
-        }
-
-        const targetUid = singerToUid[sk];
-        if (targetUid) {
-          try {
-            await addDoc(collection(fs, 'msgs'), {
-              title: 'Star Update – Weekly Attendance Rule',
-              body: `Dear ${sk},\n\nAs per SING FROM HOME rules, participants must join at least 3 sessions in a week (Monday to Friday) to retain their earned SOTD stars.\n\nFor the week of ${fd(monStr)} to ${fd(friStr)}, your attendance was ${daysAttended} session(s). Consequently, 1 star has been reduced.\n\nUpdated Star Balance: ${newStars} star(s).\n\nKeep singing with us!\n– Team SING FROM HOME`,
-              to: targetUid,
-              toName: sk,
-              ts: Date.now()
-            });
-          } catch (msgErr) {
-            console.warn('Could not send penalty message to ' + sk, msgErr);
-          }
-        }
-      }
-    }
-  }
-}
-
 window.endSession = async () => {
   showConfirm("End today's live session?\n\nThis will permanently update all songs, stars, and SOTD winners, and immediately update all participants' Home screens.", async () => {
     try {
@@ -902,13 +899,6 @@ window.endSession = async () => {
       }
 
       let starsObj = pData.stars || {};
-
-      // Snapshot existing star counts before adding today's SOTD stars
-      const preWeekStars = {};
-      Object.keys(starsObj).forEach(sk => {
-        preWeekStars[sk] = starsObj[sk].t || 0;
-      });
-
       SOTD_LIST.forEach(sWinner => {
         const sk = sWinner.n.toUpperCase();
         starsObj[sk] = starsObj[sk] || {t: 0, d: [], m: {}};
@@ -917,41 +907,6 @@ window.endSession = async () => {
           starsObj[sk].t = (starsObj[sk].t || 0) + 1;
         }
       });
-
-      // --- AUTOMATED WEEKLY ATTENDANCE STAR REDUCTION (MON–FRI) ---
-      const combinedSongs = [
-        ...ALL_SONGS.filter(r => String(r[1] || '').slice(0, 7) !== mo),
-        ...mSongs
-      ];
-      const sessDateObj = new Date(LIVE.date + 'T00:00:00');
-      const dayOfWeek = sessDateObj.getDay(); // 0=Sun, 1=Mon ... 5=Fri, 6=Sat
-
-      if (dayOfWeek === 5) {
-        const monObj = new Date(sessDateObj);
-        monObj.setDate(sessDateObj.getDate() - 4);
-        const monStr = fmtDate(monObj);
-        if (pData.lastPenaltyWeek !== monStr) {
-          await applyWeeklyPenalty(monStr, LIVE.date, combinedSongs, starsObj, preWeekStars);
-          pData.lastPenaltyWeek = monStr;
-        }
-      } else {
-        const daysSinceMon = (dayOfWeek + 6) % 7;
-        const thisMon = new Date(sessDateObj);
-        thisMon.setDate(sessDateObj.getDate() - daysSinceMon);
-        const prevMon = new Date(thisMon);
-        prevMon.setDate(thisMon.getDate() - 7);
-        const prevFri = new Date(thisMon);
-        prevFri.setDate(thisMon.getDate() - 3);
-        const prevMonStr = fmtDate(prevMon);
-        const prevFriStr = fmtDate(prevFri);
-
-        const prevWeekHadSessions = combinedSongs.some(r => r[1] >= prevMonStr && r[1] <= prevFriStr);
-        if (prevWeekHadSessions && pData.lastPenaltyWeek && pData.lastPenaltyWeek < prevMonStr) {
-          await applyWeeklyPenalty(prevMonStr, prevFriStr, combinedSongs, starsObj, preWeekStars);
-          pData.lastPenaltyWeek = prevMonStr;
-        }
-      }
-      // ------------------------------------------------------------
 
       let somObj = pData.som || {};
       let somdObj = pData.somd || {};
@@ -984,7 +939,6 @@ window.endSession = async () => {
         somd: somdObj,
         somj: somjObj,
         stars: starsObj,
-        lastPenaltyWeek: pData.lastPenaltyWeek || '',
         ts: LIVE.date
       });
 
@@ -1004,25 +958,26 @@ window.endSession = async () => {
   }, "End & Publish Session");
 };
 
+// Loosened 8:45 PM restriction so any singer in today's session (including honorary/late arrivals) can be declared SOTD
 function getRankedSOTDCandidates() {
-  const eligibleSingers = LIVE.singers.filter(s => s.eligible);
-  return eligibleSingers.map(s => {
+  return LIVE.singers.map(s => {
     const perfs = LIVE.performances.filter(p => p.singer === s.name && p.song);
     const count = perfs.length;
     const totalStars = perfs.reduce((sum, p) => sum + (p.stars || []).filter(Boolean).length, 0);
     const avg = count > 0 ? (totalStars / count) : 0;
     return {
       name: s.name,
+      eligible: s.eligible,
       songsSung: count,
       totalStars,
       avgStars: parseFloat(avg.toFixed(1))
     };
-  }).sort((a, b) => b.totalStars - a.totalStars || b.avgStars - a.avgStars || b.songsSung - a.songsSung);
+  }).sort((a, b) => (b.eligible - a.eligible) || b.totalStars - a.totalStars || b.avgStars - a.avgStars || b.songsSung - a.songsSung);
 }
 
 function renderSOTDHTML() {
   const ranked = getRankedSOTDCandidates();
-  const topSuggestions = ranked.filter(r => r.totalStars > 0);
+  const topSuggestions = ranked.filter(r => r.eligible && r.totalStars > 0);
 
   return `
     <b>Declare Singer(s) of the Day (SOTD)</b>
@@ -1043,12 +998,13 @@ function renderSOTDHTML() {
     <div class="f">
       <select id="sotd_winner">
         <option value="">Choose SOTD Singer…</option>
-        ${ranked.map(c => `<option value="${e(c.name)}">${e(c.name)}${c.totalStars > 0 ? ` — ${c.totalStars}★ (Avg: ${c.avgStars})` : ''}</option>`).join('')}
+        ${ranked.map(c => `<option value="${e(c.name)}">${e(c.name)}${!c.eligible ? ' (>8:45)' : ''}${c.totalStars > 0 ? ` — ${c.totalStars}★ (Avg: ${c.avgStars})` : ''}</option>`).join('')}
       </select>
       <select id="sotd_mode">
         <option value="score">By Score</option>
         <option value="quiz">By Quiz</option>
         <option value="special">Special Moments (Encouragement)</option>
+        <option value="honorary">Honorary SOTD</option>
       </select>
       <input id="sotd_reason" placeholder="Optional notes / Quiz song">
     </div>
@@ -1487,6 +1443,7 @@ function draw(){
           const sKey = currentRound + '_' + s.name.replace(/[^a-zA-Z0-9]/g, '_');
           const isEligible = s.eligible;
           const starCount = (p.stars || []).filter(Boolean).length;
+          const hasNote = Boolean(p.note || s.note);
 
           return `<tr>
             <td class="col-ord"><b>${idx + 1}</b></td>
@@ -1495,9 +1452,10 @@ function draw(){
             <td>${isEligible ? '<span class="badge-ok">Eligible</span>' : '<span class="badge-late">Ineligible (>8:45)</span>'}</td>
             <td>
               <div style="display:flex;align-items:center;white-space:nowrap">
-                <input id="sg_${sKey}" list="dl_allsongs" value="${e(p.song || '')}" placeholder="Type song..." style="width:200px;text-transform:uppercase" oninput="onSongInput('${e(s.name)}', ${currentRound})">
+                <input id="sg_${sKey}" list="dl_allsongs" value="${e(p.song || '')}" placeholder="Type song..." style="width:190px;text-transform:uppercase" oninput="onSongInput('${e(s.name)}', ${currentRound})">
                 <span id="rep_${sKey}">${p.repeatCount > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${p.repeatCount})</span>` : ''}</span>
-                <button class="btn-meta" style="margin-left:6px" onclick="openMeta('${e(s.name)}', ${currentRound})" title="Metadata (Original singer, composer, lyricist, movie)">ℹ Details</button>
+                <button class="btn-meta" style="margin-left:5px" onclick="openMeta('${e(s.name)}', ${currentRound})" title="Movie & Song Info">i</button>
+                <button class="btn-pad ${hasNote ? 'has-note' : ''}" style="margin-left:4px" onclick="openPad('${e(s.name)}', ${currentRound})" title="${hasNote ? e(p.note || s.note) : 'Writing Pad (Short Notes)'}">📝</button>
               </div>
             </td>
             <td id="id_${sKey}">
@@ -1542,7 +1500,7 @@ function draw(){
       ⭐1: Starts when announced · ⭐2: Ready on turn · ⭐3: No mic noise · ⭐4: Good singing · ⭐5: Better singing<br>
       • <b>Attendance Rule:</b> Join at least 3 sessions in a week (Mon–Fri) to retain stars. Attending fewer drops 1 star.<br>
       • <b>4 Stars Qualifier:</b> Earning 4 stars qualifies for the Singer of the Month (SOTM) round (awarded with custom physical G-Clef memento award).<br>
-      • <b>Cutoff:</b> Singers entering after 8:45 PM can sing, but are ineligible for SOTD.
+      • <b>Cutoff:</b> Singers entering after 8:45 PM can sing (and may be chosen as Honorary SOTD).
     </div>
   </div>`;
 
