@@ -161,7 +161,7 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {getAuth,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import {getFirestore,doc,getDoc,setDoc} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import {getFirestore,doc,getDoc,setDoc,collection,getDocs,addDoc} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const CFG = {
   firebase: {
@@ -179,6 +179,7 @@ const e = s => String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt
 const fd = k => k.slice(8)+'/'+k.slice(5,7)+'/'+k.slice(0,4);
 const tdy = () => {const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 const curTime = () => new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', hour12:true});
+const fmtDate = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 
 // Pure Numeric Song ID Comparator: S-0001 < S-0002 < S-0168
 const parseSongNum = id => {
@@ -807,6 +808,63 @@ window.downloadLivePDF = () => {
   docPdf.save(`SFH_Live_${LIVE.date}.pdf`);
 };
 
+// Helper: Evaluates a Mon-Fri week, deducts 1 SOTD star for existing star-holders with <3 days, and sends personal inbox message
+async function applyWeeklyPenalty(monStr, friStr, combinedSongs, starsObj, preWeekStars) {
+  const attendanceMap = {};
+  combinedSongs.forEach(r => {
+    const sDate = r[1];
+    const sName = String(r[2] || '').trim().toUpperCase();
+    if (sDate >= monStr && sDate <= friStr && sName) {
+      if (!attendanceMap[sName]) attendanceMap[sName] = new Set();
+      attendanceMap[sName].add(sDate);
+    }
+  });
+
+  let singerToUid = {};
+  try {
+    const uSnap = await getDocs(collection(fs, 'users'));
+    uSnap.docs.forEach(d => {
+      const u = d.data();
+      if (u.status === 'approved' && u.singer) {
+        singerToUid[u.singer.trim().toUpperCase()] = d.id;
+      }
+    });
+  } catch (err) {
+    console.warn('Could not load users for penalty messages:', err);
+  }
+
+  for (const sk of Object.keys(starsObj)) {
+    const priorStars = preWeekStars[sk] || 0;
+    const currentStars = starsObj[sk].t || 0;
+
+    if (priorStars > 0 && currentStars > 0) {
+      const daysAttended = attendanceMap[sk] ? attendanceMap[sk].size : 0;
+      if (daysAttended < 3) {
+        const newStars = Math.max(0, currentStars - 1);
+        starsObj[sk].t = newStars;
+        if (Array.isArray(starsObj[sk].d) && starsObj[sk].d.length > newStars) {
+          starsObj[sk].d.shift();
+        }
+
+        const targetUid = singerToUid[sk];
+        if (targetUid) {
+          try {
+            await addDoc(collection(fs, 'msgs'), {
+              title: 'Star Update – Weekly Attendance Rule',
+              body: `Dear ${sk},\n\nAs per SING FROM HOME rules, participants must join at least 3 sessions in a week (Monday to Friday) to retain their earned SOTD stars.\n\nFor the week of ${fd(monStr)} to ${fd(friStr)}, your attendance was ${daysAttended} session(s). Consequently, 1 star has been reduced.\n\nUpdated Star Balance: ${newStars} star(s).\n\nKeep singing with us!\n– Team SING FROM HOME`,
+              to: targetUid,
+              toName: sk,
+              ts: Date.now()
+            });
+          } catch (msgErr) {
+            console.warn('Could not send penalty message to ' + sk, msgErr);
+          }
+        }
+      }
+    }
+  }
+}
+
 window.endSession = async () => {
   showConfirm("End today's live session?\n\nThis will permanently update all songs, stars, and SOTD winners, and immediately update all participants' Home screens.", async () => {
     try {
@@ -844,6 +902,13 @@ window.endSession = async () => {
       }
 
       let starsObj = pData.stars || {};
+
+      // Snapshot existing star counts before adding today's SOTD stars
+      const preWeekStars = {};
+      Object.keys(starsObj).forEach(sk => {
+        preWeekStars[sk] = starsObj[sk].t || 0;
+      });
+
       SOTD_LIST.forEach(sWinner => {
         const sk = sWinner.n.toUpperCase();
         starsObj[sk] = starsObj[sk] || {t: 0, d: [], m: {}};
@@ -852,6 +917,41 @@ window.endSession = async () => {
           starsObj[sk].t = (starsObj[sk].t || 0) + 1;
         }
       });
+
+      // --- AUTOMATED WEEKLY ATTENDANCE STAR REDUCTION (MON–FRI) ---
+      const combinedSongs = [
+        ...ALL_SONGS.filter(r => String(r[1] || '').slice(0, 7) !== mo),
+        ...mSongs
+      ];
+      const sessDateObj = new Date(LIVE.date + 'T00:00:00');
+      const dayOfWeek = sessDateObj.getDay(); // 0=Sun, 1=Mon ... 5=Fri, 6=Sat
+
+      if (dayOfWeek === 5) {
+        const monObj = new Date(sessDateObj);
+        monObj.setDate(sessDateObj.getDate() - 4);
+        const monStr = fmtDate(monObj);
+        if (pData.lastPenaltyWeek !== monStr) {
+          await applyWeeklyPenalty(monStr, LIVE.date, combinedSongs, starsObj, preWeekStars);
+          pData.lastPenaltyWeek = monStr;
+        }
+      } else {
+        const daysSinceMon = (dayOfWeek + 6) % 7;
+        const thisMon = new Date(sessDateObj);
+        thisMon.setDate(sessDateObj.getDate() - daysSinceMon);
+        const prevMon = new Date(thisMon);
+        prevMon.setDate(thisMon.getDate() - 7);
+        const prevFri = new Date(thisMon);
+        prevFri.setDate(thisMon.getDate() - 3);
+        const prevMonStr = fmtDate(prevMon);
+        const prevFriStr = fmtDate(prevFri);
+
+        const prevWeekHadSessions = combinedSongs.some(r => r[1] >= prevMonStr && r[1] <= prevFriStr);
+        if (prevWeekHadSessions && pData.lastPenaltyWeek && pData.lastPenaltyWeek < prevMonStr) {
+          await applyWeeklyPenalty(prevMonStr, prevFriStr, combinedSongs, starsObj, preWeekStars);
+          pData.lastPenaltyWeek = prevMonStr;
+        }
+      }
+      // ------------------------------------------------------------
 
       let somObj = pData.som || {};
       let somdObj = pData.somd || {};
@@ -884,6 +984,7 @@ window.endSession = async () => {
         somd: somdObj,
         somj: somjObj,
         stars: starsObj,
+        lastPenaltyWeek: pData.lastPenaltyWeek || '',
         ts: LIVE.date
       });
 
@@ -1421,6 +1522,8 @@ function draw(){
     </datalist>
   </div>`;
 
+  h += `<div class="c" id="sotd_section_card">${renderSOTDHTML()}</div>`;
+
   if (IS_SUPER) {
     h += `<div class="c" style="border-left:4px solid #f59e0b">
       <div class="row" style="justify-content:space-between">
@@ -1432,8 +1535,6 @@ function draw(){
       </div>
     </div>`;
   }
-
-  h += `<div class="c" id="sotd_section_card">${renderSOTDHTML()}</div>`;
 
   h += `<div class="c">
     <b>Rules & Star Scoring Reference</b>
