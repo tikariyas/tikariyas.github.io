@@ -253,77 +253,6 @@ let searchSongKeyword = '';
 const isSuper=(u,p)=>!!(u&&u.email&&(CFG.superadmins||[]).map(x=>x.toLowerCase()).includes(u.email.toLowerCase())&&u.emailVerified===true);
 const isAdmin=(u,p)=>isSuper(u,p)||!!(p&&p.status==='approved'&&p.role==='admin');
 
-// Ensure RAJESH WAGH Honorary SOTD (12/11/2026) is reflected in PUB
-function applyHonoraryUpdates() {
-  if (!PUB) return;
-  PUB.sotd = PUB.sotd || [];
-  let entry = PUB.sotd.find(x => x.d === '2026-11-12');
-  if (!entry) {
-    entry = { d: '2026-11-12', l: [] };
-    PUB.sotd.push(entry);
-  }
-  if (!entry.l.some(w => String(w.n || '').toUpperCase() === 'RAJESH WAGH')) {
-    entry.l.push({ n: 'RAJESH WAGH', h: 'Honorary' });
-  }
-  PUB.sotd.sort((a, b) => a.d.localeCompare(b.d));
-
-  PUB.stars = PUB.stars || {};
-  const rw = PUB.stars['RAJESH WAGH'] || { t: 0, d: [], m: {} };
-  if (!Array.isArray(rw.d)) rw.d = [];
-  if (!rw.d.includes('2026-11-12')) {
-    rw.d.push('2026-11-12');
-    rw.t = (rw.t || 0) + 1;
-  }
-  PUB.stars['RAJESH WAGH'] = rw;
-
-  PUB.singers = PUB.singers || [];
-  if (!PUB.singers.includes('RAJESH WAGH')) {
-    PUB.singers.push('RAJESH WAGH');
-    PUB.singers.sort();
-  }
-}
-
-window.syncHonoraryRajesh = async () => {
-  if (!IS_ADMIN) return;
-  try {
-    const dRef = doc(fs, 'pub', 'data');
-    const snap = await getDoc(dRef);
-    const cur = snap.exists() ? snap.data() : { singers: [], sotd: [], stars: {} };
-    let sotdArr = cur.sotd || [];
-    let dayItem = sotdArr.find(x => x.d === '2026-11-12');
-    if (!dayItem) {
-      dayItem = { d: '2026-11-12', l: [] };
-      sotdArr.push(dayItem);
-    }
-    if (!dayItem.l.some(w => String(w.n || '').toUpperCase() === 'RAJESH WAGH')) {
-      dayItem.l.push({ n: 'RAJESH WAGH', h: 'Honorary' });
-    }
-    sotdArr.sort((a, b) => a.d.localeCompare(b.d));
-
-    let starsObj = cur.stars || {};
-    const rw = starsObj['RAJESH WAGH'] || { t: 0, d: [], m: {} };
-    if (!Array.isArray(rw.d)) rw.d = [];
-    if (!rw.d.includes('2026-11-12')) {
-      rw.d.push('2026-11-12');
-      rw.t = (rw.t || 0) + 1;
-    }
-    starsObj['RAJESH WAGH'] = rw;
-
-    let singersArr = cur.singers || [];
-    if (!singersArr.includes('RAJESH WAGH')) {
-      singersArr.push('RAJESH WAGH');
-      singersArr.sort();
-    }
-
-    await setDoc(dRef, { ...cur, sotd: sotdArr, stars: starsObj, singers: singersArr, ts: '2026-11-12' });
-    await loadPub();
-    draw();
-    showNotice('RAJESH WAGH (Honorary SOTD · 12/11/2026) and his star have been saved to Firestore.');
-  } catch (err) {
-    showNotice('Sync error: ' + (err.code || err.message));
-  }
-};
-
 function clearSubs(){UNSUB.forEach(f=>{try{f();}catch(x){}});UNSUB=[];}
 
 function startListeners(){
@@ -335,13 +264,7 @@ function startListeners(){
     if(U && P?.status==='approved' && (TAB==='home' || TAB==='today')) draw();
   }));
 
-  UNSUB.push(onSnapshot(doc(fs,'pub','data'),d=>{
-    if(d.exists()){
-      Object.assign(PUB,d.data());
-      applyHonoraryUpdates();
-      if(U&&P?.status==='approved')draw();
-    }
-  }));
+  UNSUB.push(onSnapshot(doc(fs,'pub','data'),d=>{if(d.exists()){Object.assign(PUB,d.data());if(U&&P?.status==='approved')draw();}}));
 
   UNSUB.push(onSnapshot(query(collection(fs,'plans'),where('date','==',tdy())),s=>{
     PLANS=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.ts||0)-(b.ts||0));
@@ -383,11 +306,8 @@ async function loadPub(){
       const b=await getDoc(doc(fs,'pub','songs'));
       if(b.exists())PUB.songs=b.data().json?JSON.parse(b.data().json):(b.data().list||[]);
     }
-    applyHonoraryUpdates();
     localStorage.setItem('sfh_pub',JSON.stringify(PUB));
-  }catch(x){
-    applyHonoraryUpdates();
-  }
+  }catch(x){}
 }
 
 function tabs(){
@@ -1297,10 +1217,7 @@ function vAdm(){
     <p><button onclick="copyPlans()">Copy list</button> <span class="m" id="cp_st"></span></p>
   </div>
   <div class="c">
-    <b>Publish data &amp; Honorary SOTD</b>
-    <p class="row" style="margin:8px 0">
-      <button class="pri" onclick="syncHonoraryRajesh()">Save RAJESH WAGH Honorary SOTD (12/11/2026) to Cloud</button>
-    </p>
+    <b>Publish data</b>
     <p class="m">Select the exported <code>sfh_pub_YYYY-MM-DD.json</code> from your desktop app to update the song catalog, SOTD and stars.</p>
     <input type="file" accept=".json,application/json" onchange="pubFile(this.files[0])">
     <p class="m" id="pub_st"></p>
