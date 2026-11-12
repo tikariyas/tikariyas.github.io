@@ -1034,7 +1034,7 @@ function vHome(){
 
 function vSotd(){
   if(!PUB)return '<div class="c"><p class="m">No data has been published yet.</p></div>';
-  const L=PUB.sotd||[],somd=PUB.somd||{},somE=Object.entries(PUB.som||{}).sort().reverse(),lm=somE.length?somE[0][0]:'',ld=somd[lm]||'';
+  const L=PUB.sotd||[],somd={'2026-09':'2026-10-02',...(PUB.somd||{})},somj=PUB.somj||{},somE=Object.entries(PUB.som||{}).sort().reverse(),lm=somE.length?somE[0][0]:'',ld=somd[lm]||'';
   const cyc=L.filter(x=>ld?x.d>ld:(!lm||x.d.slice(0,7)>lm)).slice().reverse();
   const sk=(P.singer||'').toUpperCase();
   const stars=Object.entries(PUB.stars||{}).filter(([n,o])=>o.t>0).sort((a,b)=>b[1].t-a[1].t||a[0].localeCompare(b[0]));
@@ -1044,7 +1044,7 @@ function vSotd(){
     <p class="m" style="margin:4px 0 0;line-height:1.6">Qualify with 4 stars to enter the monthly SOTM competition. Winner receives a custom-crafted stainless steel <b>G-Clef Memento Award</b> by Tikariya’s School of Music.</p>
   </div>`;
 
-  h+=`<div class="c"><b>Singer of the Month</b>${somE.length?`<div class="tbl"><table><tr><th style="width:110px">Month</th><th>Singer of the Month</th><th>Declared date</th></tr>${somE.slice(0,6).map(([m,n])=>`<tr><td><b>${e(fm(m))}</b></td><td><b>${e(n)}</b></td><td><span class="m">${somd[m]?fd(somd[m]):'-'}</span></td></tr>`).join('')}</table></div>`:'<p class="m">Not declared yet.</p>'}</div>`;
+  h+=`<div class="c"><b>Singer of the Month</b>${somE.length?`<div class="tbl"><table><tr><th style="width:110px">Month</th><th>Singer of the Month</th><th>Declared date</th><th>Judged by</th></tr>${somE.slice(0,6).map(([m,n])=>`<tr><td><b>${e(fm(m))}</b></td><td><b>${e(n)}</b></td><td><span class="m">${somd[m]?fd(somd[m]):'-'}</span></td><td><b>${e(somj[m]||'-')}</b></td></tr>`).join('')}</table></div>`:'<p class="m">Not declared yet.</p>'}</div>`;
 
   h+=`<div class="c"><b>Singers of the Day${lm?' since the Singer of the Month '+e(fm(lm))+(ld?' ('+fd(ld)+')':''):''}</b><p class="m" style="margin:2px 0 8px">This list stays until the next Singer of the Month is declared.</p>${cyc.length?`<div class="tbl"><table><tr><th style="width:95px;min-width:95px">Date</th><th>Singer name</th></tr>${cyc.map(x=>`<tr><td style="width:95px;min-width:95px"><span class="m">${fd(x.d)}</span></td><td>${nmL(x.l)}</td></tr>`).join('')}</table></div>`:'<p class="m">None yet in this round.</p>'}</div>`;
 
