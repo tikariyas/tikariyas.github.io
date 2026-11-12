@@ -242,6 +242,7 @@ function syncToFirestore() {
         singers: LIVE.singers,
         performances: LIVE.performances,
         sotdList: SOTD_LIST,
+        sotmWinner: SOTM_WINNER,
         updatedAt: Date.now(),
         active: true
       });
@@ -252,7 +253,7 @@ function syncToFirestore() {
 }
 
 function saveLocal(){
-  try{ localStorage.setItem('sfh_live_session_'+LIVE.date, JSON.stringify({LIVE, currentRound, SOTD_LIST})); }catch(x){}
+  try{ localStorage.setItem('sfh_live_session_'+LIVE.date, JSON.stringify({LIVE, currentRound, SOTD_LIST, SOTM_WINNER})); }catch(x){}
   syncToFirestore();
 }
 
@@ -264,6 +265,7 @@ function loadLocal(){
       if(parsed.LIVE) LIVE = parsed.LIVE;
       if(parsed.currentRound) currentRound = parsed.currentRound;
       if(parsed.SOTD_LIST) SOTD_LIST = parsed.SOTD_LIST;
+      if(parsed.SOTM_WINNER) SOTM_WINNER = parsed.SOTM_WINNER;
     }
   }catch(x){}
 }
@@ -558,9 +560,9 @@ window.removeSOTD = (idx) => {
   draw();
 };
 
+// Superadmin-only Singer of the Month (SOTM) declaration modal & state
 window.openSOTMModal = () => {
   if (!IS_SUPER) return;
-  // Filter 4+ star singers who are present in today's session (or all 4+ star singers if none in queue yet)
   const fourStarAll = Object.entries(STARS_MAP).filter(([n, o]) => (o.t || 0) >= 4).map(([n]) => n);
   const inSession = LIVE.singers.map(s => s.name).filter(n => fourStarAll.includes(n));
   const candidates = inSession.length ? inSession : fourStarAll;
@@ -597,6 +599,7 @@ window.saveSOTM = () => {
   if (!name) { showNotice('Please select the Singer of the Month winner.'); return; }
   if (!judge) { showNotice('Please enter the Judge name.'); return; }
   SOTM_WINNER = { name, judge, month: LIVE.date.slice(0, 7), date: LIVE.date };
+  saveLocal();
   closeModal();
   draw();
   showNotice(`${name} marked as Singer of the Month (Judged by ${judge}). Click "End" when finished to publish.`);
@@ -604,6 +607,7 @@ window.saveSOTM = () => {
 
 window.clearSOTM = () => {
   SOTM_WINNER = null;
+  saveLocal();
   closeModal();
   draw();
 };
@@ -641,6 +645,7 @@ window.swipeTodayData = () => {
       LIVE.singers = [];
       LIVE.performances = [];
       SOTD_LIST = [];
+      SOTM_WINNER = null;
       currentRound = 1;
 
       try { localStorage.removeItem('sfh_live_session_' + LIVE.date); } catch(x){}
@@ -651,6 +656,7 @@ window.swipeTodayData = () => {
         singers: [],
         performances: [],
         sotdList: [],
+        sotmWinner: null,
         active: false,
         updatedAt: Date.now()
       });
@@ -744,6 +750,15 @@ window.downloadLivePDF = () => {
     startY += 14;
   }
 
+  if (SOTM_WINNER) {
+    docPdf.setFillColor(254, 243, 199);
+    docPdf.roundedRect(14, startY, 182, 10, 2, 2, 'F');
+    docPdf.setFontSize(8.5);
+    docPdf.setTextColor(146, 64, 14);
+    docPdf.text(`Singer of the Month (SOTM): ${cleanStr(SOTM_WINNER.name)}  |  Judged by: ${cleanStr(SOTM_WINNER.judge)}`, 17, startY + 6.5);
+    startY += 14;
+  }
+
   const rows = LIVE.performances.filter(p => p.song).slice().sort(cmpBySongId);
   const tableData = rows.map((p, idx) => {
     const starCount = (p.stars || []).filter(Boolean).length;
@@ -809,35 +824,7 @@ window.endSession = async () => {
       });
       mSongs.sort(cmpBySongId);
 
-      let somObj = pData.som || {};
-      let somdObj = pData.somd || {};
-      let somjObj = pData.somj || {};
-
-      if (SOTM_WINNER) {
-        const mKey = SOTM_WINNER.month;
-        somObj[mKey] = SOTM_WINNER.name;
-        somdObj[mKey] = SOTM_WINNER.date;
-        somjObj[mKey] = SOTM_WINNER.judge;
-
-        // Per program rules: after SOTM is chosen, 4-star singers reset to 0 while 1-3 star singers keep theirs
-        Object.keys(starsObj).forEach(sk => {
-          if ((starsObj[sk].t || 0) >= 4) {
-            starsObj[sk].t = 0;
-            starsObj[sk].d = [];
-          }
-        });
-      }
-      
       await setDoc(mDocRef, {
-        await setDoc(dataDocRef, {
-        ...pData,
-        sotd: sotdArr,
-        som: somObj,
-        somd: somdObj,
-        somj: somjObj,
-        stars: starsObj,
-        ts: LIVE.date
-      });
         json: JSON.stringify(mSongs),
         n: mSongs.length,
         ts: LIVE.date
@@ -866,6 +853,25 @@ window.endSession = async () => {
         }
       });
 
+      let somObj = pData.som || {};
+      let somdObj = pData.somd || {};
+      let somjObj = pData.somj || {};
+
+      if (SOTM_WINNER) {
+        const mKey = SOTM_WINNER.month;
+        somObj[mKey] = SOTM_WINNER.name;
+        somdObj[mKey] = SOTM_WINNER.date;
+        somjObj[mKey] = SOTM_WINNER.judge;
+
+        // Reset 4+ star finalists to 0 after SOTM is chosen; 1-3 star singers keep theirs
+        Object.keys(starsObj).forEach(sk => {
+          if ((starsObj[sk].t || 0) >= 4) {
+            starsObj[sk].t = 0;
+            starsObj[sk].d = [];
+          }
+        });
+      }
+
       LIVE.singers.forEach(s => {
         if(!pData.singers.includes(s.name)) pData.singers.push(s.name);
       });
@@ -874,6 +880,9 @@ window.endSession = async () => {
       await setDoc(dataDocRef, {
         ...pData,
         sotd: sotdArr,
+        som: somObj,
+        somd: somdObj,
+        somj: somjObj,
         stars: starsObj,
         ts: LIVE.date
       });
@@ -1423,7 +1432,7 @@ function draw(){
       </div>
     </div>`;
   }
-  
+
   h += `<div class="c" id="sotd_section_card">${renderSOTDHTML()}</div>`;
 
   h += `<div class="c">
