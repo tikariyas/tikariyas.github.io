@@ -253,7 +253,7 @@ let searchSongKeyword = '';
 const isSuper=(u,p)=>!!(u&&u.email&&(CFG.superadmins||[]).map(x=>x.toLowerCase()).includes(u.email.toLowerCase())&&u.emailVerified===true);
 const isAdmin=(u,p)=>isSuper(u,p)||!!(p&&p.status==='approved'&&p.role==='admin');
 
-// Ensure RAJENDRA WAGH Honorary SOTD (12/11/2026) is reflected in PUB
+// Ensure RAJESH WAGH Honorary SOTD (12/11/2026) is reflected in PUB
 function applyHonoraryUpdates() {
   if (!PUB) return;
   PUB.sotd = PUB.sotd || [];
@@ -262,36 +262,28 @@ function applyHonoraryUpdates() {
     entry = { d: '2026-11-12', l: [] };
     PUB.sotd.push(entry);
   }
-  entry.l = entry.l.filter(w => String(w.n || '').toUpperCase() !== 'RAJESH WAGH');
-  if (!entry.l.some(w => String(w.n || '').toUpperCase() === 'RAJENDRA WAGH')) {
-    entry.l.push({ n: 'RAJENDRA WAGH', h: 'Honorary' });
+  if (!entry.l.some(w => String(w.n || '').toUpperCase() === 'RAJESH WAGH')) {
+    entry.l.push({ n: 'RAJESH WAGH', h: 'Honorary' });
   }
   PUB.sotd.sort((a, b) => a.d.localeCompare(b.d));
 
   PUB.stars = PUB.stars || {};
-  if (PUB.stars['RAJESH WAGH'] && Array.isArray(PUB.stars['RAJESH WAGH'].d)) {
-    const idx = PUB.stars['RAJESH WAGH'].d.indexOf('2026-11-12');
-    if (idx !== -1) {
-      PUB.stars['RAJESH WAGH'].d.splice(idx, 1);
-      PUB.stars['RAJESH WAGH'].t = Math.max(0, (PUB.stars['RAJESH WAGH'].t || 0) - 1);
-    }
-  }
-  const rw = PUB.stars['RAJENDRA WAGH'] || { t: 0, d: [], m: {} };
+  const rw = PUB.stars['RAJESH WAGH'] || { t: 0, d: [], m: {} };
   if (!Array.isArray(rw.d)) rw.d = [];
   if (!rw.d.includes('2026-11-12')) {
     rw.d.push('2026-11-12');
     rw.t = (rw.t || 0) + 1;
   }
-  PUB.stars['RAJENDRA WAGH'] = rw;
+  PUB.stars['RAJESH WAGH'] = rw;
 
   PUB.singers = PUB.singers || [];
-  if (!PUB.singers.includes('RAJENDRA WAGH')) {
-    PUB.singers.push('RAJENDRA WAGH');
+  if (!PUB.singers.includes('RAJESH WAGH')) {
+    PUB.singers.push('RAJESH WAGH');
     PUB.singers.sort();
   }
 }
 
-window.syncHonoraryRajendra = async () => {
+window.syncHonoraryRajesh = async () => {
   if (!IS_ADMIN) return;
   try {
     const dRef = doc(fs, 'pub', 'data');
@@ -303,38 +295,30 @@ window.syncHonoraryRajendra = async () => {
       dayItem = { d: '2026-11-12', l: [] };
       sotdArr.push(dayItem);
     }
-    dayItem.l = dayItem.l.filter(w => String(w.n || '').toUpperCase() !== 'RAJESH WAGH');
-    if (!dayItem.l.some(w => String(w.n || '').toUpperCase() === 'RAJENDRA WAGH')) {
-      dayItem.l.push({ n: 'RAJENDRA WAGH', h: 'Honorary' });
+    if (!dayItem.l.some(w => String(w.n || '').toUpperCase() === 'RAJESH WAGH')) {
+      dayItem.l.push({ n: 'RAJESH WAGH', h: 'Honorary' });
     }
     sotdArr.sort((a, b) => a.d.localeCompare(b.d));
 
     let starsObj = cur.stars || {};
-    if (starsObj['RAJESH WAGH'] && Array.isArray(starsObj['RAJESH WAGH'].d)) {
-      const idx = starsObj['RAJESH WAGH'].d.indexOf('2026-11-12');
-      if (idx !== -1) {
-        starsObj['RAJESH WAGH'].d.splice(idx, 1);
-        starsObj['RAJESH WAGH'].t = Math.max(0, (starsObj['RAJESH WAGH'].t || 0) - 1);
-      }
-    }
-    const rw = starsObj['RAJENDRA WAGH'] || { t: 0, d: [], m: {} };
+    const rw = starsObj['RAJESH WAGH'] || { t: 0, d: [], m: {} };
     if (!Array.isArray(rw.d)) rw.d = [];
     if (!rw.d.includes('2026-11-12')) {
       rw.d.push('2026-11-12');
       rw.t = (rw.t || 0) + 1;
     }
-    starsObj['RAJENDRA WAGH'] = rw;
+    starsObj['RAJESH WAGH'] = rw;
 
     let singersArr = cur.singers || [];
-    if (!singersArr.includes('RAJENDRA WAGH')) {
-      singersArr.push('RAJENDRA WAGH');
+    if (!singersArr.includes('RAJESH WAGH')) {
+      singersArr.push('RAJESH WAGH');
       singersArr.sort();
     }
 
     await setDoc(dRef, { ...cur, sotd: sotdArr, stars: starsObj, singers: singersArr, ts: '2026-11-12' });
     await loadPub();
     draw();
-    showNotice('RAJENDRA WAGH (Honorary SOTD · 12/11/2026) and his star have been saved to Firestore.');
+    showNotice('RAJESH WAGH (Honorary SOTD · 12/11/2026) and his star have been saved to Firestore.');
   } catch (err) {
     showNotice('Sync error: ' + (err.code || err.message));
   }
@@ -1315,7 +1299,7 @@ function vAdm(){
   <div class="c">
     <b>Publish data &amp; Honorary SOTD</b>
     <p class="row" style="margin:8px 0">
-      <button class="pri" onclick="syncHonoraryRajendra()">Save RAJENDRA WAGH Honorary SOTD (12/11/2026) to Cloud</button>
+      <button class="pri" onclick="syncHonoraryRajesh()">Save RAJESH WAGH Honorary SOTD (12/11/2026) to Cloud</button>
     </p>
     <p class="m">Select the exported <code>sfh_pub_YYYY-MM-DD.json</code> from your desktop app to update the song catalog, SOTD and stars.</p>
     <input type="file" accept=".json,application/json" onchange="pubFile(this.files[0])">
