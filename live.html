@@ -216,6 +216,8 @@ window.showConfirm = (msg, onOk, title="Confirmation") => {
 window.closeModal = () => { $('#custom-modal').style.display = 'none'; };
 
 let U=null, IS_SUPER=false, IS_ADMIN=false, KNOWN_SINGERS=[], ALL_SONGS=[], MAX_ID_NUM=167;
+let STARS_MAP = {};
+let SOTM_WINNER = null;
 let currentRound = 1;
 let SOTD_LIST = [];
 let songListTab = 'today';
@@ -273,6 +275,7 @@ async function init(){
     const pubData = await getDoc(doc(fs, 'pub', 'data'));
     if(pubData.exists()){
       KNOWN_SINGERS = pubData.data().singers || [];
+      STARS_MAP = pubData.data().stars || {};
     }
   } catch(e) {
     console.warn("Singer directory fetch bypassed:", e);
@@ -555,6 +558,56 @@ window.removeSOTD = (idx) => {
   draw();
 };
 
+window.openSOTMModal = () => {
+  if (!IS_SUPER) return;
+  // Filter 4+ star singers who are present in today's session (or all 4+ star singers if none in queue yet)
+  const fourStarAll = Object.entries(STARS_MAP).filter(([n, o]) => (o.t || 0) >= 4).map(([n]) => n);
+  const inSession = LIVE.singers.map(s => s.name).filter(n => fourStarAll.includes(n));
+  const candidates = inSession.length ? inSession : fourStarAll;
+
+  const m = $('#custom-modal');
+  $('#custom-modal-body').innerHTML = `
+    <h3>Declare Singer of the Month (SOTM)</h3>
+    <p class="m" style="margin:4px 0 10px">Select the winner from 4+ star finalists and enter the Judge's name.</p>
+    <div class="meta-field-group">
+      <label>SOTM Winner (4+ Stars)
+        <select id="sotm_winner_sel">
+          <option value="">Choose Finalist…</option>
+          ${candidates.map(n => `<option value="${e(n)}" ${SOTM_WINNER && SOTM_WINNER.name === n ? 'selected' : ''}>${e(n)} (${(STARS_MAP[n] && STARS_MAP[n].t) || 4}★)</option>`).join('')}
+        </select>
+      </label>
+      <label>Judged By
+        <input id="sotm_judge_inp" value="${e(SOTM_WINNER ? SOTM_WINNER.judge : '')}" placeholder="Enter Judge Name" style="text-transform:uppercase">
+      </label>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+      ${SOTM_WINNER ? `<button onclick="clearSOTM()">Clear SOTM</button>` : '<span></span>'}
+      <div style="display:flex;gap:8px">
+        <button onclick="closeModal()">Cancel</button>
+        <button class="pri" onclick="saveSOTM()">Declare SOTM</button>
+      </div>
+    </div>
+  `;
+  m.style.display = 'flex';
+};
+
+window.saveSOTM = () => {
+  const name = ($('#sotm_winner_sel').value || '').trim().toUpperCase();
+  const judge = ($('#sotm_judge_inp').value || '').trim().toUpperCase();
+  if (!name) { showNotice('Please select the Singer of the Month winner.'); return; }
+  if (!judge) { showNotice('Please enter the Judge name.'); return; }
+  SOTM_WINNER = { name, judge, month: LIVE.date.slice(0, 7), date: LIVE.date };
+  closeModal();
+  draw();
+  showNotice(`${name} marked as Singer of the Month (Judged by ${judge}). Click "End" when finished to publish.`);
+};
+
+window.clearSOTM = () => {
+  SOTM_WINNER = null;
+  closeModal();
+  draw();
+};
+
 window.downloadBackupJSON = () => {
   const performed = LIVE.performances.filter(p => p.song);
   const outSongs = ALL_SONGS.filter(r => r[1] !== LIVE.date);
@@ -756,7 +809,35 @@ window.endSession = async () => {
       });
       mSongs.sort(cmpBySongId);
 
+      let somObj = pData.som || {};
+      let somdObj = pData.somd || {};
+      let somjObj = pData.somj || {};
+
+      if (SOTM_WINNER) {
+        const mKey = SOTM_WINNER.month;
+        somObj[mKey] = SOTM_WINNER.name;
+        somdObj[mKey] = SOTM_WINNER.date;
+        somjObj[mKey] = SOTM_WINNER.judge;
+
+        // Per program rules: after SOTM is chosen, 4-star singers reset to 0 while 1-3 star singers keep theirs
+        Object.keys(starsObj).forEach(sk => {
+          if ((starsObj[sk].t || 0) >= 4) {
+            starsObj[sk].t = 0;
+            starsObj[sk].d = [];
+          }
+        });
+      }
+      
       await setDoc(mDocRef, {
+        await setDoc(dataDocRef, {
+        ...pData,
+        sotd: sotdArr,
+        som: somObj,
+        somd: somdObj,
+        somj: somjObj,
+        stars: starsObj,
+        ts: LIVE.date
+      });
         json: JSON.stringify(mSongs),
         n: mSongs.length,
         ts: LIVE.date
@@ -1331,6 +1412,18 @@ function draw(){
     </datalist>
   </div>`;
 
+  if (IS_SUPER) {
+    h += `<div class="c" style="border-left:4px solid #f59e0b">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <b>Singer of the Month (SOTM)</b>
+          <p class="m" style="margin:2px 0 0">${SOTM_WINNER ? `Winner: <b>${e(SOTM_WINNER.name)}</b> · Judged by: <b>${e(SOTM_WINNER.judge)}</b>` : 'Superadmin control for 4+ star monthly finals.'}</p>
+        </div>
+        <button class="pri" onclick="openSOTMModal()">Declare Singer of the Month</button>
+      </div>
+    </div>`;
+  }
+  
   h += `<div class="c" id="sotd_section_card">${renderSOTDHTML()}</div>`;
 
   h += `<div class="c">
