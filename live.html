@@ -83,7 +83,7 @@ input,select,textarea{
   border-radius:8px;padding:8px 10px;box-sizing:border-box;min-width:0;max-width:100%;
   transition:border-color 0.15s ease,box-shadow 0.15s ease;outline:none;
 }
-input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,96,0.18)}
+input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,96,0.18)}
 .f{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:8px 0}
 .m{color:var(--mut);font-size:13px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 
@@ -105,18 +105,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 .score-box{display:inline-flex;gap:3px}
 .score-star{cursor:pointer;font-size:18px;user-select:none;opacity:0.25;transition:opacity .15s;padding:2px 1px}
 .score-star.active{opacity:1;color:#f59e0b}
-.btn-meta{
-  width:26px;height:26px;padding:0;font-size:14px;border-radius:50%;
-  background:var(--ac-light);color:var(--ac);border:1px solid var(--bd);
-  font-family:Georgia,"Times New Roman",serif;font-style:italic;font-weight:700;
-}
-.btn-note{
-  width:26px;height:26px;padding:0;font-size:12px;border-radius:6px;
-  background:var(--ac-light);color:var(--ac);border:1px solid var(--bd);
-}
-.btn-note.has-note{
-  background:#fef3c7;color:#92400e;border-color:#f59e0b;
-}
+.btn-meta{padding:2px 6px;font-size:11px;border-radius:6px;background:var(--ac-light);color:var(--ac);border:1px solid var(--bd)}
 
 .song-nav{
   display:grid;grid-template-columns:repeat(5, 1fr);gap:6px;margin:10px 0 12px;
@@ -400,8 +389,7 @@ window.addSinger = () => {
   LIVE.singers.push({
     name,
     joinTime: curTime(),
-    eligible,
-    notes: ''
+    eligible
   });
 
   getOrCreatePerf(name, 1);
@@ -511,47 +499,6 @@ window.saveMeta = (singerName, round) => {
   };
   saveLocal();
   closeModal();
-};
-
-// Participant Writing Pad for Short Notes
-window.openSingerNote = (singerName) => {
-  const sObj = LIVE.singers.find(s => s.name === singerName);
-  const currentNote = sObj ? (sObj.notes || '') : '';
-  const m = $('#custom-modal');
-  $('#custom-modal-body').innerHTML = `
-    <h3>Writing Pad · ${e(singerName)}</h3>
-    <p class="m" style="margin:2px 0 8px">Short performance notes, scale/sur remarks, or feedback:</p>
-    <textarea id="singer_note_inp" rows="5" placeholder="Write notes for ${e(singerName)}..." style="width:100%;resize:vertical">${e(currentNote)}</textarea>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
-      ${currentNote ? `<button onclick="clearSingerNote('${e(singerName)}')">Clear</button>` : '<span></span>'}
-      <div style="display:flex;gap:8px">
-        <button onclick="closeModal()">Cancel</button>
-        <button class="pri" onclick="saveSingerNote('${e(singerName)}')">Save Note</button>
-      </div>
-    </div>
-  `;
-  m.style.display = 'flex';
-  setTimeout(() => { const el = $('#singer_note_inp'); if (el) el.focus(); }, 40);
-};
-
-window.saveSingerNote = (singerName) => {
-  const sObj = LIVE.singers.find(s => s.name === singerName);
-  if (sObj) {
-    sObj.notes = ($('#singer_note_inp').value || '').trim();
-    saveLocal();
-  }
-  closeModal();
-  draw();
-};
-
-window.clearSingerNote = (singerName) => {
-  const sObj = LIVE.singers.find(s => s.name === singerName);
-  if (sObj) {
-    sObj.notes = '';
-    saveLocal();
-  }
-  closeModal();
-  draw();
 };
 
 window.toggleStar = (singerName, round, starIdx) => {
@@ -1058,15 +1005,14 @@ window.endSession = async () => {
 };
 
 function getRankedSOTDCandidates() {
-  // Loosened rule: include all singers in today's session (not restricted by 8:45 cutoff)
-  return LIVE.singers.map(s => {
+  const eligibleSingers = LIVE.singers.filter(s => s.eligible);
+  return eligibleSingers.map(s => {
     const perfs = LIVE.performances.filter(p => p.singer === s.name && p.song);
     const count = perfs.length;
     const totalStars = perfs.reduce((sum, p) => sum + (p.stars || []).filter(Boolean).length, 0);
     const avg = count > 0 ? (totalStars / count) : 0;
     return {
       name: s.name,
-      eligible: s.eligible,
       songsSung: count,
       totalStars,
       avgStars: parseFloat(avg.toFixed(1))
@@ -1097,7 +1043,7 @@ function renderSOTDHTML() {
     <div class="f">
       <select id="sotd_winner">
         <option value="">Choose SOTD Singer…</option>
-        ${ranked.map(c => `<option value="${e(c.name)}">${e(c.name)}${!c.eligible ? ' (After 8:45)' : ''}${c.totalStars > 0 ? ` — ${c.totalStars}★ (Avg: ${c.avgStars})` : ''}</option>`).join('')}
+        ${ranked.map(c => `<option value="${e(c.name)}">${e(c.name)}${c.totalStars > 0 ? ` — ${c.totalStars}★ (Avg: ${c.avgStars})` : ''}</option>`).join('')}
       </select>
       <select id="sotd_mode">
         <option value="score">By Score</option>
@@ -1265,4 +1211,344 @@ window.downloadSongListPDF = () => {
   }
 
   docPdf.autoTable({
-    startY: 34
+    startY: 34,
+    head: headCols,
+    body: tableRows,
+    styles: {fontSize: 8, cellPadding: 2, valign: 'middle'},
+    headStyles: {fillColor: [15, 52, 96], textColor: [255, 255, 255], fontStyle: 'bold'},
+    didDrawPage: data => {
+      docPdf.setFontSize(8);
+      docPdf.setTextColor(100, 116, 139);
+      docPdf.text(`Page ${docPdf.internal.getNumberOfPages()}`, 105, 290, {align: 'center'});
+    }
+  });
+
+  docPdf.save(`SFH_${songListTab.toUpperCase()}_Songs_${LIVE.date}.pdf`);
+};
+
+function renderSongListSection() {
+  const container = document.getElementById('song_archives_card');
+  if(!container) return;
+
+  if(!songArchivesExpanded) {
+    container.innerHTML = `
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <b>Song Archives & Performance Lists</b>
+          <p class="m" style="margin:2px 0 0">Cataloged strictly by Song ID.</p>
+        </div>
+        <button class="pri" onclick="toggleSongArchives()">Show Archives ▼</button>
+      </div>
+    `;
+    return;
+  }
+
+  const allArchive = getAllArchiveSongs();
+  const curMo = LIVE.date.slice(0, 7);
+  let tableHTML = '';
+  let subControls = '';
+
+  // 1. TODAY'S SONGS
+  if (songListTab === 'today') {
+    const todayRows = LIVE.performances.filter(p => p.song).slice().sort(cmpBySongId);
+    tableHTML = todayRows.length ? `
+      <div class="tbl" id="song_list_table_wrap"><table>
+        <tr>
+          <th class="col-ord">#</th>
+          <th>Song ID</th>
+          <th>Round</th>
+          <th>Singer Name</th>
+          <th>Song Title</th>
+        </tr>
+        ${todayRows.map((p, i) => `
+          <tr>
+            <td class="col-ord"><b>${i + 1}</b></td>
+            <td><b>${p.songId || '-'}</b></td>
+            <td>Round ${p.round}</td>
+            <td><b>${e(p.singer)}</b></td>
+            <td><b>${e(p.song)}</b></td>
+          </tr>
+        `).join('')}
+      </table></div>
+    ` : '<p class="m">No songs entered for today yet.</p>';
+  }
+
+  // 2. THIS MONTH'S SONGS
+  else if (songListTab === 'month') {
+    const monthRows = allArchive.filter(r => String(r[1]||'').slice(0, 7) === curMo).slice().sort(cmpBySongId);
+    tableHTML = monthRows.length ? `
+      <div class="tbl" id="song_list_table_wrap"><table>
+        <tr>
+          <th class="col-ord">#</th>
+          <th>Song ID</th>
+          <th>Date</th>
+          <th>Singer Name</th>
+          <th>Song Title</th>
+        </tr>
+        ${monthRows.map((r, i) => `
+          <tr>
+            <td class="col-ord"><b>${i + 1}</b></td>
+            <td><b>${e(r[0])}</b></td>
+            <td><span class="m">${fd(r[1])}</span></td>
+            <td><b>${e(r[2])}</b></td>
+            <td><b>${e(r[3])}</b></td>
+          </tr>
+        `).join('')}
+      </table></div>
+    ` : '<p class="m">No songs recorded for this month yet.</p>';
+  }
+
+  // 3. INDIVIDUAL SINGER'S SONGS
+  else if (songListTab === 'singer') {
+    const allSingers = [...new Set(allArchive.map(r => r[2]))].filter(Boolean).sort();
+    if(!selectedSingerFilter && allSingers.length) selectedSingerFilter = allSingers[0];
+
+    subControls = `
+      <div class="row" style="margin-bottom:8px">
+        <select onchange="setSongSingerFilter(this.value)" style="min-width:200px">
+          ${allSingers.map(s => `<option value="${e(s)}" ${s===selectedSingerFilter?'selected':''}>${e(s)}</option>`).join('')}
+        </select>
+        <span class="m">Total performed: <b>${allArchive.filter(r => r[2] === selectedSingerFilter).length}</b></span>
+      </div>
+    `;
+
+    const singerRows = allArchive.filter(r => r[2] === selectedSingerFilter).slice().sort(cmpBySongId);
+    tableHTML = singerRows.length ? `
+      <div class="tbl" id="song_list_table_wrap"><table>
+        <tr>
+          <th class="col-ord">#</th>
+          <th>Song ID</th>
+          <th>Date</th>
+          <th>Song Title</th>
+        </tr>
+        ${singerRows.map((r, i) => `
+          <tr>
+            <td class="col-ord"><b>${i + 1}</b></td>
+            <td><b>${e(r[0])}</b></td>
+            <td><span class="m">${fd(r[1])}</span></td>
+            <td><b>${e(r[3])}</b></td>
+          </tr>
+        `).join('')}
+      </table></div>
+    ` : '<p class="m">No songs found for this singer.</p>';
+  }
+
+  // 4. UNIQUE SONGS
+  else if (songListTab === 'unique') {
+    const uniqueMap = new Map();
+    allArchive.forEach(r => {
+      const title = (r[3] || '').trim().toUpperCase();
+      if(!title) return;
+      if(!uniqueMap.has(title)) {
+        uniqueMap.set(title, { title: r[3], count: 0, firstId: r[0], singers: [] });
+      }
+      const item = uniqueMap.get(title);
+      item.count++;
+      item.singers.push({ singer: r[2], id: r[0], date: r[1] });
+    });
+
+    const uniqueList = Array.from(uniqueMap.values()).sort((a,b) => parseSongNum(a.firstId) - parseSongNum(b.firstId));
+
+    tableHTML = uniqueList.length ? `
+      <p class="m" style="margin:2px 0 6px">Showing <b>${uniqueList.length}</b> distinct songs (sorted by Song ID).</p>
+      <div class="tbl" id="song_list_table_wrap"><table>
+        <tr>
+          <th class="col-ord">#</th>
+          <th>Song ID</th>
+          <th>Song Title (No Repetition)</th>
+          <th style="width:65px;text-align:center">Sung</th>
+          <th>Performers with Song ID</th>
+        </tr>
+        ${uniqueList.map((u, i) => `
+          <tr>
+            <td class="col-ord"><b>${i + 1}</b></td>
+            <td><b>${e(u.firstId)}</b></td>
+            <td><b>${e(u.title)}</b></td>
+            <td style="text-align:center"><b>${u.count}x</b></td>
+            <td style="font-size:12px">
+              ${u.singers.map(s => `<span><b>${e(s.singer)}</b> (${e(s.id)})</span>`).join(', ')}
+            </td>
+          </tr>
+        `).join('')}
+      </table></div>
+    ` : '<p class="m">No songs cataloged yet.</p>';
+  }
+
+  // 5. ALL SONGS ARCHIVE
+  else if (songListTab === 'all') {
+    subControls = `
+      <div class="row" style="margin-bottom:8px;justify-content:space-between">
+        <input placeholder="Search title or singer..." value="${e(searchSongKeyword)}" oninput="setSongSearchKeyword(this.value)" style="max-width:240px">
+        <button class="pri" onclick="downloadSongListPDF()">Download PDF</button>
+      </div>
+    `;
+
+    let filtered = allArchive.slice().sort(cmpBySongId);
+    if(searchSongKeyword){
+      filtered = filtered.filter(r => String(r[3]||'').toUpperCase().includes(searchSongKeyword) || String(r[2]||'').toUpperCase().includes(searchSongKeyword) || String(r[0]||'').toUpperCase().includes(searchSongKeyword));
+    }
+
+    tableHTML = filtered.length ? `
+      <p class="m" style="margin:2px 0 6px">Showing <b>${filtered.length}</b> songs sorted by Song ID.</p>
+      <div class="tbl" id="song_list_table_wrap"><table>
+        <tr>
+          <th class="col-ord">#</th>
+          <th>Song ID</th>
+          <th>Date</th>
+          <th>Singer Name</th>
+          <th>Song Title</th>
+        </tr>
+        ${filtered.map((r, i) => `
+          <tr>
+            <td class="col-ord"><b>${i + 1}</b></td>
+            <td><b>${e(r[0])}</b></td>
+            <td><span class="m">${fd(r[1])}</span></td>
+            <td><b>${e(r[2])}</b></td>
+            <td><b>${e(r[3])}</b></td>
+          </tr>
+        `).join('')}
+      </table></div>
+    ` : '<p class="m">No matching songs found.</p>';
+  }
+
+  container.innerHTML = `
+    <div class="row" style="justify-content:space-between">
+      <b>Song Archives & Performance Lists</b>
+      <div class="row">
+        ${songListTab !== 'all' ? `<button onclick="downloadSongListPDF()" style="font-size:11.5px;padding:4px 8px">Export PDF</button>` : ''}
+        <button onclick="toggleSongArchives()" style="font-size:11.5px;padding:4px 8px">Hide ▲</button>
+      </div>
+    </div>
+
+    <div class="song-nav">
+      <button class="${songListTab==='today'?'on':''}" onclick="setSongTab('today')">Today</button>
+      <button class="${songListTab==='month'?'on':''}" onclick="setSongTab('month')">Month</button>
+      <button class="${songListTab==='singer'?'on':''}" onclick="setSongTab('singer')">Singer</button>
+      <button class="${songListTab==='unique'?'on':''}" onclick="setSongTab('unique')">Unique</button>
+      <button class="${songListTab==='all'?'on':''}" onclick="setSongTab('all')">All</button>
+    </div>
+
+    ${subControls}
+    ${tableHTML}
+  `;
+}
+
+function draw(){
+  $('#hb').innerHTML = `
+    <button onclick="downloadLivePDF()">PDF</button>
+    <button onclick="downloadBackupJSON()">Backup</button>
+    <button class="warn" onclick="swipeTodayData()">Swipe</button>
+    <button class="danger" onclick="endSession()">End</button>
+    <button class="pri" onclick="location.href='index.html'">Home</button>
+  `;
+
+  let h = '';
+
+  h += `<div class="c">
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <h2>Live Session · ${fd(LIVE.date)}</h2>
+      </div>
+      <div><span class="badge-round">Round ${currentRound}</span></div>
+    </div>
+    <div class="f" style="margin-top:10px">
+      <input id="in_singer" list="dl_known" placeholder="Enter Singer Name" style="text-transform:uppercase">
+      <datalist id="dl_known">
+        ${KNOWN_SINGERS.map(s => `<option value="${e(s)}">`).join('')}
+      </datalist>
+      <button class="pri" onclick="addSinger()">Add to Singing Queue</button>
+    </div>
+  </div>`;
+
+  h += `<div class="c">
+    <div class="row" style="justify-content:space-between;margin-bottom:8px">
+      <b>Singing Order & Performance Sheet</b>
+      <div class="row">
+        <button class="${currentRound===1?'on':''}" onclick="setRound(1)">Round 1</button>
+        <button class="${currentRound===2?'on':''}" onclick="setRound(2)">Round 2</button>
+        <button class="${currentRound===3?'on':''}" onclick="setRound(3)">Round 3</button>
+      </div>
+    </div>
+
+    ${LIVE.singers.length ? `
+      <div class="tbl"><table>
+        <tr>
+          <th class="col-ord">#</th>
+          <th>Singer Name</th>
+          <th>Arrival</th>
+          <th>SOTD Status</th>
+          <th>Song Title (Round ${currentRound})</th>
+          <th>Song ID</th>
+          <th style="min-width:145px">Scoring (1 to 5 Stars)</th>
+          <th style="text-align:center">Action</th>
+        </tr>
+        ${LIVE.singers.map((s, idx) => {
+          const p = getOrCreatePerf(s.name, currentRound);
+          const sKey = currentRound + '_' + s.name.replace(/[^a-zA-Z0-9]/g, '_');
+          const isEligible = s.eligible;
+          const starCount = (p.stars || []).filter(Boolean).length;
+
+          return `<tr>
+            <td class="col-ord"><b>${idx + 1}</b></td>
+            <td><b>${e(s.name)}</b></td>
+            <td><span class="m">${e(s.joinTime)}</span></td>
+            <td>${isEligible ? '<span class="badge-ok">Eligible</span>' : '<span class="badge-late">Ineligible (>8:45)</span>'}</td>
+            <td>
+              <div style="display:flex;align-items:center;white-space:nowrap">
+                <input id="sg_${sKey}" list="dl_allsongs" value="${e(p.song || '')}" placeholder="Type song..." style="width:200px;text-transform:uppercase" oninput="onSongInput('${e(s.name)}', ${currentRound})">
+                <span id="rep_${sKey}">${p.repeatCount > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${p.repeatCount})</span>` : ''}</span>
+                <button class="btn-meta" style="margin-left:6px" onclick="openMeta('${e(s.name)}', ${currentRound})" title="Metadata (Original singer, composer, lyricist, movie)">ℹ Details</button>
+              </div>
+            </td>
+            <td id="id_${sKey}">
+              ${p.song ? `<b>${p.songId}</b>` : '<span class="m">-</span>'}
+            </td>
+            <td>
+              <div class="score-box" title="1: Announced | 2: Turn ready | 3: No mic noise | 4: Good singing | 5: Better singing">
+                ${[0,1,2,3,4].map(sIdx => `<span id="star_${sKey}_${sIdx}" class="score-star ${p.stars[sIdx]?'active':''}" onclick="toggleStar('${e(s.name)}', ${currentRound}, ${sIdx})">★</span>`).join('')}
+              </div>
+              <span id="score_txt_${sKey}" class="m" style="font-size:11px;margin-left:4px">(${starCount}/5)</span>
+            </td>
+            <td style="text-align:center">
+              <button onclick="removeSinger(${idx})">Remove</button>
+            </td>
+          </tr>`;
+        }).join('')}
+      </table></div>
+    ` : '<p class="m">No singers registered in queue yet. Start adding members above.</p>'}
+    
+    <datalist id="dl_allsongs">
+      ${[...new Set(ALL_SONGS.map(r => r[3]))].filter(Boolean).map(t => `<option value="${e(t)}">`).join('')}
+    </datalist>
+  </div>`;
+
+  h += `<div class="c" id="sotd_section_card">${renderSOTDHTML()}</div>`;
+
+  if (IS_SUPER) {
+    h += `<div class="c" style="border-left:4px solid #f59e0b">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <b>Singer of the Month (SOTM)</b>
+          <p class="m" style="margin:2px 0 0">${SOTM_WINNER ? `Winner: <b>${e(SOTM_WINNER.name)}</b> · Judged by: <b>${e(SOTM_WINNER.judge)}</b>` : 'Superadmin control for 4+ star monthly finals.'}</p>
+        </div>
+        <button class="pri" onclick="openSOTMModal()">Declare Singer of the Month</button>
+      </div>
+    </div>`;
+  }
+
+  h += `<div class="c">
+    <b>Rules & Star Scoring Reference</b>
+    <div class="m" style="margin-top:6px;line-height:1.7">
+      ⭐1: Starts when announced · ⭐2: Ready on turn · ⭐3: No mic noise · ⭐4: Good singing · ⭐5: Better singing<br>
+      • <b>Attendance Rule:</b> Join at least 3 sessions in a week (Mon–Fri) to retain stars. Attending fewer drops 1 star.<br>
+      • <b>4 Stars Qualifier:</b> Earning 4 stars qualifies for the Singer of the Month (SOTM) round (awarded with custom physical G-Clef memento award).<br>
+      • <b>Cutoff:</b> Singers entering after 8:45 PM can sing, but are ineligible for SOTD.
+    </div>
+  </div>`;
+
+  h += `<div class="c" id="song_archives_card"></div>`;
+
+  $('#app').innerHTML = h;
+  renderSongListSection();
+}
+</script></body></html>
