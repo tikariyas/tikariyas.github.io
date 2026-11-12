@@ -5,7 +5,6 @@
 <meta name="theme-color" content="#0f3460">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
 <title>Sing From Home</title>
 <style>
 :root{
@@ -28,59 +27,120 @@ body{
   padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);
 }
 header{
-  display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+  display:flex;justify-content:space-between;align-items:flex-start;
   padding:12px 16px;border-bottom:1px solid var(--bd);background:var(--card);
-  position:sticky;top:0;z-index:40;backdrop-filter:blur(10px);
-  box-shadow:0 1px 3px rgba(0,0,0,0.03);
+  position:sticky;top:0;z-index:40;backdrop-filter:blur(10px);box-shadow:0 1px 3px rgba(0,0,0,0.03);
 }
-h1{font-size:20px;font-weight:800;line-height:1.2;letter-spacing:-0.3px;margin:0;color:var(--ac)}
-.sub-fnd{font-size:11px;color:#000000;font-weight:500;margin-top:2px;letter-spacing:0.1px;line-height:1.3}
+h1{
+  font-size:21px;font-weight:800;line-height:1.2;letter-spacing:-0.3px;margin:0;color:var(--ac);
+}
+.sub-fnd{
+  font-size:11px;color:#000000;font-weight:500;margin-top:2px;letter-spacing:0.1px;line-height:1.3;
+}
 @media (prefers-color-scheme:dark){.sub-fnd{color:#e2e8f0}}
 h2{margin:4px 0 8px;font-size:18px;font-weight:700}
-h3{margin:8px 0 6px;font-size:16px;font-weight:700}
-main{padding:14px 12px 80px;max-width:860px;margin:auto}
+main{padding:12px;max-width:760px;margin:auto}
 .c{
-  background:var(--card);border:1px solid var(--bd);border-radius:14px;
-  padding:14px 16px;margin-bottom:14px;box-shadow:var(--shadow);
+  background:var(--card);border:1px solid var(--bd);border-radius:12px;
+  padding:12px 14px;margin-bottom:12px;box-shadow:var(--shadow);
 }
-.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
-button,.zm{
-  font:inherit;font-size:13.5px;font-weight:600;border:1px solid var(--bd);
-  background:var(--card);color:var(--fg);border-radius:10px;padding:7px 12px;
+button,.zm,.up{
+  font:inherit;font-size:13px;font-weight:600;border:1px solid var(--bd);
+  background:var(--card);color:var(--fg);border-radius:8px;padding:6px 10px;
   cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;
   transition:all 0.15s ease;
 }
-button:hover{border-color:var(--ac);transform:translateY(-1px)}
-button:active{transform:scale(0.98)}
+button:hover,.up:hover{border-color:var(--ac);transform:translateY(-1px)}
+button:active,.up:active{transform:scale(0.98)}
 button.on,button.pri{
   background:var(--btn-pri-bg);color:#fff;border-color:transparent;
   box-shadow:0 3px 12px -2px rgba(15,52,96,0.35);
 }
-button.danger{
-  background:transparent;color:inherit;border-color:var(--bd);box-shadow:none;
+button.on:hover,button.pri:hover{box-shadow:0 5px 15px -2px rgba(15,52,96,0.45)}
+button.warn{
+  background:transparent;color:inherit;border-color:var(--bd);
 }
-.zm{background:linear-gradient(135deg,#0b5ed7 0%,#2563eb 100%);color:#fff;border-color:transparent;font-weight:700;padding:8px 16px;box-shadow:0 3px 12px -2px rgba(37,99,235,0.4)}
+
+nav{
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  gap:6px;
+  margin-bottom:12px;
+}
+nav > button{
+  width:100%;
+  height:100%;
+  min-height:38px;
+  padding:4px 2px;
+  font-size:12px;
+  font-weight:600;
+  text-align:center;
+  box-sizing:border-box;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  line-height:1.2;
+}
+nav > .zm{
+  grid-column:1 / -1;
+  width:100%;
+  text-align:center;
+  padding:9px 12px;
+  font-size:14px;
+  font-weight:700;
+  box-sizing:border-box;
+  background:linear-gradient(135deg,#0284c7,#0369a1);
+  color:#fff;
+  border-color:transparent;
+  box-shadow:0 4px 14px -2px rgba(2,132,199,0.35);
+}
+nav > .zm:hover{box-shadow:0 6px 18px -2px rgba(2,132,199,0.45);transform:translateY(-1px)}
+
 input,select,textarea{
-  font:inherit;font-size:15px;color:var(--fg);background:var(--bg);border:1px solid var(--bd);
-  border-radius:10px;padding:9px 11px;box-sizing:border-box;min-width:0;max-width:100%;
+  font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--bd);
+  border-radius:8px;padding:8px 10px;box-sizing:border-box;min-width:0;max-width:100%;
   transition:border-color 0.15s ease,box-shadow 0.15s ease;outline:none;
 }
 input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,96,0.18)}
-.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:10px 0}
-.f>*{width:100%}
-.m{color:var(--mut);font-size:13px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-
+.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin:8px 0}
+.f label,label.m{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--mut)}
+.m{color:var(--mut);font-size:13px}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.ph{
+  width:90px;height:90px;border:2px solid var(--bd);border-radius:12px;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;background:var(--bg);flex:none;box-shadow:0 2px 6px rgba(0,0,0,0.05);
+}
+.ph img{width:100%;height:100%;object-fit:cover}
+.big{font-size:18px;font-weight:800;color:var(--ac);letter-spacing:-0.2px}
+.chk{width:26px;height:26px;flex:none;accent-color:var(--ac);margin:0;cursor:pointer}
+#dw{
+  position:fixed;inset:0;z-index:60;background:rgba(15,23,42,0.72);
+  backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;
+}
+#dw .card{
+  max-width:380px;width:100%;border-radius:18px;padding:24px 18px 20px;text-align:center;color:#fff;
+  background:linear-gradient(150deg,#0f3460 0%,#1e4a7a 50%,#2563eb 100%);
+  border:1px solid rgba(255,255,255,0.18);box-shadow:0 20px 50px rgba(0,0,0,0.6);position:relative;
+}
+#dw h2{margin:6px 0;font-size:28px;color:#fff;letter-spacing:.5px}
+#dw .x{
+  position:absolute;top:8px;right:12px;background:rgba(255,255,255,0.18);border:0;
+  color:#fff;font-size:22px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;
+}
+@keyframes fl{0%,100%{transform:scale(1) rotate(-3deg);opacity:1}50%{transform:scale(1.14) rotate(3deg);opacity:.85}}
+#dw .diya{font-size:58px;display:inline-block;filter:drop-shadow(0 0 16px rgba(251,191,36,0.85));animation:fl 1.4s ease-in-out infinite}
 .tbl{
-  overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:8px;border-radius:10px;border:1px solid var(--bd);
+  overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:6px;border-radius:8px;border:1px solid var(--bd);
 }
 .tbl table{border-collapse:separate;border-spacing:0;min-width:100%}
 .tbl th,.tbl td{
-  white-space:nowrap;padding:8px 10px;border-bottom:1px solid var(--bd);text-align:left;height:40px;box-sizing:border-box;
+  white-space:nowrap;padding:7px 10px;border-bottom:1px solid var(--bd);text-align:left;height:40px;box-sizing:border-box;font-size:13.5px;
 }
-.tbl th{height:34px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--mut);background:var(--bg)}
-.tbl th.col-ord,.tbl td.col-ord{width:34px;min-width:34px;max-width:36px;text-align:center;padding:4px 4px}
+.tbl th{height:34px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--mut);background:var(--bg)}
 .tbl tr:last-child td{border-bottom:none}
 .tbl .n{text-align:center}
+.tbl tr.me td{background:var(--ac-light);font-weight:600}
+.tbl tr.me td:first-child{border-left:3px solid var(--ac)}
+.badge-round{color:var(--ac);background:var(--ac-light);font-weight:800;padding:2px 8px;border-radius:6px;font-size:12px}
 
 .song-nav{
   display:grid;grid-template-columns:repeat(5, 1fr);gap:6px;margin:10px 0 12px;
@@ -89,86 +149,41 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
   width:100%;padding:7px 2px;font-size:12px;font-weight:700;text-align:center;
 }
 
-.av{width:64px;height:64px;border-radius:50%;object-fit:cover;background:var(--ac-light);display:inline-block;border:2px solid var(--bd)}
-.av-s{width:28px;height:28px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px;background:var(--ac-light);border:1px solid var(--bd)}
-.hi{background:var(--ac-light)}
-.ban{background:linear-gradient(135deg,var(--ac-light) 0%,var(--card) 100%);border:1px solid var(--bd);border-left:4px solid var(--ac);border-radius:14px;padding:12px 14px;margin-bottom:14px;box-shadow:var(--shadow)}
-.ban.live-active{border-left:4px solid #dc2626;background:linear-gradient(135deg,#fef2f2 0%,var(--card) 100%)}
-@media (prefers-color-scheme:dark){.ban.live-active{background:linear-gradient(135deg,#2d1215 0%,var(--card) 100%)}}
-.live-pulse{display:inline-block;width:9px;height:9px;background:#dc2626;border-radius:50%;margin-right:6px;animation:pulse 1.5s infinite}
-@keyframes pulse{0%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(1.25)}100%{opacity:1;transform:scale(1)}}
-.bday{background:linear-gradient(135deg,#fff3cd 0%,#fffbeb 100%);border:1px solid #f0c36d;border-left:4px solid #d97706;color:#5c3d00}
-@media (prefers-color-scheme:dark){.bday{background:#2d220a;border-color:#8a6a1c;color:#fde68a}}
-.fest{background:linear-gradient(135deg,#fde7ef 0%,#fff5f8 100%);border:1px solid #f1a7c0;border-left:4px solid #db2777;color:#6e1237}
-@media (prefers-color-scheme:dark){.fest{background:#2c0d1b;border-color:#943558;color:#fbcfe8}}
-.consent{display:flex;gap:10px;align-items:flex-start;margin:10px 0;font-size:13.5px}
-.consent input{width:20px;height:20px;margin-top:2px;flex:0 0 auto;accent-color:var(--ac)}
-.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:700;background:var(--ac-light);color:var(--ac)}
-.badge-super{background:#dbeafe;color:#1d4ed8}
-.badge-admin{background:#dbeafe;color:#1e40af}
-@media (prefers-color-scheme:dark){.badge-super{background:#1e3a8a;color:#93c5fd}.badge-admin{background:#172554;color:#93c5fd}}
-.gbtn{width:100%;justify-content:center;gap:10px;padding:10px;font-weight:700;margin-bottom:10px}
-.qr{width:220px;max-width:100%;border:1px solid var(--bd);border-radius:10px;padding:6px;background:#fff;box-shadow:var(--shadow)}
-
-.fab{
-  position:fixed;right:16px;bottom:16px;z-index:50;border-radius:999px;
-  padding:11px 18px;box-shadow:0 8px 25px rgba(15,52,96,0.4);font-weight:700;
-}
-
 #custom-modal{
   position:fixed;inset:0;z-index:90;background:rgba(15,23,42,0.7);backdrop-filter:blur(6px);
   display:none;align-items:center;justify-content:center;padding:16px;
 }
 #custom-modal .box{
-  background:var(--card);color:var(--fg);max-width:420px;width:100%;border-radius:16px;
-  padding:22px 20px;border:1px solid var(--bd);box-shadow:var(--shadow);
+  background:var(--card);color:var(--fg);max-width:440px;width:100%;border-radius:14px;
+  padding:20px 18px;border:1px solid var(--bd);box-shadow:var(--shadow);
 }
 #custom-modal .box h3{margin:0 0 10px;font-size:17px;color:var(--ac)}
-#custom-modal .box p{margin:0 0 18px;font-size:14.5px;line-height:1.5}
-#custom-modal .actions{display:flex;justify-content:flex-end;gap:10px}
-
-#crop{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;padding:16px}
-#crop .box{background:var(--card);color:var(--fg);max-width:340px;width:100%;border-radius:14px;padding:16px;text-align:center}
-#crop canvas{width:260px;height:260px;border-radius:50%;border:2px solid var(--ac);touch-action:none;background:#111;display:block;margin:8px auto}
-#crop input[type=range]{width:260px}
-#crop .row{justify-content:center;margin-top:10px}
 </style></head><body>
-
 <header>
   <div>
     <h1>SING FRO<span style="color:#b30000;font-weight:900">M</span> HO<span style="color:#b30000;font-weight:900">M</span>E</h1>
     <div class="sub-fnd">A project of B. S. Tikariya Cultural Foundation ®<br>(CIN: U88900MH2025NPL454435)</div>
+    <span id="ver" style="display:none"></span>
   </div>
-  <nav class="tabs" id="tb"></nav>
+  <div id="hb"></div>
 </header>
-
 <main id="app"><p class="m">Loading…</p></main>
-<button class="pri fab" id="msgfab" style="display:none" onclick="go('msg')">Messages</button>
 
 <div id="custom-modal">
   <div class="box" id="custom-modal-body"></div>
 </div>
 
-<div id="crop"><div class="box">
-  <b>Position &amp; zoom your photo</b>
-  <canvas id="cv" width="260" height="260"></canvas>
-  <input id="cz" type="range" min="1" max="3" step="0.02" value="1">
-  <div class="row"><button onclick="closeCrop()">Cancel</button><button class="pri" onclick="saveCrop()">Save photo</button></div>
-</div></div>
-
+<!-- jsPDF + autoTable (html2canvas removed completely) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script type="module">
-import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import {
-  getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,
-  updateProfile,signOut,sendPasswordResetEmail,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import {
-  getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,
-  collection,getDocs,query,where,orderBy,limit,onSnapshot
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
+<script type="module">
+
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const VER='2026-11-11 b20';
 const CFG = {
   firebase: {
     apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
@@ -176,44 +191,9 @@ const CFG = {
     projectId: "sing-from-home",
     appId: "1:848212321051:web:bb26a98a842eb16f21e9be"
   },
-  superadmins: ["musicsnsounds@gmail.com"]
+  superadmins: ["musicsnsounds@gmail.com"],
+  admins: []
 };
-
-const ABOUT = {
-  foundation: "B. S. Tikariya Cultural Foundation",
-  cin: "U88900MH2025NPL454435",
-  taxStatus: "Provisional 12A and 80G approval",
-  address: "24/25, New Shreyanagar, Chhatrapati Sambhajinagar 431005, Maharashtra, India",
-  school: "Tikariya's School of Music (Estd. 1995)",
-  director: "Manoj Tikariya",
-  contact: "musicsnsounds@gmail.com",
-  upiId: "7776007200@ybl",
-  upiName: "B S TIKARIYA CULTURAL FOUNDATION",
-  qrImage: "qr-donate.png",
-  program: {
-    title: "SING FROM HOME",
-    summary: "Daily live online musical sessions hosted on Zoom by Tikariya's School of Music under the B. S. Tikariya Cultural Foundation — bringing together music lovers across ages and cities to sing, learn, and celebrate timeless melodies.",
-    schedule: "Monday to Friday · 8:30 PM onwards on Zoom",
-    rules: [
-      "Up to 3 songs may be planned per session.",
-      "Singer of the Day (SOTD) is chosen from eligible participants who join before 8:45 PM.",
-      "Earning 4 stars qualifies a singer for the Singer of the Month (SOTM) round.",
-      "In the SOTM round, each finalist sings two songs: one of their own choice and one of the host's choice, judged by an appointed judge.",
-      "SOTM winner receives a custom-crafted physical G-Clef memento award.",
-      "Join at least 3 sessions in a week to keep your stars. Joining fewer reduces one star."
-    ]
-  }
-};
-
-const app=initializeApp(CFG.firebase),auth=getAuth(app),fs=getFirestore(app);
-const $=(s,r=document)=>r.querySelector(s);
-const e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const tdy=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
-const fd=k=>k.slice(8)+'/'+k.slice(5,7)+'/'+k.slice(0,4);
-const MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-const fm=m=>MN[+m.slice(5)-1]+' '+m.slice(0,4);
-const ago=t=>{const s=(Date.now()-t)/1000|0;return s<60?'just now':s<3600?(s/60|0)+'m ago':s<86400?(s/3600|0)+'h ago':(s/86400|0)+'d ago';};
-const phoneEmail=p=>p.replace(/\D/g,'').slice(-10)+'@sfh.local';
 
 // Pure Numeric Song ID Comparator: S-0001 < S-0002 < S-0168
 const parseSongNum = id => {
@@ -230,195 +210,205 @@ const cmpBySongId = (a, b) => {
 
 window.showNotice = (msg, title="Sing From Home") => {
   const m = $('#custom-modal');
-  $('#custom-modal-body').innerHTML = `<h3>${e(title)}</h3><p>${e(msg)}</p><div class="actions"><button class="pri" onclick="closeModal()">OK</button></div>`;
+  $('#custom-modal-body').innerHTML = `<h3>${e(title)}</h3><p style="margin:12px 0 16px">${e(msg)}</p><p style="text-align:right;margin:0"><button class="pri" onclick="closeModal()">OK</button></p>`;
   m.style.display = 'flex';
 };
-
 window.showConfirm = (msg, onOk, title="Confirmation") => {
   const m = $('#custom-modal');
-  $('#custom-modal-body').innerHTML = `<h3>${e(title)}</h3><p style="white-space:pre-line">${e(msg)}</p><div class="actions"><button onclick="closeModal()">Cancel</button><button class="danger" id="modal-ok-btn">Confirm</button></div>`;
+  $('#custom-modal-body').innerHTML = `<h3>${e(title)}</h3><p style="margin:12px 0 16px;white-space:pre-line">${e(msg)}</p><p style="text-align:right;margin:0;display:flex;gap:8px;justify-content:flex-end"><button onclick="closeModal()">Cancel</button><button class="danger" id="modal-ok-btn">Confirm</button></p>`;
   $('#modal-ok-btn').onclick = () => { closeModal(); onOk(); };
   m.style.display = 'flex';
 };
-
 window.closeModal = () => { $('#custom-modal').style.display = 'none'; };
 
-let U=null,P=null,PUB={songs:[],singers:[],sotd:[],som:{},somd:{},somj:{},stars:{}},LIVE={},PLANS=[],USERS=[],MSGS=[],TAB='home',IS_SUPER=false,IS_ADMIN=false,AUTH_MODE='login',UNSUB=[];
-let LIVE_SESSION_DATA = null;
+const ABOUT = {
+  foundation: {
+    name: "B. S. Tikariya Cultural Foundation",
+    cin: "U88900MH2025NPL454435",
+    since: "2025",
+    tagline: "Educating people in music",
+    about: [
+      "B. S. Tikariya Cultural Foundation is a not-for-profit NGO, registered as a company limited by guarantee under Section 8 of the Companies Act, 2013. It was incorporated on 14 August 2025.",
+      "The Foundation is run in honour of Shree B. S. Tikariya.",
+      "Its objects extend to the whole of India."
+    ],
+    address: "CTS No-4662/2 NR, Madhuban Htl Ishita Cmplx, Jalna - 431203, Maharashtra",
+    director: { name: "MANOJ TIKARIYA", role: "Director" }
+  },
+  agenda: "Our agenda is to educate music to people. The Foundation's objects in cultural music are:",
+  agendaPoints: [
+    "To promote, preserve and propagate cultural music: traditional, folk, classical and indigenous.",
+    "To organise cultural music events, festivals, concerts, workshops and awareness programmes.",
+    "To provide education, training and capacity-building in cultural music.",
+    "To document, archive and publish rare and traditional musical forms, instruments and artists.",
+    "To raise awareness of the importance of cultural music in education and social development."
+  ],
+  how: [
+    "So far the Foundation has been working without any financial support. It does not ask anyone for money.",
+    "Its objects also include education and scholarships for meritorious and underprivileged children, healthcare support, women empowerment, sports and other welfare programmes."
+  ],
+  howPoints: [
+    "SING FROM HOME is a project of the Foundation, conducted by TIKARIYA'S SCHOOL OF MUSIC.",
+    "Sessions are held online on Zoom, so participants can join from their own homes."
+  ],
+  support: {
+    intro: "If you wish to support our work, you may contribute voluntarily. It is entirely your choice and there is no obligation.",
+    upi: "tikariyas@sbi",
+    payeeName: "Manoj Tikariya",
+    qrImage: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQAQMAAAC6caSPAAAABlBMVEX///9IXF0onzAXAAAHT0lEQVR42u2bvY7kWBmGn8/2YEsgVREhoZXK0iJBxlwBdkgGN7BiL4GQAFGnpAk25A5oLoErGDfRhhuSrYtokZDWrR20rhm3P4Jz/FNVLned1c5M945P0uW2X5+f7/89x7C0pS1taUt74i1U1xrY1OIuantzWwJZ90QBBEA0gqcEx+8zAPlwm9MHgHZiHMX4IvCfxwKZb+bsP9HxpR7JJfvHT1tQDSZ6ERERSRH2a+AusTdzAnYpAgf7xAeyyM076SX6ngfm3pcVIKBsSmD1yqlC02OlhUMy7iV32iT5Gm7ThF2OcPsLFbMXOfYR89OvFkN+2pAC2BZAVrU2WDygsxqw6X7frTH7ZZGfarCwvmPkJepkrheBQ0B+l7DL3e1dGr0tBxstovSHlA9Bil74z15Yod48ewE/Tvj9jfz8HBar/btpINMWiPWokblEU8tFLj8kSDR4Cbh37uLvv7ykIFPuYr+GfA279BBwu1Yx++TagaUX/Vhw7sb8pi+L9Mc+eT21yIwtvUGLsdkXK1UtQx3qyvJiYdqg5UrtRfnwwLr6pV6s8j1CAMKWrBJlVcNG31hR6tdOlN/WAKIQtn0vkZAnAWYdQeociORr+77dbyP7nCG6tq4sF7m8K0jrDwnOFcYxTwMfZXOGUM2mRrUS1TIeaKj7gFvLPwigYv3Qwb14nwgkKmZ9kYZaRPmWIfPhtZmQvqqqtmxVlU2NGhcsVDtqshxSh20NbPosMlYDosVGVctYyepQzcZB5qOYBxHxaCuLR1slNVe4i2LIqyQ3SQT5s1E5mp++OnaRpAKyOuyFrgWhGmLVctV2OnEtBV264Rrf6UeL7b9rSFYBK7cpURzZ76Z2twEtBvHkCez+VgKoQNRoStBOFw+X7OXf/nNJQY0X5B7gxsvEXgF85dXLFwCvvdxFDhcnMw15c0QczLIKc5Z5AtEiHjmVrE/0Vs2E34mAQ9De/u7rAJJawNaVff3CPqkdx30v+rBaVl6avFVfhQkNZlN4QT7q53I15FPvuYjxVv4fzdRjwfTaJhzSS9HMQX5dwidf/pGXeaxKyZrP9gZa+EPunvzkS70fjVy1xuaV5Uq1gKwBNoW0lnna1rDV81RhPOPiFazK7CUTWjs9feELKxTjIZfcd5ED5bKRXTDk1tsnJ80MSTgNWdfAf0stHujFnNjW/57/01RXQ9Iy7FTfTAbmsBkRkRU8h+Iju+9wUMta16O52c0rkTXsRETyg4ghJzW9U4lwhYeI5JdFaTxFWWHmMNO96HcKrylUHh5GWgG4M369rL0GNnjxovXNLdezwQJn3AVQBE7Lqp5k0sb+6OrKQwB30ckql27ZdulAWDxQVxaecqkvUWlzi2y+g/T9eyly/178B1amvk5pUvLNEeTsnVUym8DHLZsauEvYiXu0jqSA0lLQYg4BrOrJgfVL2wTB8wuqEFxgUFp58ZNZTZ4a9Z9Cv9xyzmHMK0xxNUQDm76mfr1UngMTazK5uR5iLma8DtIAcTOIFzCoUba401CMU8+ehlKR9EjaN69lpA/BNfay//xC7jtjYnngb5VR4wMxAEntAcnnnP/cwNLKO/AVpU8vYQFCcdEFhuNtirjlN7RZZbOHbr/ydM8iVhtbKkc5/AXLXLZIF1ocTzG7xRkWchT1HiJUBchaXo3uPqBjbW9lka9cbkg8IAcDajyKkYDP/gqvL/iLaDLq35kQPh9ny+1DdeWa+/Q+H4s+OO3F6FHIuAf20WjL71dffTNOuPvKgo3jLUckhKohttSkVhdpqEv+z3Q6urA9E+3P3pDYeEOSuYjUOSEds9axNpYdybSjoLUZUs8+v+3cBbDVxlWg2uIgLWya5UQEj/w0VPjGAlcVEH/r3hLXgCh75x4oQx0qBrtRJWmCpM6nSgrcSmQri9v1yP8scnnMEDPzovUU5BBsC4B9Atl/Ahs9hqq3BlDpj1NfPzBzUvJc1ZY9i3cH6Wgo5y4U2qAAu1VRrKo+oVXuxkFLYdXCphG7nWXP0WmfXdjWxZLlrPV7h6yniIizDLYWtaZ+JpfVZGkmWhKqVrGaTHWkHF3BMi399ge2yM2TnUtwVLUGx0nmNEs1Oj5n08kKyBrRYtXijs6GWvCg7Z+uWrEEi8efW04QBI2UcWtTSutEYPvpxwNtPnXW2uBORGg5PjDxvk0s+rCdUjTnqY8/y+Jl38vP/gVZ+XHnRZpRBTLQUGbTSP/xJlktqlU4pAqm05LFKt8npLwSMuKZ0mgULGD4CO9E+k7o2lhqoti4jy7KlapWiEeiWI4HsYjy8VYWRxpzAAi1zxxlU9pgwapOJnoR9omKubOnZOAuwnBvP9bqv8+6xo8JMxT08p3F9xcszhJFMmf7rhzsdjHOfkynCl1u2T1Zxsq2tvWGx/SLxSrfBeTqk/aJK0fzU7pqqCy6uhK0WjlWwW1wcYFV0GEIVe2CRenumA/HkN8u5G16y2bUSznUIKddVs1cmrK0pS1taUt7Iu3/Zt8F7oWCz6gAAAAASUVORK5CYII=",
+    note: "For now, contributions are received in the personal UPI account of the Director, Manoj Tikariya."
+  },
+  registrations: [
+    "Company limited by guarantee under Section 8 of the Companies Act, 2013 (not for profit).",
+    "Income and property are applied only for the Foundation's objects and are not distributed to members.",
+    "Provisional registration under Section 12A of the Income Tax Act, 1961 (charitable), for AY 2026-27 to 2028-29.",
+    "Provisional approval under Section 80G of the Income Tax Act, 1961, for AY 2026-27 to 2028-29."
+  ],
+  program: {
+    intro: [
+      "SING FROM HOME is an online singing session on Zoom. Participants sing one by one, first come first perform, in two rounds.",
+      "At the end of the session a Singer of the Day is declared, who earns a star. A singer who collects 4 stars becomes eligible for the Singer of the Month round. After one is chosen, the other 4-star singers start again from zero, while singers with 1 to 3 stars keep theirs."
+    ],
+    schedule: "Monday to Friday, from 8:30 pm",
+    rules: [
+      "Join at least 3 sessions in a week to keep your stars. Joining fewer reduces one star.",
+      "Singers who enter after 8:45 pm can still sing, but are not eligible for Singer of the Day.",
+      "Singer of the Month finalists receive a specially designed physical G-Clef Trophy."
+    ],
+    committee: ["RAJESH GARJE","SANTOSH BHAROTE","VIJAY SUTRAVE","SUREKHA TIKARIYA","MANOJ TIKARIYA","NITIN POL","SURESH GHADSING","SHILA RAITHATHA"]
+  },
+  message: "",
+  faq: [],
+  contact: {
+    email: "", phone: "", whatsapp: "", address: "", website: "",
+    social: []
+  }
+};
+
+const app=initializeApp(CFG.firebase),auth=getAuth(app),fs=getFirestore(app);
+const verEl=document.getElementById('ver');if(verEl)verEl.textContent='v'+VER;
+const $=s=>document.querySelector(s);
+const e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fd=k=>k.slice(8)+'/'+k.slice(5,7)+'/'+k.slice(0,4);
+const fm=m=>new Date(m+'-01T00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+const nowM=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
+const okImg=s=>typeof s=='string'&&s.startsWith('data:image/');
+let U=null,P=null,PUB=null,SONGS=[],CONF={},AU=[],tab='home',ADM=false,IS_SUPER=false,IS_ADMIN=false,LIVE_SESSION=null,loadErr='',HDATE='',EDU='',GRT=[],BD=[],GQ=[],showAbout=location.hash=='#about',MSGS=[],AM=[],AIN=[],PL=[],PD='',PLAN=null,pendingName='',seenAdm=(()=>{try{return +localStorage.getItem('sfh_seen_adm')||0}catch(x){return 0}})(),seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
+
 let songListTab = 'today';
 let songArchivesExpanded = false;
 let selectedSingerFilter = '';
 let searchSongKeyword = '';
 
-const isSuper=(u,p)=>!!(u&&u.email&&(CFG.superadmins||[]).map(x=>x.toLowerCase()).includes(u.email.toLowerCase())&&u.emailVerified===true);
-const isAdmin=(u,p)=>isSuper(u,p)||!!(p&&p.status==='approved'&&p.role==='admin');
-
-function clearSubs(){UNSUB.forEach(f=>{try{f();}catch(x){}});UNSUB=[];}
-
-function startListeners(){
-  clearSubs();
-  UNSUB.push(onSnapshot(doc(fs,'live','config'),d=>{LIVE=d.exists()?d.data():{};if(U&&P?.status==='approved')draw();}));
-
-  UNSUB.push(onSnapshot(doc(fs,'live','session'),d=>{
-    LIVE_SESSION_DATA = d.exists() ? d.data() : null;
-    if(U && P?.status==='approved' && (TAB==='home' || TAB==='today')) draw();
-  }));
-
-  UNSUB.push(onSnapshot(doc(fs,'pub','data'),d=>{if(d.exists()){Object.assign(PUB,d.data());if(U&&P?.status==='approved')draw();}}));
-
-  UNSUB.push(onSnapshot(query(collection(fs,'plans'),where('date','==',tdy())),s=>{
-    PLANS=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.ts||0)-(b.ts||0));
-    if(U&&P?.status==='approved'&&(TAB==='today'||TAB==='adm'))draw();
-  }));
-  const mq=IS_ADMIN?query(collection(fs,'msgs'),orderBy('ts','desc'),limit(60)):query(collection(fs,'msgs'),where('to','in',['all',U.uid]));
-  UNSUB.push(onSnapshot(mq,s=>{
-    MSGS=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.ts||0)-(a.ts||0));
-    updateMsgFab();if(TAB==='msg')draw();
-  },()=>{}));
-  if(IS_ADMIN){
-    UNSUB.push(onSnapshot(collection(fs,'users'),s=>{
-      USERS=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-      if(TAB==='adm')draw();
-    }));
-  }
-}
-
-function updateMsgFab(){
-  const f=$('#msgfab');
-  if(!U||P?.status!=='approved'){f.style.display='none';return;}
-  f.style.display='inline-flex';
-  const seen=+(localStorage.getItem('sfh_msg_seen')||0);
-  const unread=MSGS.filter(m=>(m.ts||0)>seen).length;
-  f.textContent=unread?`Messages (${unread})`:'Messages';
-}
-
-async function loadPub(){
-  const c=localStorage.getItem('sfh_pub');if(c)try{Object.assign(PUB,JSON.parse(c));}catch(x){}
+async function load(){
+  loadErr='';PUB=null;SONGS=[];CONF={};
   try{
-    const a=await getDoc(doc(fs,'pub','data'));
-    if(a.exists())Object.assign(PUB,a.data());
-    const ix=await getDoc(doc(fs,'pub','idx'));
-    if(ix.exists()){
-      const ms=Object.keys(ix.data().months||{}).sort();
-      const ds=await Promise.all(ms.map(m=>getDoc(doc(fs,'pub','songs_'+m))));
-      PUB.songs=[].concat(...ds.map(d=>d.exists()?JSON.parse(d.data().json||'[]'):[]));
-    }else{
-      const b=await getDoc(doc(fs,'pub','songs'));
-      if(b.exists())PUB.songs=b.data().json?JSON.parse(b.data().json):(b.data().list||[]);
+    const r=doc(fs,'users',U.uid);let s=await getDoc(r);
+    if(!s.exists()&&!ADM){
+      await setDoc(r,{email:U.email||'',name:U.displayName||pendingName||'',status:'pending',photo:'',phone:'',city:'',note:'',updatedAt:Date.now()});
+      s=await getDoc(r);
     }
-    localStorage.setItem('sfh_pub',JSON.stringify(PUB));
-  }catch(x){}
+    P=s.exists()?s.data():{status:'approved',name:U.displayName||'',singer:''};
+    if(ADM||P.status=='approved'){
+      const [a,ix,c]=await Promise.all([getDoc(doc(fs,'pub','data')),getDoc(doc(fs,'pub','idx')),getDoc(doc(fs,'config','app'))]);
+      PUB=a.exists()?a.data():null;CONF=c.exists()?c.data():{};
+      if(ix.exists()){const ms=Object.keys(ix.data().months||{}).sort();const ds=await Promise.all(ms.map(m=>getDoc(doc(fs,'pub','songs_'+m))));SONGS=[].concat(...ds.map(d=>d.exists()?JSON.parse(d.data().json):[]))}
+      else{const b=await getDoc(doc(fs,'pub','songs'));SONGS=b.exists()?(b.data().json?JSON.parse(b.data().json):(b.data().list||[])):[]}
+      await loadBd();
+      if(!ADM){await loadMsgs();await loadPlan()}
+    }
+  }catch(x){loadErr=x.code||x.message}
 }
 
-function tabs(){
-  const tb=$('#tb');
-  if(!U){
-    tb.innerHTML=TAB==='about'?`<button onclick="go('login')">Sign in</button>`:`<button onclick="go('about')">ℹ About us</button>`;
-    return;
-  }
-  if(P?.status!=='approved'){
-    tb.innerHTML=`<button onclick="go('about')">ℹ About us</button><button onclick="logout()">Sign out</button>`;
-    return;
-  }
-  let list=[];
-  if(IS_SUPER){
-    list=[
-      ['home','Home'],
-      ['sotd','SOTD'],
-      ['pdf','PDF'],
-      ['refresh','Refresh'],
-      ['adm','Admin'],
-      ['live','Live Session'],
-      ['swipe','Swipe']
-    ];
-  } else if(IS_ADMIN){
-    list=[
-      ['home','Home'],
-      ['sotd','SOTD'],
-      ['pdf','PDF'],
-      ['refresh','Refresh'],
-      ['adm','Admin'],
-      ['live','Live Session'],
-      ['about','About']
-    ];
-  } else {
-    list=[
-      ['home','Home'],
-      ['today','Today'],
-      ['sotd','SOTD'],
-      ['pdf','PDF'],
-      ['me','My profile'],
-      ['about','About'],
-      ['out','Sign out']
-    ];
-  }
-  tb.innerHTML=list.map(([k,l])=>{
-    let cls = '';
-    if(k === TAB) cls = 'on';
-    else if(k === 'live') cls = 'pri';
-    else if(k === 'swipe') cls = 'danger';
-    return `<button class="${cls}" onclick="go('${k}')">${l}</button>`;
-  }).join('');
-}
-
-window.go=async k=>{
-  if(k==='out')return logout();
-  if(k==='live'){location.href='live.html';return;}
-  if(k==='refresh'){
-    showNotice('Refreshing app data and catalog...');
-    await loadPub();
+onAuthStateChanged(auth, async u => {
+  U = u;
+  if (!u) {
+    P = null;
+    IS_SUPER = false;
+    IS_ADMIN = false;
+    ADM = false;
     draw();
-    setTimeout(closeModal, 600);
     return;
   }
-  if(k==='swipe'){
-    return swipeLiveSession();
-  }
-  TAB=k;location.hash=k;
-  if(k==='msg')localStorage.setItem('sfh_msg_seen',String(Date.now()));
-  updateMsgFab();draw();
+  const em = (u.email || '').toLowerCase();
+  const verified = u.emailVerified === true;
+  IS_SUPER = (CFG.superadmins || []).map(x => x.toLowerCase()).includes(em) && verified;
+  ADM = IS_SUPER;
+
+  await load();
+
+  IS_ADMIN = IS_SUPER || (P && P.status == 'approved' && P.role == 'admin');
+  ADM = IS_ADMIN;
+
+  onSnapshot(doc(fs, 'live', 'session'), snap => {
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data.date === tdy() && data.active) {
+        LIVE_SESSION = data;
+      } else {
+        LIVE_SESSION = null;
+      }
+    } else {
+      LIVE_SESSION = null;
+    }
+    if (tab === 'home') draw();
+  });
+
+  draw();
+  setTimeout(runCards, 400);
+});
+
+window.login=async()=>{
+  if(!$('#cs')||!$('#cs').checked){showNotice('Please tick the consent box first.');return}
+  try{await signInWithPopup(auth,new GoogleAuthProvider())}
+  catch(x){showNotice('Sign-in failed ('+(x.code||'error')+'). Please open in Chrome and try again.')}
 };
+window.out=()=>signOut(auth);
+window.refresh=async()=>{await load();if(P&&P.status=='approved'&&P.role=='admin'){IS_ADMIN=ADM=true;}if(tab=='adm')await loadAdm();draw()};
 
+// Superadmin Swipe: Fully wipes trial live session AND published trial records for today
 window.swipeLiveSession = () => {
-  showConfirm("Swipe & Reset Today's Trial Session?\n\nThis will permanently clear today's live queue, remove any test songs published today, and reset test SOTD stars so you start 100% clean at 8:30 PM.", async () => {
+  showConfirm("Reset and wipe today's trial live session data completely?\n\nThis will clear all registered singers, performances, and test SOTDs for today from the live screen so you can start fresh at 8:30 PM.", async () => {
     try {
-      const t = tdy();
-      try { localStorage.removeItem('sfh_live_session_' + t); } catch(x){}
+      const todayDate = tdy();
 
+      // 1. Reset live session doc
       await setDoc(doc(fs, 'live', 'session'), {
-        date: t,
+        date: todayDate,
         currentRound: 1,
         singers: [],
         performances: [],
         sotdList: [],
-        sotmWinner: null,
         active: false,
         updatedAt: Date.now()
       });
+      try { localStorage.removeItem('sfh_live_session_' + todayDate); } catch(x){}
 
-      const mo = t.slice(0, 7);
+      // 2. Clear from published monthly songs document
+      const mo = todayDate.slice(0, 7);
       const mDocRef = doc(fs, 'pub', 'songs_' + mo);
       const mDoc = await getDoc(mDocRef);
       if (mDoc.exists()) {
         let mSongs = JSON.parse(mDoc.data().json || '[]');
-        mSongs = mSongs.filter(r => r[1] !== t);
+        mSongs = mSongs.filter(r => r[1] !== todayDate);
         await setDoc(mDocRef, {
           json: JSON.stringify(mSongs),
           n: mSongs.length,
-          ts: t
+          ts: todayDate
         });
       }
 
+      // 3. Clear from published pub/data document (SOTD and stars)
       const dataDocRef = doc(fs, 'pub', 'data');
       const dataDoc = await getDoc(dataDocRef);
       if (dataDoc.exists()) {
         let pData = dataDoc.data();
-        let sotdArr = (pData.sotd || []).filter(x => x.d !== t);
+        let sotdArr = (pData.sotd || []).filter(x => x.d !== todayDate);
         let starsObj = pData.stars || {};
         Object.keys(starsObj).forEach(sk => {
           if (starsObj[sk] && Array.isArray(starsObj[sk].d)) {
             const beforeLen = starsObj[sk].d.length;
-            starsObj[sk].d = starsObj[sk].d.filter(d => d !== t);
+            starsObj[sk].d = starsObj[sk].d.filter(d => d !== todayDate);
             const removedCount = beforeLen - starsObj[sk].d.length;
             if (removedCount > 0) {
               starsObj[sk].t = Math.max(0, (starsObj[sk].t || 0) - removedCount);
@@ -429,387 +419,395 @@ window.swipeLiveSession = () => {
           ...pData,
           sotd: sotdArr,
           stars: starsObj,
-          ts: t
+          ts: todayDate
         });
       }
 
-      await loadPub();
+      showNotice("Today's trial records have been wiped clean.", "Clean Slate");
+      await load();
       draw();
-      showNotice("Today's trial records and test songs have been wiped clean.", "Clean Slate");
     } catch(err) {
-      showNotice("Error during swipe: " + (err.code || err.message));
+      showNotice("Error resetting session: " + (err.code || err.message));
     }
-  }, "Swipe Trial Data");
+  }, "Swipe Today's Data");
+};
+
+window.go=async t=>{
+  if(t=='live'){
+    window.location.href = 'live.html';
+    return;
+  }
+  tab=t;
+  if(t=='adm')await loadAdm();
+  if(t=='adm')setTimeout(()=>{seenAdm=Date.now();try{localStorage.setItem('sfh_seen_adm',String(seenAdm))}catch(x){}},500);
+  if(t=='msg'){seenPrev=seen;seen=Date.now();try{localStorage.setItem('sfh_seen',String(seen))}catch(x){}}
+  draw();
 };
 
 function draw(){
-  tabs();updateMsgFab();
-  const a=$('#app');
-  if(!U){a.innerHTML=TAB==='about'?vAbout():vLogin();return;}
-  if(!P){a.innerHTML='<p class="m">Loading profile…</p>';return;}
-  if(TAB==='about'){a.innerHTML=vAbout();return;}
-  if(P.status!=='approved'){a.innerHTML=vPending();return;}
-  if(TAB==='today')a.innerHTML=vToday();
-  else if(TAB==='sotd')a.innerHTML=vSotd();
-  else if(TAB==='pdf')a.innerHTML=vPdf();
-  else if(TAB==='me')a.innerHTML=vMe();
-  else if(TAB==='msg')a.innerHTML=vMsg();
-  else if(TAB==='adm'&&IS_ADMIN)a.innerHTML=vAdm();
-  else {
-    a.innerHTML=vHome();
-    renderSongListSection();
-  }
+  $('#hb').innerHTML=U?'<a href="#" onclick="out();return false" style="color:var(--ac);font-size:14px;text-decoration:underline;cursor:pointer;white-space:nowrap">Sign out</a>':'';
+  if(showAbout){$('#app').innerHTML=vAbout(true);return}
+  if(!U){$('#app').innerHTML=vLogin();return}
+  if(loadErr){$('#app').innerHTML='<div class="c"><b>Could not load data</b><p class="m">'+e(loadErr)+'</p><p class="m">Check your internet and try again.</p><p><button class="pri" onclick="refresh()">↻ Try again</button></p></div>';return}
+  if(!ADM&&P.status!='approved'){$('#app').innerHTML=vWait();return}
+  $('#app').innerHTML=tabs()+(tab=='home'?vHome():tab=='sotd'?vSotd():tab=='prof'?vProf():tab=='pdf'?vPdf():tab=='today'?vToday():tab=='msg'?vMsg():tab=='about'?vAbout(false):vAdm());
 }
+const idOf=em=>(em||'').endsWith('@singfromhome-phone.app')?em.split('@')[0]:(em||'');
+const vLogin=()=>`<div class="c"><h2>Welcome</h2><p>Sign in to see the SOTD, declare your songs, message the host and join the session.</p>
+<label style="display:flex;gap:12px;align-items:flex-start;border:2px solid var(--ac);border-radius:10px;padding:12px;font-size:14px;cursor:pointer;background:var(--ac-light)"><input type="checkbox" id="cs" class="chk"><span>I agree that my name, email or phone number, photo, city and notes are stored online by Tikariya’s School of Music for this app, and that my songs and stars may be shown to other approved participants.</span></label>
+<p style="margin-top:14px"><button class="pri" style="width:100%;padding:12px;font-size:15px" onclick="login()">Sign in with Google</button></p>
+<p class="m" style="text-align:center;margin:10px 0">or use a phone number / email and a password</p>
+<input id="lnm" placeholder="Your name (only for a new account)" style="width:100%;margin-bottom:8px"><input id="lid" placeholder="Phone number (10 digits) or email" inputmode="email" autocapitalize="none" style="width:100%;margin-bottom:8px"><input id="lpw" type="password" placeholder="Password (at least 6 characters)" style="width:100%">
+<p style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><button class="pri" onclick="loginPw()">Sign in</button> <button onclick="signupPw()">Create account</button> <button onclick="forgotPw()">Forgot password</button></p>
+<p class="m">New here? Type your name, phone or email and a password, tick the box and tap Create account. The host must approve you before you get access.</p>
+<p><button onclick="about()">ℹ About us</button></p></div>`;
+const vWait=()=>`<div class="c"><h2>${P.status=='pending'?'Waiting for approval':'Access not active'}</h2>
+<p>${P.status=='pending'?'Your request has been sent to the host. You will get access once the host approves you. Tap Check approval below.':'Your access is not active. Please contact the host.'}</p><p class="m">Signed in as ${e(idOf(U.email))}</p><p><button class="pri" onclick="refresh()">↻ Check approval</button> <button onclick="about()">ℹ About us</button></p></div>`;
 
-/* ---------- LOGIN & REGISTER ---------- */
-function vLogin(){
-  const reg=AUTH_MODE==='reg';
-  return `<div class="c" style="max-width:440px;margin:16px auto">
-    <h2>${reg?'Create an account':'Welcome to Sing From Home'}</h2>
-    <p class="m">${reg?'Register to join the daily Zoom sessions and track your songs & stars.':'Sign in to view your songs, stars and daily session updates.'}</p>
-    <label class="consent"><input type="checkbox" id="c_ok"><span>I consent to storing my name, phone/email, profile photo, date of birth (day &amp; month only) and singing activity for the Sing From Home program.</span></label>
-    <button class="gbtn" onclick="gLogin()"><svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.5 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.9 6.1C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C.9 16.6 0 20.2 0 24s.9 7.4 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.2 1.5-5 2.3-8.3 2.3-6.3 0-11.6-4.2-13.5-10l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>Sign in with Google</button>
-    <p class="m" style="text-align:center;margin:6px 0">— or with phone number / email —</p>
-    ${reg?`<div class="f"><input id="r_name" placeholder="Full name" autocomplete="name"></div>`:''}
-    <div class="f">
-      <input id="l_id" placeholder="10-digit phone or email" autocomplete="username">
-      <input id="l_pw" type="password" placeholder="Password" autocomplete="${reg?'new-password':'current-password'}">
-    </div>
-    <p class="row">
-      <button class="pri" onclick="${reg?'doReg()':'doLogin()'}">${reg?'Create account':'Sign in'}</button>
-      <button onclick="AUTH_MODE='${reg?'login':'reg'}';draw()">${reg?'Back to Sign in':'New user? Register'}</button>
-      ${reg?'':`<button onclick="forgot()">Forgot password</button>`}
-    </p>
-    <p class="m" id="l_err" style="color:#c0392b"></p>
-  </div>`;
-}
-const needConsent=()=>{if($('#c_ok')?.checked)return true;$('#l_err').textContent='Please tick the consent box first.';return false;};
-const toEmail=v=>v.includes('@')?v.trim():phoneEmail(v);
-window.gLogin=async()=>{
-  if(!needConsent())return;
-  localStorage.setItem('sfh_consent',String(Date.now()));
-  const prov=new GoogleAuthProvider();prov.setCustomParameters({prompt:'select_account'});
-  try{await signInWithPopup(auth,prov);}catch(err){if(err.code==='auth/popup-blocked'||err.code==='auth/operation-not-supported-in-this-environment')await signInWithRedirect(auth,prov);else $('#l_err').textContent=err.message;}
-};
-window.doLogin=async()=>{
-  const id=$('#l_id').value.trim(),pw=$('#l_pw').value;if(!id||!pw)return;
-  try{await signInWithEmailAndPassword(auth,toEmail(id),pw);}catch(err){$('#l_err').textContent=err.message;}
-};
-window.doReg=async()=>{
-  if(!needConsent())return;
-  const name=$('#r_name').value.trim(),id=$('#l_id').value.trim(),pw=$('#l_pw').value;
-  if(!name||!id||pw.length<6){$('#l_err').textContent='Enter name, phone/email and a password (min 6 characters).';return;}
-  try{
-    const c=await createUserWithEmailAndPassword(auth,toEmail(id),pw);
-    await updateProfile(c.user,{displayName:name});
-    await setDoc(doc(fs,'users',c.user.uid),{
-      name,phone:id.includes('@')?'':id.replace(/\D/g,'').slice(-10),email:id.includes('@')?id:'',
-      singer:'',status:'pending',role:'participant',consentAt:Date.now(),createdAt:Date.now()
-    });
-  }catch(err){$('#l_err').textContent=err.message;}
-};
-window.forgot=async()=>{
-  const id=$('#l_id').value.trim();
-  if(!id.includes('@')){$('#l_err').textContent='Enter your email address above first. Phone accounts can ask the host to reset.';return;}
-  try{await sendPasswordResetEmail(auth,id);showNotice('Password reset link sent to '+id);}catch(err){$('#l_err').textContent=err.message;}
-};
-window.logout=async()=>{clearSubs();await signOut(auth);U=null;P=null;TAB='home';draw();};
-
-function vPending(){
-  return `<div class="c">
-    <h2>Approval pending</h2>
-    <p>Hello <b>${e(P.name||U.displayName||'Singer')}</b>! Your registration has been received. Please wait while the host approves your account and links your singer profile.</p>
-    <p class="row"><button class="pri" onclick="recheck()">Check approval</button><button onclick="logout()">Sign out</button></p>
-  </div>`;
-}
-window.recheck=async()=>{const d=await getDoc(doc(fs,'users',U.uid));if(d.exists())P=d.data();draw();};
-
-/* ---------- BANNERS (ZOOM / FESTIVAL / BIRTHDAY / LIVE) ---------- */
-function banners(){
-  const out=[];
-  
-  if(LIVE_SESSION_DATA && LIVE_SESSION_DATA.active && LIVE_SESSION_DATA.date === tdy()){
-    const sCount = (LIVE_SESSION_DATA.singers || []).length;
-    const roundNum = LIVE_SESSION_DATA.currentRound || 1;
-    const sotdNames = (LIVE_SESSION_DATA.sotdList || []).map(x => x.n).join(', ');
-    out.push(`<div class="ban live-active">
-      <div class="row" style="justify-content:space-between">
-        <div>
-          <span class="live-pulse"></span><b>LIVE SESSION IN PROGRESS</b> · <span class="badge">Round ${roundNum}</span>
-          <div class="m" style="margin-top:3px">Active Queue: <b>${sCount}</b> singer(s)${sotdNames ? ` · ⭐ SOTD: <b>${e(sotdNames)}</b>` : ''}</div>
-        </div>
-        ${IS_ADMIN ? `<button class="pri" onclick="location.href='live.html'">Open Live Console</button>` : ''}
-      </div>
-    </div>`);
+const tabs = () => {
+  let list = [];
+  if (IS_SUPER) {
+    list = [
+      ['home', 'Home'],
+      ['sotd', 'SOTD'],
+      ['pdf', 'PDF'],
+      ['about', 'About'],
+      ['refresh', 'Refresh'],
+      ['adm', 'Admin'],
+      ['live', 'Live Session'],
+      ['swipe', 'Swipe']
+    ];
+  } else if (IS_ADMIN) {
+    list = [
+      ['home', 'Home'],
+      ['sotd', 'SOTD'],
+      ['pdf', 'PDF'],
+      ['about', 'About'],
+      ['refresh', 'Refresh'],
+      ['adm', 'Admin'],
+      ['live', 'Live Session']
+    ];
+  } else {
+    list = [
+      ['home', 'Home'],
+      ['sotd', 'SOTD'],
+      ['today', 'Today'],
+      ['msg', 'Messages' + unread()],
+      ['prof', 'My profile'],
+      ['pdf', 'PDF'],
+      ['about', 'About'],
+      ['refresh', 'Refresh']
+    ];
   }
 
-  if(LIVE.zoomUrl)out.push(`<div class="ban row" style="justify-content:space-between"><div><b>Today's Zoom Session</b><div class="m">${e(LIVE.zoomNote||'8:30 PM onwards · Tap to join')}</div></div><a class="zm" href="${e(LIVE.zoomUrl)}" target="_blank" rel="noopener">Start Zoom</a></div>`);
-  if(LIVE.festival&&LIVE.festival.title&&(LIVE.festival.date===tdy()||!LIVE.festival.date)){
-    out.push(`<div class="ban fest"><b>🎉 ${e(LIVE.festival.title)}</b>${LIVE.festival.msg?`<div>${e(LIVE.festival.msg)}</div>`:''}</div>`);
-  }
-  const mmdd=tdy().slice(5);
-  const bdays=(PUB.birthdays||[]).filter(b=>b.mmdd===mmdd);
-  if(bdays.length){
-    out.push(`<div class="ban bday">🎂 <b>Happy Birthday ${bdays.map(b=>e(b.name)).join(', ')}!</b> Warm musical wishes from Tikariya's School of Music.</div>`);
-  }
-  return out.join('');
+  return `<nav>${list.map(([k, t]) => k == 'refresh' ? `<button onclick="refresh()">${t}</button>` : (k == 'swipe' ? `<button class="warn" onclick="swipeLiveSession()">${t}</button>` : `<button class="${tab == k ? 'on' : ''}" onclick="go('${k}')">${t}</button>`)).join('')}${CONF.zoom ? `<a class="zm" href="${e(CONF.zoom)}" target="_blank" rel="noopener">Start Zoom</a>` : ''}</nav>`;
+};
+
+const nmL = l => (l||[]).map(x => '<b>' + e(x.n) + '</b>' + (x.h === 'Special' ? ' (special)' : x.h === 'Quiz' ? ' (quiz)' : '')).join(', ');
+
+function sdates(){
+  const st = new Set();
+  SONGS.forEach(r => st.add(r[1]));
+  ((PUB&&PUB.sotd)||[]).forEach(x => st.add(x.d));
+  return [...st].sort();
 }
+window.setHD=v=>{HDATE=v||'';draw()};
+window.stepHD=n=>{const ds=sdates(),cur=HDATE||ds[ds.length-1]||'';const c=n<0?ds.filter(x=>x<cur).pop():ds.find(x=>x>cur);if(c){HDATE=c;draw()}};
 
-/* ---------- HOME ---------- */
-function vHome(){
-  const sk=(P.singer||'').toUpperCase(),st=(PUB.stars||{})[sk]||{t:0,d:[]};
-  const roleBadge=IS_SUPER?'<span class="badge badge-super">Superadmin</span>':IS_ADMIN?'<span class="badge badge-admin">Admin</span>':'';
-  const mySongsCount = (PUB.songs||[]).filter(r=>r[2]===sk).length + (LIVE_SESSION_DATA && LIVE_SESSION_DATA.active && LIVE_SESSION_DATA.date === tdy() ? (LIVE_SESSION_DATA.performances||[]).filter(p=>p.singer===sk && p.song).length : 0);
+// Pure numeric Song ID table rendering
+const sTable=(rows,me)=>rows.length?`<div class="tbl"><table><tr><th class="n">#</th><th>Song ID</th><th>Singer name</th><th>Song name</th></tr>${rows.map((r,i)=>`<tr class="${me&&r[2]==me?'me':''}"><td class="n">${i+1}</td><td><b>${e(r[0])}</b></td><td><b>${e(r[2])}</b></td><td>${e(r[3])}</td></tr>`).join('')}</table></div>`:'';
 
-  return banners()+`<div class="c row" style="justify-content:space-between">
-    <div class="row">
-      ${P.photo?`<img class="av" src="${P.photo}">`:''}
-      <div>
-        <div class="row"><b>${e(P.name||sk)}</b> ${roleBadge}</div>
-        ${sk?`<div class="m">${e(sk)} · <b>${mySongsCount}</b> songs · <b>${'⭐'.repeat(st.t)||'0 stars'}</b>${st.t>=4?' (SOTM finalist!)':''}</div>`:'<div class="m">Singer profile not linked yet.</div>'}
-      </div>
-    </div>
-    <div class="row">
-      <button onclick="go('today')">Today's songs</button>
-      ${IS_ADMIN?`<button class="pri" onclick="location.href='live.html'">Live Session</button>`:''}
-    </div>
-  </div>
-  ${LIVE_SESSION_DATA && LIVE_SESSION_DATA.active && LIVE_SESSION_DATA.date === tdy() && (LIVE_SESSION_DATA.singers||[]).length ? `
-    <div class="c">
-      <b>Live Singing Queue (Round ${LIVE_SESSION_DATA.currentRound || 1})</b>
-      <div class="tbl" style="margin-top:8px"><table>
-        <tr><th class="col-ord">#</th><th>Singer Name</th><th>Song Title (Round ${LIVE_SESSION_DATA.currentRound || 1})</th><th>Song ID</th></tr>
-        ${LIVE_SESSION_DATA.singers.map((s, idx) => {
-          const rNum = LIVE_SESSION_DATA.currentRound || 1;
-          const perf = (LIVE_SESSION_DATA.performances || []).find(p => p.singer === s.name && p.round === rNum);
-          const isMe = s.name === sk;
-          return `<tr class="${isMe ? 'hi' : ''}">
-            <td class="col-ord"><b>${idx + 1}</b></td>
-            <td><b>${e(s.name)}</b></td>
-            <td>${perf && perf.song ? `<b>${e(perf.song)}</b>` : '<span class="m">Waiting…</span>'}</td>
-            <td>${perf && perf.songId ? `<b>${e(perf.songId)}</b>` : '<span class="m">-</span>'}</td>
-          </tr>`;
-        }).join('')}
-      </table></div>
-    </div>
-  ` : ''}
-  <div class="c" id="song_archives_card"></div>`;
-}
-
-// Master Archive: Sorted strictly by numeric Song ID everywhere
 function getAllArchiveSongs() {
   const t = tdy();
-  let list = [...(PUB.songs || [])];
-  if (LIVE_SESSION_DATA && LIVE_SESSION_DATA.active && LIVE_SESSION_DATA.date === t) {
-    list = list.filter(r => r[1] !== t);
-    (LIVE_SESSION_DATA.performances || []).filter(p => p.song).forEach(p => {
-      list.push([p.songId, t, p.singer, p.song]);
-    });
+  const hist = SONGS.filter(r => r[1] !== t);
+  let todayLive = [];
+  if (LIVE_SESSION && LIVE_SESSION.date === t && LIVE_SESSION.performances) {
+    todayLive = LIVE_SESSION.performances.filter(p => p.song).map(p => [p.songId, t, p.singer, p.song]);
+  } else {
+    todayLive = SONGS.filter(r => r[1] === t);
   }
-  return list.sort(cmpBySongId);
+  return [...hist, ...todayLive].sort(cmpBySongId);
 }
 
 window.toggleSongArchives = () => {
   songArchivesExpanded = !songArchivesExpanded;
-  renderSongListSection();
+  draw();
 };
 
 window.setSongTab = (t) => {
   songListTab = t;
-  renderSongListSection();
+  draw();
 };
 
 window.setSongSingerFilter = (name) => {
   selectedSingerFilter = name;
-  renderSongListSection();
+  draw();
 };
 
 window.setSongSearchKeyword = (kw) => {
   searchSongKeyword = (kw || '').trim().toUpperCase();
-  renderSongListSection();
+  draw();
 };
 
-// Pure Vector PDF generator for Song Archives
+// Pure jsPDF + autoTable exporter (replaces raster html2canvas)
 window.downloadSongListPDF = () => {
-  if(!window.jspdf || !window.jspdf.jsPDF){
-    showNotice('PDF library loading, please try again.');
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    showNotice('PDF generator is initializing. Please wait a moment.');
     return;
   }
 
-  const {jsPDF} = window.jspdf;
-  const docPdf = new jsPDF({unit:'mm', format:'a4'});
-  const t = tdy();
-  const cleanStr = s => String(s==null?'':s).replace(/[^\x20-\x7E]/g, '');
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const clean = s => String(s == null ? '' : s).replace(/[^\x20-\xff]/g, '?');
+  const allArchive = getAllArchiveSongs();
+  const curMo = nowM();
 
   let title = "Song List";
-  if(songListTab === 'today') title = `Songs Performed Today (${fd(t)})`;
-  if(songListTab === 'month') title = `Songs Performed in Month (${t.slice(0,7)})`;
-  if(songListTab === 'singer') title = `Song Record: ${selectedSingerFilter || 'All'}`;
-  if(songListTab === 'unique') title = `Unique Song List (No Repetition)`;
-  if(songListTab === 'all') title = `Full Master Song Directory`;
-
-  docPdf.setFontSize(18);
-  docPdf.setTextColor(15, 52, 96);
-  docPdf.text('SING FROM HOME', 105, 14, {align:'center'});
-
-  docPdf.setFontSize(8.5);
-  docPdf.setTextColor(71, 85, 105);
-  docPdf.text('A project of B. S. Tikariya Cultural Foundation \xAE (CIN: U88900MH2025NPL454435)', 105, 19, {align:'center'});
-  docPdf.text("Conducted by TIKARIYA'S SCHOOL OF MUSIC \xB7 Director: Manoj Tikariya", 105, 23.5, {align:'center'});
-
-  docPdf.setFontSize(10);
-  docPdf.setTextColor(15, 23, 42);
-  docPdf.text(`${cleanStr(title)} | Sorted by Song ID | Exported: ${fd(t)}`, 14, 30);
-
-  const allArchive = getAllArchiveSongs();
-  let headCols = [];
-  let tableRows = [];
+  let headers = ['#', 'Song ID', 'Date', 'Singer Name', 'Song Title'];
+  let bodyData = [];
 
   if (songListTab === 'today') {
-    headCols = [['#', 'Song ID', 'Date', 'Singer Name', 'Song Title']];
-    const todayRows = allArchive.filter(r => r[1] === t).slice().sort(cmpBySongId);
-    tableRows = todayRows.map((r, i) => [
-      i + 1,
-      cleanStr(r[0]),
-      fd(r[1]),
-      cleanStr(r[2]),
-      cleanStr(r[3])
+    title = `Songs Performed Today (${fd(tdy())})`;
+    headers = ['#', 'Song ID', 'Round', 'Singer Name', 'Song Title'];
+    let todayRows = [];
+    if (LIVE_SESSION && LIVE_SESSION.date === tdy() && LIVE_SESSION.performances) {
+      todayRows = LIVE_SESSION.performances.filter(p => p.song).map(p => ({
+        round: p.round ? 'Round ' + p.round : '-',
+        singer: p.singer,
+        song: p.song,
+        id: p.songId || '-'
+      }));
+    } else {
+      todayRows = SONGS.filter(r => r[1] === tdy()).map(r => ({
+        round: '-',
+        singer: r[2],
+        song: r[3],
+        id: r[0]
+      }));
+    }
+    todayRows.sort(cmpBySongId);
+    bodyData = todayRows.map((r, i) => [
+      String(i + 1),
+      clean(r.id),
+      clean(r.round),
+      clean(r.singer),
+      clean(r.song)
     ]);
   } else if (songListTab === 'month') {
-    headCols = [['#', 'Song ID', 'Date', 'Singer Name', 'Song Title']];
-    const monthRows = allArchive.filter(r => String(r[1]||'').slice(0, 7) === t.slice(0, 7)).slice().sort(cmpBySongId);
-    tableRows = monthRows.map((r, i) => [
-      i + 1,
-      cleanStr(r[0]),
-      fd(r[1]),
-      cleanStr(r[2]),
-      cleanStr(r[3])
+    title = `Songs Performed in Month (${nowM()})`;
+    const monthRows = allArchive.filter(r => String(r[1] || '').slice(0, 7) === curMo).slice().sort(cmpBySongId);
+    bodyData = monthRows.map((r, i) => [
+      String(i + 1),
+      clean(r[0]),
+      clean(fd(r[1])),
+      clean(r[2]),
+      clean(r[3])
     ]);
   } else if (songListTab === 'singer') {
-    headCols = [['#', 'Song ID', 'Date', 'Song Title']];
-    const singerRows = allArchive.filter(r => r[2] === selectedSingerFilter).slice().sort(cmpBySongId);
-    tableRows = singerRows.map((r, i) => [
-      i + 1,
-      cleanStr(r[0]),
-      fd(r[1]),
-      cleanStr(r[3])
+    const sName = selectedSingerFilter || (P && P.singer ? P.singer.toUpperCase() : '');
+    title = `Song Record: ${sName || 'All Singers'}`;
+    headers = ['#', 'Song ID', 'Date', 'Song Title'];
+    const singerRows = allArchive.filter(r => !sName || r[2] === sName).slice().sort(cmpBySongId);
+    bodyData = singerRows.map((r, i) => [
+      String(i + 1),
+      clean(r[0]),
+      clean(fd(r[1])),
+      clean(r[3])
     ]);
   } else if (songListTab === 'unique') {
-    headCols = [['#', 'Song ID', 'Song Title (No Repetition)', 'Sung', 'Performers']];
+    title = `Unique Songs (No Repetition)`;
+    headers = ['#', 'First Song ID', 'Song Title', 'Times Sung', 'Performers'];
     const uniqueMap = new Map();
     allArchive.forEach(r => {
-      const titleStr = (r[3] || '').trim().toUpperCase();
-      if(!titleStr) return;
-      if(!uniqueMap.has(titleStr)) {
-        uniqueMap.set(titleStr, { title: r[3], count: 0, firstId: r[0], singers: [] });
+      const t = (r[3] || '').trim().toUpperCase();
+      if (!t) return;
+      if (!uniqueMap.has(t)) {
+        uniqueMap.set(t, { title: r[3], count: 0, firstId: r[0], singers: [] });
       }
-      const item = uniqueMap.get(titleStr);
+      const item = uniqueMap.get(t);
       item.count++;
-      item.singers.push({ singer: r[2], id: r[0] });
+      item.singers.push(`${r[2]} (${r[0]})`);
     });
-    const uniqueList = Array.from(uniqueMap.values()).sort((a,b) => parseSongNum(a.firstId) - parseSongNum(b.firstId));
-    tableRows = uniqueList.map((u, i) => [
-      i + 1,
-      cleanStr(u.firstId),
-      cleanStr(u.title),
-      u.count + 'x',
-      cleanStr(u.singers.map(s => `${s.singer} (${s.id})`).join(', '))
+    const uniqueList = Array.from(uniqueMap.values()).sort((a, b) => parseSongNum(a.firstId) - parseSongNum(b.firstId));
+    bodyData = uniqueList.map((u, i) => [
+      String(i + 1),
+      clean(u.firstId),
+      clean(u.title),
+      String(u.count) + 'x',
+      clean(u.singers.join(', '))
     ]);
   } else {
-    headCols = [['#', 'Song ID', 'Date', 'Singer Name', 'Song Title']];
+    title = `Full Master Song Directory`;
     let filtered = allArchive.slice().sort(cmpBySongId);
-    if(searchSongKeyword){
-      filtered = filtered.filter(r => String(r[3]||'').toUpperCase().includes(searchSongKeyword) || String(r[2]||'').toUpperCase().includes(searchSongKeyword) || String(r[0]||'').toUpperCase().includes(searchSongKeyword));
+    if (searchSongKeyword) {
+      filtered = filtered.filter(r =>
+        String(r[3] || '').toUpperCase().includes(searchSongKeyword) ||
+        String(r[2] || '').toUpperCase().includes(searchSongKeyword) ||
+        String(r[0] || '').toUpperCase().includes(searchSongKeyword)
+      );
     }
-    tableRows = filtered.map((r, i) => [
-      i + 1,
-      cleanStr(r[0]),
-      fd(r[1]),
-      cleanStr(r[2]),
-      cleanStr(r[3])
+    bodyData = filtered.map((r, i) => [
+      String(i + 1),
+      clean(r[0]),
+      clean(fd(r[1])),
+      clean(r[2]),
+      clean(r[3])
     ]);
   }
 
-  docPdf.autoTable({
-    startY: 34,
-    head: headCols,
-    body: tableRows,
-    styles: {fontSize: 8, cellPadding: 2, valign: 'middle'},
-    headStyles: {fillColor: [15, 52, 96], textColor: [255, 255, 255], fontStyle: 'bold'},
+  // Header Details
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(18);
+  pdf.setTextColor(15, 52, 96);
+  pdf.text('SING FROM HOME', 105, 14, { align: 'center' });
+
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(8.5);
+  pdf.setTextColor(71, 85, 105);
+  pdf.text('A project of B. S. Tikariya Cultural Foundation \xAE (CIN: U88900MH2025NPL454435)', 105, 19, { align: 'center' });
+  pdf.text("Conducted by TIKARIYA'S SCHOOL OF MUSIC - Director: Manoj Tikariya", 105, 23.5, { align: 'center' });
+
+  pdf.setDrawColor(203, 213, 225);
+  pdf.setLineWidth(0.5);
+  pdf.line(14, 26, 196, 26);
+
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(11);
+  pdf.setTextColor(15, 23, 42);
+  pdf.text(title, 14, 32);
+
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(8.5);
+  pdf.setTextColor(100, 116, 139);
+  pdf.text(`Total Records: ${bodyData.length}   |   Sorted by Song ID   |   Generated: ${new Date().toLocaleString('en-IN')}`, 14, 37);
+
+  // AutoTable dynamic column widths & formatting
+  let colStyles = {
+    0: { cellWidth: 12, halign: 'center' },
+    1: { cellWidth: 24, fontStyle: 'bold' }
+  };
+
+  if (songListTab === 'singer') {
+    colStyles[2] = { cellWidth: 28 };
+    colStyles[3] = { cellWidth: 'auto' };
+  } else if (songListTab === 'unique') {
+    colStyles[2] = { cellWidth: 60, fontStyle: 'bold' };
+    colStyles[3] = { cellWidth: 18, halign: 'center' };
+    colStyles[4] = { cellWidth: 'auto' };
+  } else {
+    colStyles[2] = { cellWidth: 26 };
+    colStyles[3] = { cellWidth: 46, fontStyle: 'bold' };
+    colStyles[4] = { cellWidth: 'auto' };
+  }
+
+  pdf.autoTable({
+    startY: 41,
+    head: [headers],
+    body: bodyData,
+    theme: 'striped',
+    styles: {
+      font: 'helvetica',
+      fontSize: 8,
+      cellPadding: 2,
+      valign: 'middle',
+      overflow: 'linebreak'
+    },
+    headStyles: {
+      fillColor: [15, 52, 96],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold'
+    },
+    columnStyles: colStyles,
     didDrawPage: data => {
-      docPdf.setFontSize(8);
-      docPdf.setTextColor(100, 116, 139);
-      docPdf.text(`Page ${docPdf.internal.getNumberOfPages()}`, 105, 290, {align: 'center'});
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8);
+      pdf.setTextColor(148, 163, 184);
+      pdf.text('Page ' + pdf.internal.getNumberOfPages(), 105, 290, { align: 'center' });
     }
   });
 
-  docPdf.save(`SFH_${songListTab.toUpperCase()}_Songs_${t}.pdf`);
+  pdf.save(`SFH_${songListTab.toUpperCase()}_Songs_${tdy()}.pdf`);
 };
 
-function renderSongListSection() {
-  const container = document.getElementById('song_archives_card');
-  if(!container) return;
-
-  if(!songArchivesExpanded) {
-    container.innerHTML = `
-      <div class="row" style="justify-content:space-between">
-        <div>
-          <b>Song Archives & Performance Lists</b>
-          <p class="m" style="margin:2px 0 0">Cataloged strictly by Song ID.</p>
+function renderBottomSongListHTML() {
+  if (!songArchivesExpanded) {
+    return `
+            <div class="c" style="margin-top:14px">
+        <div class="row" style="justify-content:flex-end">
+          <button class="pri" onclick="toggleSongArchives()">Show Archives ▼</button>
         </div>
-        <button class="pri" onclick="toggleSongArchives()">Show Archives ▼</button>
       </div>
+
     `;
-    return;
   }
 
   const allArchive = getAllArchiveSongs();
-  const t = tdy();
-  const curMo = t.slice(0, 7);
-  const sk = (P.singer||'').toUpperCase();
+  const curMo = nowM();
   let tableHTML = '';
   let subControls = '';
 
-  // 1. TODAY'S SONGS
+  // 1. TODAY'S SONGS (Sorted by Song ID)
   if (songListTab === 'today') {
-    const todayRows = allArchive.filter(r => r[1] === t).slice().sort(cmpBySongId);
+    let todayRows = [];
+    if (LIVE_SESSION && LIVE_SESSION.date === tdy() && LIVE_SESSION.performances) {
+      todayRows = LIVE_SESSION.performances.filter(p => p.song).map(p => ({
+        round: p.round ? 'Round ' + p.round : '-',
+        singer: p.singer,
+        song: p.song,
+        id: p.songId || '-'
+      }));
+    } else {
+      todayRows = SONGS.filter(r => r[1] === tdy()).map(r => ({
+        round: '-',
+        singer: r[2],
+        song: r[3],
+        id: r[0]
+      }));
+    }
+    todayRows.sort(cmpBySongId);
+
     tableHTML = todayRows.length ? `
-      <div class="tbl" id="song_list_table_wrap"><table>
+      <div class="tbl" id="participant_song_table_wrap"><table>
         <tr>
-          <th class="col-ord">#</th>
+          <th class="n">#</th>
           <th>Song ID</th>
-          <th>Date</th>
+          <th>Round</th>
           <th>Singer Name</th>
           <th>Song Title</th>
         </tr>
         ${todayRows.map((r, i) => `
-          <tr class="${r[2]===sk?'hi':''}">
-            <td class="col-ord"><b>${i + 1}</b></td>
-            <td><b>${e(r[0])}</b></td>
-            <td><span class="m">${fd(r[1])}</span></td>
-            <td><b>${e(r[2])}</b></td>
-            <td><b>${e(r[3])}</b></td>
+          <tr>
+            <td class="n"><b>${i + 1}</b></td>
+            <td><b>${e(r.id)}</b></td>
+            <td>${r.round}</td>
+            <td><b>${e(r.singer)}</b></td>
+            <td><b>${e(r.song)}</b></td>
           </tr>
         `).join('')}
       </table></div>
     ` : '<p class="m">No songs recorded for today yet.</p>';
   }
 
-  // 2. THIS MONTH'S SONGS
+  // 2. THIS MONTH'S SONGS (Sorted by Song ID)
   else if (songListTab === 'month') {
     const monthRows = allArchive.filter(r => String(r[1]||'').slice(0, 7) === curMo).slice().sort(cmpBySongId);
     tableHTML = monthRows.length ? `
-      <div class="tbl" id="song_list_table_wrap"><table>
+      <div class="tbl" id="participant_song_table_wrap"><table>
         <tr>
-          <th class="col-ord">#</th>
+          <th class="n">#</th>
           <th>Song ID</th>
           <th>Date</th>
           <th>Singer Name</th>
           <th>Song Title</th>
         </tr>
         ${monthRows.map((r, i) => `
-          <tr class="${r[2]===sk?'hi':''}">
-            <td class="col-ord"><b>${i + 1}</b></td>
+          <tr>
+            <td class="n"><b>${i + 1}</b></td>
             <td><b>${e(r[0])}</b></td>
             <td><span class="m">${fd(r[1])}</span></td>
             <td><b>${e(r[2])}</b></td>
@@ -820,11 +818,11 @@ function renderSongListSection() {
     ` : '<p class="m">No songs recorded for this month yet.</p>';
   }
 
-  // 3. INDIVIDUAL SINGER'S SONGS
+  // 3. INDIVIDUAL SINGER'S SONGS (Sorted by Song ID)
   else if (songListTab === 'singer') {
     const allSingers = [...new Set(allArchive.map(r => r[2]))].filter(Boolean).sort();
-    if(!selectedSingerFilter && allSingers.length) {
-      selectedSingerFilter = allSingers.includes(sk) ? sk : allSingers[0];
+    if(!selectedSingerFilter) {
+      selectedSingerFilter = (P && P.singer) ? P.singer.toUpperCase() : (allSingers[0] || '');
     }
 
     subControls = `
@@ -838,16 +836,16 @@ function renderSongListSection() {
 
     const singerRows = allArchive.filter(r => r[2] === selectedSingerFilter).slice().sort(cmpBySongId);
     tableHTML = singerRows.length ? `
-      <div class="tbl" id="song_list_table_wrap"><table>
+      <div class="tbl" id="participant_song_table_wrap"><table>
         <tr>
-          <th class="col-ord">#</th>
+          <th class="n">#</th>
           <th>Song ID</th>
           <th>Date</th>
           <th>Song Title</th>
         </tr>
         ${singerRows.map((r, i) => `
           <tr>
-            <td class="col-ord"><b>${i + 1}</b></td>
+            <td class="n"><b>${i + 1}</b></td>
             <td><b>${e(r[0])}</b></td>
             <td><span class="m">${fd(r[1])}</span></td>
             <td><b>${e(r[3])}</b></td>
@@ -857,7 +855,7 @@ function renderSongListSection() {
     ` : '<p class="m">No songs found for this singer.</p>';
   }
 
-  // 4. UNIQUE SONGS
+  // 4. UNIQUE SONGS WITHOUT REPETITION (Sorted by lowest Song ID)
   else if (songListTab === 'unique') {
     const uniqueMap = new Map();
     allArchive.forEach(r => {
@@ -875,9 +873,9 @@ function renderSongListSection() {
 
     tableHTML = uniqueList.length ? `
       <p class="m" style="margin:2px 0 6px">Showing <b>${uniqueList.length}</b> distinct songs (sorted by Song ID).</p>
-      <div class="tbl" id="song_list_table_wrap"><table>
+      <div class="tbl" id="participant_song_table_wrap"><table>
         <tr>
-          <th class="col-ord">#</th>
+          <th class="n">#</th>
           <th>Song ID</th>
           <th>Song Title (No Repetition)</th>
           <th style="width:65px;text-align:center">Sung</th>
@@ -885,7 +883,7 @@ function renderSongListSection() {
         </tr>
         ${uniqueList.map((u, i) => `
           <tr>
-            <td class="col-ord"><b>${i + 1}</b></td>
+            <td class="n"><b>${i + 1}</b></td>
             <td><b>${e(u.firstId)}</b></td>
             <td><b>${e(u.title)}</b></td>
             <td style="text-align:center"><b>${u.count}x</b></td>
@@ -898,7 +896,7 @@ function renderSongListSection() {
     ` : '<p class="m">No songs cataloged yet.</p>';
   }
 
-  // 5. ALL SONGS ARCHIVE
+  // 5. ALL SONGS ARCHIVE (Sorted strictly by Song ID)
   else if (songListTab === 'all') {
     subControls = `
       <div class="row" style="margin-bottom:8px;justify-content:space-between">
@@ -914,17 +912,17 @@ function renderSongListSection() {
 
     tableHTML = filtered.length ? `
       <p class="m" style="margin:2px 0 6px">Showing <b>${filtered.length}</b> songs sorted by Song ID.</p>
-      <div class="tbl" id="song_list_table_wrap"><table>
+      <div class="tbl" id="participant_song_table_wrap"><table>
         <tr>
-          <th class="col-ord">#</th>
+          <th class="n">#</th>
           <th>Song ID</th>
           <th>Date</th>
           <th>Singer Name</th>
           <th>Song Title</th>
         </tr>
         ${filtered.map((r, i) => `
-          <tr class="${r[2]===sk?'hi':''}">
-            <td class="col-ord"><b>${i + 1}</b></td>
+          <tr>
+            <td class="n"><b>${i + 1}</b></td>
             <td><b>${e(r[0])}</b></td>
             <td><span class="m">${fd(r[1])}</span></td>
             <td><b>${e(r[2])}</b></td>
@@ -935,59 +933,108 @@ function renderSongListSection() {
     ` : '<p class="m">No matching songs found.</p>';
   }
 
-  container.innerHTML = `
-    <div class="row" style="justify-content:space-between">
-      <b>Song Archives & Performance Lists</b>
-      <div class="row">
-        ${songListTab !== 'all' ? `<button onclick="downloadSongListPDF()" style="font-size:11.5px;padding:4px 8px">Export PDF</button>` : ''}
-        <button onclick="toggleSongArchives()" style="font-size:11.5px;padding:4px 8px">Hide ▲</button>
+  return `
+        <div class="c" style="margin-top:14px">
+      <div class="row" style="justify-content:flex-end">
+        <div class="row">
+          ${songListTab !== 'all' ? `<button onclick="downloadSongListPDF()" style="font-size:11.5px;padding:4px 8px">Export PDF</button>` : ''}
+          <button onclick="toggleSongArchives()" style="font-size:11.5px;padding:4px 8px">Hide ▲</button>
+        </div>
       </div>
-    </div>
 
-    <div class="song-nav">
-      <button class="${songListTab==='today'?'on':''}" onclick="setSongTab('today')">Today</button>
-      <button class="${songListTab==='month'?'on':''}" onclick="setSongTab('month')">Month</button>
-      <button class="${songListTab==='singer'?'on':''}" onclick="setSongTab('singer')">Singer</button>
-      <button class="${songListTab==='unique'?'on':''}" onclick="setSongTab('unique')">Unique</button>
-      <button class="${songListTab==='all'?'on':''}" onclick="setSongTab('all')">All</button>
-    </div>
+      <div class="song-nav">
+        <button class="${songListTab==='today'?'on':''}" onclick="setSongTab('today')">Today</button>
+        <button class="${songListTab==='month'?'on':''}" onclick="setSongTab('month')">Month</button>
+        <button class="${songListTab==='singer'?'on':''}" onclick="setSongTab('singer')">Singer</button>
+        <button class="${songListTab==='unique'?'on':''}" onclick="setSongTab('unique')">Unique</button>
+        <button class="${songListTab==='all'?'on':''}" onclick="setSongTab('all')">All</button>
+      </div>
 
-    ${subControls}
-    ${tableHTML}
+      ${subControls}
+      ${tableHTML}
+    </div>
   `;
 }
 
-/* ---------- TODAY ---------- */
-function vToday(){
-  const mine=PLANS.find(x=>x.uid===U.uid)||{songs:[]};
-  const s=mine.songs||[];
-  const rows=PLANS.filter(x=>(x.songs||[]).some(Boolean));
-  return banners()+`<div class="c">
-    <h2>My songs for today · ${fd(tdy())}</h2>
-    <p class="m">Enter up to 3 songs you plan to sing in tonight's session.</p>
-    <div class="f">
-      <input id="p0" value="${e(s[0]||'')}" placeholder="Song 1">
-      <input id="p1" value="${e(s[1]||'')}" placeholder="Song 2">
-      <input id="p2" value="${e(s[2]||'')}" placeholder="Song 3">
-    </div>
-    <p class="row"><button class="pri" onclick="savePlan()">Save my songs</button><span class="m" id="p_st"></span></p>
-  </div>
-  <div class="c">
-    <b>Participants' planned songs today (${rows.length})</b>
-    ${rows.length?`<div class="tbl"><table><tr><th class="col-ord">#</th><th>Singer</th><th>Song 1</th><th>Song 2</th><th>Song 3</th></tr>
-      ${rows.map((r,i)=>`<tr class="${r.uid===U.uid?'hi':''}"><td class="col-ord">${i+1}</td><td>${r.photo?`<img class="av-s" src="${r.photo}">`:''}<b>${e(r.singer||r.name)}</b></td><td>${e(r.songs[0]||'')}</td><td>${e(r.songs[1]||'')}</td><td>${e(r.songs[2]||'')}</td></tr>`).join('')}
-    </table></div>`:'<p class="m">No songs entered yet for today.</p>'}
-  </div>`;
-}
-window.savePlan=async()=>{
-  const songs=[0,1,2].map(i=>$('#p'+i).value.trim()).filter(Boolean);
-  await setDoc(doc(fs,'plans',tdy()+'_'+U.uid),{uid:U.uid,date:tdy(),singer:(P.singer||P.name||'').toUpperCase(),name:P.name||'',photo:P.photo||'',songs,ts:Date.now()});
-  $('#p_st').textContent='Saved!';
-};
+function vHome(){
+  if(!PUB)return '<div class="c"><p class="m">No data has been published yet.</p></div>';
+  const ds=sdates(),d=HDATE||ds[ds.length-1]||tdy(),sk=(P.singer||'').toUpperCase(),s=(PUB.stars||{})[sk],mo=nowM();
+  const som=Object.entries(PUB.som||{}).sort().reverse();
+  let h='';
+  const un=MSGS.filter(m=>m.ts>seen).length;if(!ADM&&un)h+=`<div class="c" style="border-left:4px solid var(--ac)">📩 You have <b>${un}</b> new message${un>1?'s':''} <button style="margin-left:8px" onclick="go('msg')">Read</button></div>`;
+  h+=bdCard();
 
-/* ---------- SOTD & STARS ---------- */
+  if (LIVE_SESSION && LIVE_SESSION.singers && LIVE_SESSION.singers.length) {
+    const ls = LIVE_SESSION;
+    h += `<div class="c" style="border:2px solid var(--ac);background:var(--ac-light)">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#16a34a;margin-right:6px"></span>
+          <b style="color:var(--ac)">Live Session in Progress</b>
+        </div>
+        <span class="badge-round" style="background:var(--ac);color:#fff">Round ${ls.currentRound || 1}</span>
+      </div>
+
+      ${ls.sotdList && ls.sotdList.length ? `
+        <div style="margin:10px 0;padding:8px;background:var(--card);border-radius:8px;border:1px solid var(--bd);text-align:center">
+          <span class="m" style="font-size:11px;text-transform:uppercase;font-weight:700">Declared SOTD</span>
+          <p class="big" style="margin:4px 0">${ls.sotdList.map(w => `<b>${e(w.n)}</b> <span style="font-size:12px;color:var(--ac)">(${e(w.h)})</span>`).join(' · ')}</p>
+        </div>
+      ` : ''}
+
+      <div class="tbl" style="margin-top:10px;background:var(--card)"><table>
+        <tr>
+          <th class="n">#</th>
+          <th>Singer Name</th>
+          <th>Song Title (Round ${ls.currentRound || 1})</th>
+          <th style="text-align:center">Score</th>
+        </tr>
+        ${ls.singers.map((sg, idx) => {
+          const perf = (ls.performances || []).find(p => p.singer === sg.name && p.round === (ls.currentRound || 1));
+          const stars = perf && perf.stars ? perf.stars.filter(Boolean).length : 0;
+          return `<tr>
+            <td class="n">${idx + 1}</td>
+            <td><b>${e(sg.name)}</b></td>
+            <td>
+              ${perf && perf.song ? `<b>${e(perf.song)}</b>` : '<span class="m">Waiting...</span>'}
+              ${perf && perf.repeatCount > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${perf.repeatCount})</span>` : ''}
+            </td>
+            <td style="text-align:center">
+              ${perf && perf.song && stars ? `<span style="color:#f59e0b;letter-spacing:1px">${'★'.repeat(stars)}</span>` : '<span class="m">-</span>'}
+            </td>
+          </tr>`;
+        }).join('')}
+      </table></div>
+    </div>`;
+  }
+
+  h+=`<div class="c" style="padding:10px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <div style="flex:1;min-width:0">
+          <b>Your position</b>
+          ${sk?`<p class="big" style="margin:3px 0 2px 0">${e(sk)}${IS_SUPER?' <span style="font-size:12px;color:#0284c7;font-weight:700">(Superadmin)</span>':(IS_ADMIN?' <span style="font-size:12px;color:var(--ac);font-weight:700">(Admin)</span>':'')}</p>
+          <p style="margin:2px 0 0 0;line-height:1.35">Your stars: <b>${s?s.t:0}</b>${(s&&s.t>=4)?' <span style="color:var(--ac);font-weight:600">– eligible for the Singer of the Month round</span>':''}${s&&s.d&&s.d.length?'<br><span class="m">SOTD: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m" style="margin:3px 0 0">Your name is not linked yet. Please ask the host.</p>'}
+        </div>
+        <div class="ph" style="width:52px;height:52px;border-radius:50%;flex:none">
+          ${okImg(P.photo)?`<img src="${P.photo}">`:'<span class="m" style="font-size:10px;text-align:center">No photo</span>'}
+        </div>
+      </div>
+    </div>`;
+
+  h+=`<div class="c"><div class="row" style="justify-content:center;flex-wrap:nowrap"><button onclick="stepHD(-1)">◀</button><input type="date" value="${e(d)}" min="${e(ds[0]||'')}" max="${e(ds[ds.length-1]||'')}" onchange="setHD(this.value)"><button onclick="stepHD(1)">▶</button><button onclick="setHD('')">Latest</button></div><p class="m" style="text-align:center;margin:6px 0 0">${fd(d)}</p></div>`;
+  const ls=SONGS.filter(r=>r[1]==d).slice().sort(cmpBySongId),mine=ls.filter(r=>r[2]==sk),sd=(PUB.sotd||[]).find(x=>x.d==d);
+  h+=`<div class="c"><b>SOTD</b><p class="big" style="margin:6px 0">${sd?nmL(sd.l):'<span class="m" style="font-weight:normal;font-size:15px">Not declared</span>'}</p></div>`;
+  if(!ADM)h+=`<div class="c"><b>Your songs on this day</b>${mine.length?sTable(mine,sk):'<p class="m">No songs of yours in the published data for this day.</p>'}</div>`;
+  h+=`<div class="c"><b>All songs performed</b><p class="m" style="margin:2px 0 0">${ls.length} songs, in song ID order</p>${ls.length?sTable(ls,sk):'<p class="m">No songs published for this day.</p>'}</div>`;
+
+  h+=renderBottomSongListHTML();
+
+  return h;
+}
+
 function vSotd(){
-  const L=PUB.sotd||[],somd={'2026-09':'2026-10-02',...(PUB.somd||{})},somj=PUB.somj||{},somE=Object.entries(PUB.som||{}).sort().reverse(),lm=somE.length?somE[0][0]:'',ld=somd[lm]||'';
+  if(!PUB)return '<div class="c"><p class="m">No data has been published yet.</p></div>';
+  const L=PUB.sotd||[],somd=PUB.somd||{},somE=Object.entries(PUB.som||{}).sort().reverse(),lm=somE.length?somE[0][0]:'',ld=somd[lm]||'';
   const cyc=L.filter(x=>ld?x.d>ld:(!lm||x.d.slice(0,7)>lm)).slice().reverse();
   const sk=(P.singer||'').toUpperCase();
   const stars=Object.entries(PUB.stars||{}).filter(([n,o])=>o.t>0).sort((a,b)=>b[1].t-a[1].t||a[0].localeCompare(b[0]));
@@ -997,291 +1044,311 @@ function vSotd(){
     <p class="m" style="margin:4px 0 0;line-height:1.6">Qualify with 4 stars to enter the monthly SOTM competition. Winner receives a custom-crafted stainless steel <b>G-Clef Memento Award</b> by Tikariya’s School of Music.</p>
   </div>`;
 
-  h+=`<div class="c"><b>Singer of the Month</b>${somE.length?`<div class="tbl"><table><tr><th style="width:110px">Month</th><th>Singer of the Month</th><th>Declared date</th><th>Judged by</th></tr>${somE.slice(0,6).map(([m,n])=>`<tr><td><b>${e(fm(m))}</b></td><td><b>${e(n)}</b></td><td><span class="m">${somd[m]?fd(somd[m]):'-'}</span></td><td><b>${e(somj[m]||'-')}</b></td></tr>`).join('')}</table></div>`:'<p class="m">Not declared yet.</p>'}</div>`;
+  h+=`<div class="c"><b>Singer of the Month</b>${somE.length?`<div class="tbl"><table><tr><th style="width:110px">Month</th><th>Singer of the Month</th><th>Declared date</th></tr>${somE.slice(0,6).map(([m,n])=>`<tr><td><b>${e(fm(m))}</b></td><td><b>${e(n)}</b></td><td><span class="m">${somd[m]?fd(somd[m]):'-'}</span></td></tr>`).join('')}</table></div>`:'<p class="m">Not declared yet.</p>'}</div>`;
 
-  h+=`<div class="c"><b>Star singers</b><p class="m">4 stars qualify for the monthly round. Join at least 3 sessions a week to keep your stars.</p>
-    ${stars.length?`<div class="tbl"><table><tr><th class="col-ord">#</th><th>Singer</th><th class="n">Stars</th><th>SOTD dates</th></tr>
-      ${stars.map(([n,o],i)=>`<tr class="${n===sk?'hi':''}"><td class="col-ord">${i+1}</td><td><b>${e(n)}</b>${o.t>=4?' · <span class="badge">Finalist</span>':''}</td><td class="n">${'⭐'.repeat(o.t)}</td><td class="m">${(o.d||[]).map(fd).join(', ')}</td></tr>`).join('')}
-    </table></div>`:'<p class="m">No stars yet.</p>'}</div>`;
+  h+=`<div class="c"><b>Singers of the Day${lm?' since the Singer of the Month '+e(fm(lm))+(ld?' ('+fd(ld)+')':''):''}</b><p class="m" style="margin:2px 0 8px">This list stays until the next Singer of the Month is declared.</p>${cyc.length?`<div class="tbl"><table><tr><th style="width:95px;min-width:95px">Date</th><th>Singer name</th></tr>${cyc.map(x=>`<tr><td style="width:95px;min-width:95px"><span class="m">${fd(x.d)}</span></td><td>${nmL(x.l)}</td></tr>`).join('')}</table></div>`:'<p class="m">None yet in this round.</p>'}</div>`;
 
-  h+=`<div class="c"><b>Singers of the Day${ld?' since '+fd(ld):''}</b>
-    ${cyc.length?`<div class="tbl"><table><tr><th style="width:92px">Date</th><th>Singer of the Day</th></tr>
-      ${cyc.map(x=>`<tr><td>${fd(x.d)}</td><td>${x.l.map(w=>`<b>${e(w.n)}</b>${w.h==='Special'?' (Special)':w.h==='Quiz'?' (Quiz)':w.h==='Honorary'?' (Honorary)':''}`).join(', ')}</td></tr>`).join('')}
-    </table></div>`:'<p class="m">None yet.</p>'}</div>`;
+  h+=`<div class="c"><b>Star singers</b><p class="m" style="margin:2px 0 8px">Join 3+ sessions a week to retain stars. Singers with 4 stars sing in the SOTM session.</p>${stars.length?`<div class="tbl"><table><tr><th>Singer name</th><th style="min-width:140px">Stars</th><th style="width:50px;text-align:center">Total</th><th style="width:90px">Status</th></tr>${stars.map(([n,o])=>`<tr class="${n==sk?'me':''}"><td><b>${e(n)}</b></td><td style="min-width:140px;letter-spacing:2px">${'⭐'.repeat(Math.min(o.t,10))}${o.t>10?'+':''}</td><td class="n"><span class="m">(${o.t})</span></td><td>${o.t>=4?'<span style="color:var(--ac);font-weight:600">Finalist</span>':'<span class="m">-</span>'}</td></tr>`).join('')}</table></div>`:'<p class="m">No stars yet.</p>'}</div>`;
+
   return h;
 }
 
-/* ---------- PDF ---------- */
-function vPdf(){
-  const sk=(P.singer||'').toUpperCase();
-  return `<div class="c"><h2>Download PDF</h2>
-    <p class="m">Songs are automatically sorted sequentially by Song ID (S-0001+).</p>
-    <p class="row"><button class="pri" onclick="makePdf('all')">All songs list</button>${sk?`<button class="pri" onclick="makePdf('me')">My songs (${e(sk)})</button>`:''}</p>
-    <p class="m" id="pdf_st"></p></div>`;
+function grab(){if($('#pp')){P.phone=$('#pp').value;P.city=$('#pc').value;P.note=$('#pn').value;P.dob=bdRead('pb');P.bshow=$('#pbs').checked}}
+function vProf(){const p=P;return`<div class="c"><div class="row"><div class="ph">${okImg(p.photo)?`<img src="${p.photo}">`:'<span class="m">No photo</span>'}</div>
+<div><h2>${e(p.singer||p.name||'')}</h2><label class="up">📷 ${p.photo?'Change':'Add'} photo<input type="file" accept="image/*" hidden onchange="pic(this)"></label></div></div>
+<div class="f"><label>Phone / WhatsApp<input id="pp" value="${e(p.phone||'')}"></label><label>City<input id="pc" value="${e(p.city||'')}"></label>${bdSel('pb',p.dob)}</div>
+<label class="m" style="flex-direction:row;align-items:center;gap:10px;margin:8px 0"><input type="checkbox" id="pbs" class="chk" ${(p.bshow!==undefined?p.bshow:BD.some(b=>b.id==U.uid))?'checked':''}><span>Show my birthday (day and month only) to everyone in the app, so they can wish me.</span></label>
+<label class="m">Notes<textarea id="pn" rows="3">${e(p.note||'')}</textarea></label>
+<p><button class="pri" onclick="saveP()">Save profile</button></p><p class="m">Only you and the host can see your profile.</p></div>`}
+window.pic=el=>{const f=el.files[0];if(!f)return;grab();const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const S=240,c=document.createElement('canvas');c.width=c.height=S;const m=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)*0.2,m,m,0,0,S,S);P.photo=c.toDataURL('image/jpeg',0.75);draw()};im.src=r.result};r.readAsDataURL(f)};
+window.saveP=async()=>{grab();try{await updateDoc(doc(fs,'users',U.uid),{phone:P.phone||'',city:P.city||'',note:P.note||'',photo:P.photo||'',dob:P.dob||'',updatedAt:Date.now()});await setBd(U.uid,P.singer||P.name||'',P.dob,P.bshow);showNotice('Saved');}catch(x){showNotice('Could not save ('+(x.code||'error')+')')}};
+
+const vPdf=()=>`<div class="c"><b>PDF downloads</b><p class="m">Both PDFs show your position (SOTD, Singer of the Month and stars).</p>
+<p><button class="pri" onclick="pdf('all')">⬇ All songs list till now</button></p><p><button class="pri" onclick="pdf('my')">⬇ My songs till now</button></p></div>`;
+
+// Standard PDF generator sorted purely by Song ID
+window.pdf=kind=>{
+  if(!PUB||!window.jspdf){showNotice('Data or PDF tool not ready. Check your internet and try again.');return}
+  const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'}),a=s=>String(s==null?'':s).replace(/[^\x20-\xff]/g,'?');
+  const sk=(P.singer||'').toUpperCase(),s=(PUB.stars||{})[sk]||{t:0,m:{},d:[]},mo=nowM();
+  const som=Object.entries(PUB.som||{}).filter(x=>x[1]==sk).map(x=>fm(x[0]));
+  const rows=SONGS.filter(r=>kind=='all'||r[2]==sk).slice().sort(cmpBySongId);
+  d.setFontSize(20);d.text('SING FROM HOME',105,14,{align:'center'});
+  d.setFontSize(9);d.text('Online Singing Session on Zoom',105,19,{align:'center'});
+  d.text("Conducted by TIKARIYA'S SCHOOL OF MUSIC - Director: Manoj Tikariya",105,23.5,{align:'center'});
+  const cc=d.splitTextToSize('Core Committee: RAJESH GARJE, SANTOSH BHAROTE, VIJAY SUTRAVE, SUREKHA TIKARIYA, MANOJ TIKARIYA, NITIN POL, SURESH GHADSING, SHILA RAITHATHA',182);
+  d.setFontSize(8);d.text(cc,105,28,{align:'center'});d.setFontSize(9);
+  const yp=28+cc.length*3.4+1.5;
+  d.text('A Project of B. S. Tikariya Cultural Foundation \xAE - CIN: U88900MH2025NPL454435',105,yp,{align:'center'});
+  d.setFontSize(13);d.text(kind=='all'?'All Songs List (Sorted by Song ID)':'My Songs (Sorted by Song ID)',14,yp+9);
+  d.setFontSize(9);
+  const info=[sk?'Singer: '+sk:'',sk?'Stars: '+s.t:'',sk?'SOTD: '+((s.d&&s.d.length)||0)+' time(s)'+(s.d&&s.d.length?' - '+s.d.map(fd).join(', '):''):'',sk?'Singer of the Month: '+(som.length?som.join(', '):'-'):'','Total songs: '+rows.length+'   Date: '+fd(new Date().toISOString().slice(0,10))].filter(Boolean);
+  let y=yp+15;info.forEach(t=>{const ls=d.splitTextToSize(a(t),182);d.text(ls,14,y);y+=ls.length*4.5});
+  d.autoTable({startY:y+2,head:[['Order','Song ID','Date','Singer name','Song name']],body:rows.map((r,i)=>[String(i+1),r[0],fd(r[1]),r[2],r[3]].map(a)),styles:{fontSize:8,cellPadding:1.5,minCellHeight:8,valign:'middle',overflow:'ellipsize'},columnStyles:{0:{cellWidth:14,halign:'center'},1:{cellWidth:26},2:{cellWidth:24},3:{cellWidth:48},4:{cellWidth:70}},headStyles:{fillColor:[15,52,96]},didDrawPage:()=>{d.setFontSize(8);d.text('Page '+d.internal.getNumberOfPages(),105,291,{align:'center'})}});
+  const who=(P.singer||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''),base=kind=='all'?'all_songs':(who||'my_songs');
+  let cn=1;try{const m=JSON.parse(localStorage.getItem('sfh_pdfn')||'{}');cn=(m[base]||0)+1;m[base]=cn;localStorage.setItem('sfh_pdfn',JSON.stringify(m))}catch(x){cn=Math.floor(Date.now()/1000)%100000}
+  d.save(base+'_'+cn+'.pdf');
+};
+
+const phoneDigits=id=>{const dg=(id||'').replace(/\D/g,'').slice(-10);return dg.length==10?dg:''};
+const emailsFor=id=>{id=(id||'').trim();if(id.includes('@'))return [id.toLowerCase()];const dg=phoneDigits(id);return dg?[dg+'@singfromhome-phone.app',dg+'-2@singfromhome-phone.app',dg+'-3@singfromhome-phone.app']:[]};
+const authMsg=x=>({'auth/invalid-credential':'Wrong phone/email or password.','auth/wrong-password':'Wrong password.','auth/user-not-found':'No account found. Tap Create account.','auth/email-already-in-use':'This phone number or email already has an account. Tap Sign in.','auth/weak-password':'The password must have at least 6 characters.','auth/operation-not-allowed':'Email/password login is not turned on in Firebase yet.','auth/invalid-email':'Enter a valid 10-digit phone number or an email.','auth/network-request-failed':'No internet. Please try again.','auth/too-many-requests':'Too many attempts. Please wait a few minutes and try again.'}[x.code]||('Failed ('+(x.code||'error')+')'));
+const needConsent=()=>{if(!$('#cs')||!$('#cs').checked){showNotice('Please tick the consent box first.');return true}return false};
+window.loginPw=async()=>{if(needConsent())return;const ems=emailsFor($('#lid').value),pw=$('#lpw').value;
+  if(!ems.length||pw.length<6){showNotice('Enter a 10-digit phone number or an email, and a password of at least 6 characters.');return}
+  let last=null;
+  for(const em of ems){try{await signInWithEmailAndPassword(auth,em,pw);return}catch(x){last=x;if(!['auth/invalid-credential','auth/user-not-found','auth/wrong-password'].includes(x.code))break}}
+  showNotice(authMsg(last)+(ems.length>1?' If you forgot your password, type your name and a new password above and tap Forgot password.':''))};
+window.signupPw=async()=>{if(needConsent())return;const nm=$('#lnm').value.trim(),ems=emailsFor($('#lid').value),pw=$('#lpw').value;
+  if(!nm){showNotice('Please type your name.');return}
+  if(!ems.length||pw.length<6){showNotice('Enter a 10-digit phone number or an email, and a password of at least 6 characters.');return}
+  pendingName=nm;
+  try{const c=await createUserWithEmailAndPassword(auth,ems[0],pw);try{await updateProfile(c.user,{displayName:nm})}catch(y){}}
+  catch(x){showNotice(authMsg(x))}};
+window.forgotPw=async()=>{const raw=($('#lid').value||'').trim();
+  if(raw.includes('@')){try{await sendPasswordResetEmail(auth,raw);showNotice('A reset link has been sent to '+raw+'. Check your inbox and spam folder.');}catch(x){showNotice(authMsg(x))}return}
+  const ems=emailsFor(raw);if(!ems.length){showNotice('Type your 10-digit phone number first.');return}
+  if(needConsent())return;
+  const nm=$('#lnm').value.trim(),pw=$('#lpw').value;
+  if(!nm||pw.length<6){showNotice('Type your name and a NEW password (at least 6 characters) in the boxes above, then tap Forgot password again.');return}
+  showConfirm('A reset link cannot be sent to a phone number. A new login will be created for this number with the new password you typed, and the host must approve you again. Continue?', async () => {
+    pendingName=nm;
+    for(const em of ems.slice(1)){
+      try{const c=await createUserWithEmailAndPassword(auth,em,pw);try{await updateProfile(c.user,{displayName:nm})}catch(y){}return}
+      catch(x){if(x.code!='auth/email-already-in-use'){showNotice(authMsg(x));return}}
+    }
+    showNotice('Too many resets for this number. Please contact the host.');
+  });
+};
+
+const tdy=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+async function loadPlan(){try{const s=await getDoc(doc(fs,'plans',tdy()+'_'+U.uid));PLAN=s.exists()?s.data():null}catch(x){PLAN=null}}
+function vToday(){const pl=(PLAN&&PLAN.songs)||[];
+  return `<div class="c"><b>Songs for today – ${fd(tdy())}</b><p class="m">Tell the host which songs you plan to sing today, up to 3. You can change them until the session starts.</p>
+${[0,1,2].map(i=>`<input id="ps${i}" placeholder="Song ${i+1}" value="${e(pl[i]||'')}" style="width:100%;margin-top:8px;text-transform:uppercase">`).join('')}
+<p style="margin-top:10px"><button class="pri" onclick="savePlan()">${PLAN?'Update':'Save'} my songs</button> ${PLAN?'<button onclick="clearPlan()">Remove</button>':''}</p>
+${PLAN?`<p class="m">First saved at ${fdt(PLAN.ts)}. The host sees the list in the order people saved it.</p>`:''}</div>`}
+window.savePlan=async()=>{const sg=[0,1,2].map(i=>$('#ps'+i).value.trim().toUpperCase()).filter(Boolean);
+  if(!sg.length){showNotice('Enter at least one song.');return}
+  if(!P.singer){showNotice('Your name is not linked yet. Please ask the host.');return}
+  try{const d=tdy(),now=Date.now();await setDoc(doc(fs,'plans',d+'_'+U.uid),{uid:U.uid,date:d,singer:P.singer,songs:sg,note:'',ts:PLAN?PLAN.ts:now,upd:now});await loadPlan();draw();showNotice('Saved');}
+  catch(x){showNotice('Could not save ('+(x.code||'error')+'). Check that the latest rules are published.')}};
+window.clearPlan=async()=>{showConfirm('Remove your songs for today?', async () => {try{await deleteDoc(doc(fs,'plans',tdy()+'_'+U.uid));PLAN=null;draw()}catch(x){showNotice('Could not remove ('+(x.code||'error')+')')}})};
+window.sendHost=async()=>{const t=($('#hm').value||'').trim();if(!t){showNotice('Write your message first.');return}
+  try{await addDoc(collection(fs,'inbox'),{uid:U.uid,name:P.singer||P.name||'',text:t.slice(0,500),ts:Date.now()});$('#hm').value='';showNotice('Sent to the host');}
+  catch(x){showNotice('Could not send ('+(x.code||'error')+'). Check that the latest rules are published.')}};
+async function loadPlans(){PD=PD||tdy();try{const q=await getDocs(query(collection(fs,'plans'),where('date','==',PD)));PL=q.docs.map(x=>x.data()).sort((a,b)=>a.ts-b.ts)}catch(x){PL=[]}}
+window.setPD=v=>{PD=v||tdy();loadPlans().then(draw)};
+window.copyPlans=()=>{const t='SING FROM HOME - songs declared for '+fd(PD||tdy())+'\n'+(PL.length?PL.map((p,i)=>(i+1)+'. '+p.singer+' - '+(p.songs||[]).join(' / ')).join('\n'):'(none)');
+  const done=()=>showNotice('List copied');
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(done,()=>showNotice(t));else{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');done()}catch(x){showNotice(t)}a.remove()}};
+window.replyTo=uid=>{const sl=$('#mto');if(sl&&[...sl.options].some(o=>o.value==uid)){sl.value=uid;$('#mt').focus();$('#mt').scrollIntoView({block:'center'})}else showNotice('That person is not approved yet, so you cannot reply.')};
+window.delIn=async id=>{showConfirm('Delete this message?', async () => {try{await deleteDoc(doc(fs,'inbox',id));await loadAdm();draw()}catch(x){showNotice('Failed ('+(x.code||'error')+')')}})};
+
+const fdt=ts=>new Date(ts).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
+const unread=()=>{const n=MSGS.filter(m=>m.ts>seen).length;return n?' ('+n+')':''};
+async function loadMsgs(){try{
+  const a=await getDocs(query(collection(fs,'msgs'),where('to','==','all')));
+  const b=await getDocs(query(collection(fs,'msgs'),where('to','==',U.uid)));
+  MSGS=[...a.docs,...b.docs].map(d=>({id:d.id,...d.data()})).sort((x,y)=>y.ts-x.ts);
+}catch(x){MSGS=[]}}
+function vMsg(){return `<div class="c"><b>Message to the host</b><textarea id="hm" rows="3" maxlength="500" placeholder="Write your message to the host" style="width:100%;margin-top:8px"></textarea><p style="margin-top:10px"><button class="pri" onclick="sendHost()">Send to host</button></p><p class="m">The host can reply here in your Messages.</p></div><div class="c"><b>Messages from the host</b></div>`+(MSGS.length?MSGS.map(m=>`<div class="c"><div class="row" style="justify-content:space-between"><b>${e(m.title)}</b>${m.ts>seenPrev?'<span class="zm" style="padding:2px 8px;font-size:11px;border-radius:6px">NEW</span>':''}</div><p class="m" style="margin:2px 0 6px">${fdt(m.ts)}</p><div style="white-space:pre-wrap">${e(m.body)}</div></div>`).join(''):'<div class="c"><p class="m">No messages yet.</p></div>')}
+window.sendMsg=async()=>{const t=$('#mt').value.trim(),b=$('#mb').value.trim(),to=$('#mto').value;
+  if(!t||!b){showNotice('Write a title and a message');return}
+  const nm=to=='all'?'All participants':$('#mto').selectedOptions[0].text;
+  showConfirm('Send this message to '+nm+'?', async () => {
+    try{await addDoc(collection(fs,'msgs'),{title:t,body:b,to,toName:nm,ts:Date.now()});await loadAdm();draw();showNotice('Sent');}
+    catch(x){showNotice('Failed ('+(x.code||'error')+'). Check that the latest rules are published in Firebase.')}
+  });
+};
+window.delMsg=async id=>{showConfirm('Delete this message for everyone?', async () => {try{await deleteDoc(doc(fs,'msgs',id));await loadAdm();draw()}catch(x){showNotice('Failed ('+(x.code||'error')+')')}})};
+
+const PP=x=>(Array.isArray(x)?x:[x]).filter(Boolean).map(t=>'<p>'+e(t)+'</p>').join('');
+const UL=a=>a&&a.length?'<ul style="margin:6px 0;padding-left:18px">'+a.map(x=>'<li style="margin:4px 0">'+e(x)+'</li>').join('')+'</ul>':'';
+const sec=(t,txt,pts)=>((txt&&txt.length)||(pts&&pts.length))?`<div class="c"><b>${e(t)}</b>${PP(txt)}${UL(pts)}</div>`:'';
+function vAbout(pub){
+  const A=ABOUT,F=A.foundation||{},S=A.program||{},C=A.contact||{},SP=A.support||{};
+  const link=(h,t)=>`<a href="${e(h)}" target="_blank" rel="noopener" style="color:var(--ac);font-weight:600">${e(t)}</a>`;
+  const ct=[C.email&&'Email: '+link('mailto:'+C.email,C.email),C.phone&&'Phone: '+link('tel:'+C.phone,C.phone),C.whatsapp&&'WhatsApp: '+e(C.whatsapp),C.address&&'Address: '+e(C.address),C.website&&'Website: '+link(C.website,C.website)].concat((C.social||[]).map(x=>link(x.url,x.label))).filter(Boolean);
+  return (pub?'<div class="c"><button onclick="closeAbout()">← Back</button></div>':'')
+  +`<div class="c" style="text-align:center"><h2 style="margin-top:8px">${e(F.name)}</h2><p class="m">CIN: ${e(F.cin)}${F.since?' · Since '+e(F.since):''}</p>${F.tagline?`<p><b>${e(F.tagline)}</b></p>`:''}</div>`
+  +sec('About the Foundation',F.about)
+  +((F.director||F.address)?`<div class="c">${F.director?`<b>${e(F.director.role||'Director')}</b><p style="margin:4px 0 10px">${e(F.director.name)}</p>`:''}${F.address?`<b>Registered office</b><p style="margin:4px 0">${e(F.address)}</p>`:''}</div>`:'')
+  +sec('Our agenda',A.agenda,A.agendaPoints)+sec('How we work',A.how,A.howPoints)+sec('Registrations',null,A.registrations)
+  +((S.intro||S.schedule||(S.rules&&S.rules.length)||(S.committee&&S.committee.length))?`<div class="c"><b>SING FROM HOME</b>${PP(S.intro)}${S.schedule?'<p><b>When:</b> '+e(S.schedule)+'</p>':''}${UL(S.rules)}${(S.committee&&S.committee.length)?`<p style="font-size:12px;line-height:1.6;margin:10px 0 0"><b>Core Committee:</b> ${S.committee.map(x=>e(x)).join(' · ')}</p>`:''}</div>`:'')
+  +(SP.upi?`<div class="c"><b>Support our work (voluntary)</b>${PP(SP.intro)}<p style="margin:6px 0"><b>UPI ID:</b> ${e(SP.upi)}</p>${SP.qrImage?`<p><img src="${e(SP.qrImage)}" alt="UPI QR code" style="width:200px;max-width:100%;border:1px solid var(--bd);border-radius:10px;background:#fff"></p>`:''}<p><a class="zm" style="background:var(--ac);border-color:var(--ac);color:#ffffff;font-weight:700" href="upi://pay?pa=${encodeURIComponent(SP.upi)}&amp;pn=${encodeURIComponent(SP.payeeName||F.name)}&amp;cu=INR">Pay with a UPI app</a></p>${SP.note?'<p class="m">'+e(SP.note)+'</p>':''}</div>`:'')
+  +sec('Message from the Director',A.message)
+  +((A.faq&&A.faq.length)?`<div class="c"><b>Questions</b>${A.faq.map(x=>`<p><b>${e(x.q)}</b><br>${e(x.a)}</p>`).join('')}</div>`:'')
+  +(ct.length?`<div class="c"><b>Contact</b>${ct.map(x=>'<p style="margin:4px 0">'+x+'</p>').join('')}</div>`:'')
+  +'<p class="m" style="text-align:center">Conducted by TIKARIYA’S SCHOOL OF MUSIC · Director: Manoj Tikariya</p>';
 }
-window.makePdf=mode=>{
-  if(!window.jspdf || !window.jspdf.jsPDF){
-    $('#pdf_st').textContent='PDF library loading, please try again.';
-    return;
-  }
-  const {jsPDF} = window.jspdf;
-  const docPdf = new jsPDF({unit:'mm', format:'a4'});
-  const cleanStr = s => String(s==null?'':s).replace(/[^\x20-\x7E]/g, '');
+window.about=()=>{showAbout=true;try{location.hash='about'}catch(x){}draw();scrollTo(0,0)};
+window.closeAbout=()=>{showAbout=false;try{history.replaceState(null,'',location.pathname+location.search)}catch(x){}draw()};
+window.addEventListener('hashchange',()=>{showAbout=location.hash=='#about';draw()});
 
-  const sk=(P.singer||'').toUpperCase();
-  const rows=(mode==='me'?PUB.songs.filter(r=>r[2]===sk):PUB.songs).slice().sort(cmpBySongId);
-  $('#pdf_st').textContent='Preparing PDF…';
+function vEdU(){const u=AU.find(x=>x.id==EDU);if(!u)return '';
+  return `<div class="c"><b>Profile – ${e(u.name||idOf(u.email))}</b><p class="m">${e(idOf(u.email))} · ${e(u.status||'')}</p>
+<div class="row" style="margin:8px 0"><div class="ph">${okImg(u.photo)?`<img src="${u.photo}">`:'<span class="m">No photo</span>'}</div><div><label class="up">📷 Change photo<input type="file" accept="image/*" hidden onchange="picU(this)"></label> ${u.photo?'<button onclick="rmPicU()">Remove</button>':''}</div></div>
+<div class="f"><label>Name<input id="eu_n" value="${e(u.name||'')}"></label><label>Linked singer<input id="eu_s" list="eul" value="${e(u.singer||'')}"><datalist id="eul">${((PUB&&PUB.singers)||[]).map(n=>`<option value="${e(n)}">`).join('')}</datalist></label><label>Phone<input id="eu_p" value="${e(u.phone||'')}"></label><label>City<input id="eu_c" value="${e(u.city||'')}"></label>${bdSel('eb',u.dob)}</div>
+<label class="m" style="flex-direction:row;align-items:center;gap:10px;margin:8px 0"><input type="checkbox" id="ebs" class="chk" ${(u.bshow!==undefined?u.bshow:BD.some(b=>b.id==u.id))?'checked':''}><span>Show this birthday (day and month) to everyone in the app</span></label>
+<label class="m">Notes<textarea id="eu_t" rows="3" style="width:100%">${e(u.note||'')}</textarea></label>
+<p style="margin-top:10px"><button class="pri" onclick="saveU()">Save</button> <button onclick="closeU()">Close</button></p></div>`}
+function grabU(){const u=AU.find(x=>x.id==EDU);if(!u||!$('#eu_n'))return u;u.name=$('#eu_n').value;u.singer=$('#eu_s').value.trim().toUpperCase();u.phone=$('#eu_p').value;u.city=$('#eu_c').value;u.note=$('#eu_t').value;u.dob=bdRead('eb');u.bshow=$('#ebs').checked;return u}
+window.editU=id=>{EDU=id;draw();scrollTo(0,0)};
+window.closeU=()=>{EDU='';draw()};
+window.rmPicU=()=>{const u=grabU();if(u){u.photo='';draw()}};
+window.picU=el=>{const f=el.files[0];if(!f)return;const u=grabU();const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const S=240,c=document.createElement('canvas');c.width=c.height=S;const m=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)*0.2,m,m,0,0,S,S);u.photo=c.toDataURL('image/jpeg',0.75);draw()};im.src=r.result};r.readAsDataURL(f)};
+window.saveU=async()=>{const u=grabU();if(!u)return;try{await updateDoc(doc(fs,'users',u.id),{name:u.name||'',singer:u.singer||'',phone:u.phone||'',city:u.city||'',note:u.note||'',photo:u.photo||'',dob:u.dob||'',updatedAt:Date.now()});await setBd(u.id,u.singer||u.name||'',u.dob,u.bshow);showNotice('Saved');EDU='';await loadAdm();draw()}catch(x){showNotice('Could not save ('+(x.code||'error')+')')}};
 
-  docPdf.setFontSize(18);
-  docPdf.setTextColor(15, 52, 96);
-  docPdf.text('SING FROM HOME', 105, 14, {align:'center'});
+const SIGN='– Manoj Tikariya<br>Director, B. S. Tikariya Cultural Foundation';
+const BUILTIN=[{id:'b-diwali-2026',icon:'🪔',title:'Happy Diwali!',hi:'शुभ दीपावली',text:'May the festival of lights fill your life and your voice with joy, music and light. Warm wishes to all our singers and their families from the SING FROM HOME family.',from:'2026-11-05',to:'2026-11-12'}];
+const FEST=[
+{i:'🪔',t:'Happy Diwali!',h:'शुभ दीपावली',x:'May the festival of lights fill your life and your voice with joy, music and light. Warm wishes to all our singers and their families from the SING FROM HOME family.'},
+{i:'🎆',t:'Happy New Year!',h:'नया साल मुबारक',x:'Wishing you and your family a new year full of music, good health and happiness.'},
+{i:'🪁',t:'Happy Makar Sankranti!',h:'तिळगूळ घ्या, गोड गोड बोला',x:'May your voice and your days be sweet and bright. Warm wishes from the SING FROM HOME family.'},
+{i:'🇮🇳',t:'Happy Republic Day!',h:'जय हिंद',x:'Proud to sing together on this Republic Day. Warm wishes from the SING FROM HOME family.'},
+{i:'🕉️',t:'Happy Maha Shivratri!',h:'हर हर महादेव',x:'Wishing you peace and strength on Maha Shivratri.'},
+{i:'🎨',t:'Happy Holi!',h:'शुभ होली',x:'May the colours of Holi fill your life with joy and your songs with new notes.'},
+{i:'🌼',t:'Happy Gudi Padwa!',h:'गुढीपाडव्याच्या शुभेच्छा',x:'Wishing you a bright and prosperous new year.'},
+{i:'🌙',t:'Eid Mubarak!',h:'ईद मुबारक',x:'Wishing you and your family joy, peace and blessings.'},
+{i:'🚩',t:'Happy Ram Navami!',h:'जय श्री राम',x:'Wishing you and your family a blessed Ram Navami.'},
+{i:'🇮🇳',t:'Happy Independence Day!',h:'जय हिंद',x:'Let us celebrate freedom with music. Warm wishes from the SING FROM HOME family.'},
+{i:'🎀',t:'Happy Raksha Bandhan!',h:'रक्षाबंधन की शुभकामनाएँ',x:'Wishing all brothers and sisters a day full of love and music.'},
+{i:'🐘',t:'Happy Ganesh Chaturthi!',h:'गणपती बाप्पा मोरया',x:'May Bappa bless you and your family with happiness and good health.'},
+{i:'🪔',t:'Happy Navratri!',h:'शुभ नवरात्रि',x:'Wishing you nine days of joy, music and devotion.'},
+{i:'🏹',t:'Happy Dussehra!',h:'शुभ दशहरा',x:'May good always win. Warm wishes from the SING FROM HOME family.'},
+{i:'🙏',t:'Happy Guru Purnima!',h:'गुरु पौर्णिमा',x:'With gratitude to all our teachers and gurus of music.'},
+{i:'🎄',t:'Merry Christmas!',h:'',x:'Wishing you joy, peace and beautiful music this Christmas.'}];
+async function loadGreet(){try{const q=await getDocs(collection(fs,'greet'));GRT=q.docs.map(x=>({id:x.id,...x.data()}))}catch(x){GRT=[]}}
+async function loadBd(){try{const q=await getDocs(collection(fs,'birthdays'));BD=q.docs.map(x=>({id:x.id,...x.data()}))}catch(x){BD=[]}}
+const mdOf=d=>String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+function showCard(o){const old=document.getElementById('dw');if(old)old.remove();
+  const d=document.createElement('div');d.id='dw';
+  d.innerHTML=`<div class="card"${o.bg?` style="background:${o.bg}"`:''}><button class="x" onclick="closeDw()" aria-label="Close">✕</button><div class="diya">${o.icon}</div><h2>${e(o.title)}</h2>${o.sub?`<p style="font-size:20px;font-weight:600;margin:4px 0">${e(o.sub)}</p>`:''}<p style="font-size:15px;line-height:1.6;margin:12px 0;white-space:pre-line">${e(o.text)}</p>${o.sig?`<p style="margin:12px 0 16px;font-size:13px;opacity:0.95">${o.sig}</p>`:''}<button style="background:#fff;color:#0f3460;border:0;border-radius:10px;padding:11px 34px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 15px rgba(0,0,0,0.2)" onclick="closeDw()">Close</button></div>`;
+  d.onclick=ev=>{if(ev.target===d)closeDw()};document.body.appendChild(d)}
+function seenMap(){try{return JSON.parse(localStorage.getItem('sfh_cards')||'{}')}catch(x){return {}}}
+function nextCard(){if(document.getElementById('dw'))return;const c=GQ.shift();if(!c)return;const m=seenMap();m[c.key]=tdy();try{localStorage.setItem('sfh_cards',JSON.stringify(m))}catch(x){}showCard(c)}
+window.closeDw=()=>{const d=document.getElementById('dw');if(d)d.remove();nextCard()};
+function runCards(){const t=tdy(),m=seenMap(),due=[];
+  [...BUILTIN,...GRT].forEach(g=>{const k='g-'+(g.id||g.title);if(g.from<=t&&t<=g.to&&m[k]!==t)due.push({key:k,icon:g.icon||'🎉',title:g.title,sub:g.hi,text:g.text,sig:SIGN})});
+  if(U&&P&&(ADM||P.status=='approved')){const md=t.slice(5),bl=BD.filter(b=>b.md==md);
+    if(bl.length&&m['bd-'+t]!==t){const mine=bl.some(b=>b.id==U.uid),names=bl.map(b=>b.singer).join(', ');
+      due.push({key:'bd-'+t,icon:'🎂',title:mine?'Happy Birthday!':'Birthday today',sub:mine?'':names,
+        text:mine?'Wishing you a wonderful birthday'+(bl.find(b=>b.id==U.uid).singer?', '+bl.find(b=>b.id==U.uid).singer:'')+'! May your year be full of music, health and joy.':'Let us wish '+names+' a very happy birthday today!',
+        sig:mine?'– The SING FROM HOME family':'',bg:'linear-gradient(150deg,#0f3460 0%,#1e4a7a 50%,#2563eb 100%)'})}}
+  GQ=due;nextCard()}
+function bdCard(){const out=[],b0=new Date(tdy()+'T00:00');
+  for(let i=0;i<=7;i++){const d=new Date(b0.getFullYear(),b0.getMonth(),b0.getDate()+i),md=mdOf(d);BD.filter(b=>b.md==md).forEach(b=>out.push({n:b.singer,i,d}))}
+  return out.length?`<div class="c"><b>Birthdays</b>${out.map(o=>`<p style="margin:5px 0"><b>${e(o.n)}</b> <span class="m">${o.i==0?'today':o.d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</span></p>`).join('')}</div>`:''}
+loadGreet().then(()=>setTimeout(runCards,500));
+const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const bdSel=(id,dob)=>{const [mm,dd]=(dob||'').split('-');return `<label>Birthday – day<select id="${id}d"><option value="">–</option>${Array.from({length:31},(_,k)=>`<option value="${String(k+1).padStart(2,'0')}"${dd==String(k+1).padStart(2,'0')?' selected':''}>${k+1}</option>`).join('')}</select></label><label>Month<select id="${id}m"><option value="">–</option>${MON.map((n,k)=>`<option value="${String(k+1).padStart(2,'0')}"${mm==String(k+1).padStart(2,'0')?' selected':''}>${n}</option>`).join('')}</select></label>`};
+const bdRead=id=>{const d=$('#'+id+'d'),m=$('#'+id+'m');return d&&m&&d.value&&m.value?m.value+'-'+d.value:''};
+async function setBd(uid,name,dob,show){try{if(show&&dob)await setDoc(doc(fs,'birthdays',uid),{singer:name||'',md:dob,ts:Date.now()});else await deleteDoc(doc(fs,'birthdays',uid))}catch(x){}await loadBd()}
+window.fillFest=v=>{if(v==='')return;const f=FEST[+v];$('#gt').value=f.t;$('#gh').value=f.h;$('#gx').value=f.x;$('#gt').dataset.i=f.i};
+window.prevGreet=()=>{const t=$('#gt').value.trim(),x=$('#gx').value.trim();if(!t||!x){showNotice('Write a title and a message first');return}showCard({icon:$('#gt').dataset.i||'🎉',title:t,sub:$('#gh').value.trim(),text:x,sig:SIGN})};
+window.addGreet=async()=>{const t=$('#gt').value.trim(),x=$('#gx').value.trim(),fr=$('#gfrom').value,to=$('#gto').value;
+  if(!t||!x||!fr||!to){showNotice('Fill the title, message and both dates');return}if(to<fr){showNotice('The end date is before the start date');return}
+  try{await addDoc(collection(fs,'greet'),{title:t,hi:$('#gh').value.trim(),text:x,from:fr,to,icon:$('#gt').dataset.i||'🎉',ts:Date.now()});await loadGreet();draw();showNotice('Greeting added. It shows to everyone from '+fd(fr)+' to '+fd(to)+'.');}
+  catch(y){showNotice('Could not save ('+(y.code||'error')+'). Check that the latest rules are published.')}};
+window.delGreet=async id=>{showConfirm('Delete this greeting?', async () => {try{await deleteDoc(doc(fs,'greet',id));await loadGreet();draw()}catch(y){showNotice('Failed ('+(y.code||'error')+')')}})};
 
-  docPdf.setFontSize(8.5);
-  docPdf.setTextColor(71, 85, 105);
-  docPdf.text('A project of B. S. Tikariya Cultural Foundation \xAE (CIN: U88900MH2025NPL454435)', 105, 19, {align:'center'});
-  docPdf.text("Conducted by TIKARIYA'S SCHOOL OF MUSIC \xB7 Director: Manoj Tikariya", 105, 23.5, {align:'center'});
+async function loadAdm(){try{const q=await getDocs(collection(fs,'users'));AU=q.docs.map(x=>({id:x.id,...x.data()}));try{const mq=await getDocs(collection(fs,'msgs'));AM=mq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AM=[]}try{const iq=await getDocs(collection(fs,'inbox'));AIN=iq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AIN=[]}await loadPlans()}catch(x){AU=[];showNotice('Could not load participants ('+(x.code||'error')+'). Check the admin email in firestore.rules.')}}
+function vAdm(){
+  const names=(PUB&&PUB.singers)||[],opt='<option value="">Link to singer…</option>'+names.map(n=>`<option>${e(n)}</option>`).join('');
+  const pend=AU.filter(u=>u.status!='approved'),ok=AU.filter(u=>u.status=='approved');
+  const img=u=>okImg(u.photo)?`<div class="ph" style="width:44px;height:44px"><img src="${u.photo}"></div>`:'';
+  return `${EDU?vEdU():''}<div class="c"><b>Publish data</b><p class="m">${PUB?'Last published: '+e(PUB.ts||''):'Nothing published yet.'} (${SONGS.length} songs)</p>
+<label class="up">⬆ Choose the file from the host app<input type="file" accept=".json,application/json" hidden onchange="pubUp(this)"></label></div>
+<div class="c"><b>Zoom link</b><input id="zl" style="width:100%" value="${e(CONF.zoom||'')}"><p style="margin-top:10px"><button onclick="saveZ()">Save link</button></p></div>
+<div class="c"><b>Festival greetings</b><select id="gf" onchange="fillFest(this.value)"><option value="">Choose a festival…</option>${FEST.map((f,i)=>`<option value="${i}">${e(f.t)}</option>`).join('')}</select><input id="gt" placeholder="Title" style="width:100%;margin-top:8px"><input id="gh" placeholder="Hindi / Marathi line (optional)" style="width:100%;margin-top:8px"><textarea id="gx" rows="3" placeholder="Message" style="width:100%;margin-top:8px"></textarea><div class="f"><label>Show from<input type="date" id="gfrom" value="${tdy()}"></label><label>Show until<input type="date" id="gto" value="${tdy()}"></label></div><p style="margin-top:10px"><button class="pri" onclick="addGreet()">Add greeting</button> <button onclick="prevGreet()">Preview</button></p>${GRT.length?GRT.slice().sort((a,b)=>a.from<b.from?1:-1).map(g=>`<p style="margin:6px 0"><b>${e(g.title)}</b> <span class="m">${fd(g.from)} – ${fd(g.to)}</span> <button onclick="delGreet('${e(g.id)}')">Delete</button></p>`).join(''):'<p class="m">No greetings added yet. The Diwali greeting for 5 to 12 Nov 2026 is built in.</p>'}</div>
+<div class="c"><b>Songs declared by participants</b><div class="f"><input type="date" value="${PD||tdy()}" onchange="setPD(this.value)"></div>${PL.length?PL.map((p,i)=>`<p style="margin:6px 0"><b>${i+1}. ${e(p.singer)}</b> <span class="m">${fdt(p.ts)}</span><br>${(p.songs||[]).map(x=>e(x)).join(' / ')}</p>`).join(''):'<p class="m">Nothing declared for this date.</p>'}<button onclick="copyPlans()">Copy list</button></div>
+<div class="c"><b>Messages from participants (${AIN.length})</b>${AIN.slice(0,30).map(m=>`<div style="margin:8px 0;border-top:1px solid var(--bd);padding-top:8px"><b>${e(m.name||'?')}</b> <span class="m">${fdt(m.ts)}</span>${m.ts>seenAdm?' <span class="zm" style="padding:1px 6px;font-size:11px;border-radius:6px">NEW</span>':''}<div style="white-space:pre-wrap">${e(m.text)}</div><p style="margin-top:6px"><button onclick="replyTo('${e(m.uid)}')">Reply</button> <button onclick="delIn('${e(m.id)}')">Delete</button></p></div>`).join('')||'<p class="m">No messages yet.</p>'}</div>
+<div class="c"><b>Send a message</b><input id="mt" placeholder="Title" style="width:100%;margin-top:8px"><textarea id="mb" rows="4" placeholder="Message" style="width:100%;margin-top:8px"></textarea><div class="f"><select id="mto"><option value="all">All approved participants</option>${ok.map(u=>`<option value="${e(u.id)}">${e(u.singer||u.name)}</option>`).join('')}</select></div><button class="pri" onclick="sendMsg()">Send</button><p class="m">${AM.length} sent so far.</p></div>
+${AM.length?`<div class="c"><b>Sent messages</b>${AM.slice(0,20).map(m=>`<p style="margin:8px 0"><b>${e(m.title)}</b> <span class="m">→ ${e(m.toName||m.to)} · ${fdt(m.ts)}</span> <button onclick="delMsg('${e(m.id)}')">Delete</button></p>`).join('')}</div>`:''}
+<div class="c"><b>Waiting for approval (${pend.length})</b></div>
+${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b><br><span class="m">${e(idOf(u.email))} · ${e(u.status||'')}</span></div></div>
+<div class="f"><select id="lk_${e(u.id)}">${opt}</select><input id="lt_${e(u.id)}" placeholder="or type singer name"></div>
+<p style="margin-top:8px"><button class="pri" onclick="appr('${e(u.id)}')">Approve</button> <button onclick="rej('${e(u.id)}')">Reject</button> <button onclick="editU('${e(u.id)}')">Profile</button></p></div>`).join('')}
+<div class="c"><b>Approved (${ok.length})</b>${ok.length ? `<div class="tbl"><table>
+  <tr>
+    <th>Singer name</th>
+    <th>Login / Phone</th>
+    <th>Role</th>
+    <th style="text-align:center">Actions</th>
+  </tr>
+  ${ok.map(u => {
+    const isSup = (CFG.superadmins || []).map(x => x.toLowerCase()).includes((u.email || '').toLowerCase());
+    const roleTxt = isSup ? 'Superadmin' : (u.role == 'admin' ? 'Admin' : 'Participant');
+    const roleStyle = isSup ? 'color:#0284c7;font-weight:800' : (u.role == 'admin' ? 'color:var(--ac);font-weight:700' : 'color:var(--mut)');
+    return `<tr>
+      <td><b>${e(u.singer || '(not linked)')}</b></td>
+      <td><span class="m">${e(idOf(u.email))}</span></td>
+      <td><span style="${roleStyle}">${roleTxt}</span></td>
+      <td style="text-align:center;white-space:nowrap">
+        ${isSup ? `<button onclick="editU('${e(u.id)}')">Profile</button>` : `
+          ${IS_SUPER ? (
+            u.role == 'admin'
+              ? `<button onclick="revokeAdmin('${e(u.id)}','${e(u.singer || u.name)}')">Revoke Admin</button> `
+              : `<button onclick="makeAdmin('${e(u.id)}','${e(u.singer || u.name)}')">Make Admin</button> `
+          ) : ''}
+          <button onclick="editU('${e(u.id)}')">Profile</button>
+          <button onclick="rej('${e(u.id)}')">Revoke Access</button>
+        `}
+      </td>
+    </tr>`;
+  }).join('')}
+</table></div>` : '<p class="m">No approved participants yet.</p>'}</div>`;
+}
 
-  docPdf.setFontSize(10);
-  docPdf.setTextColor(15, 23, 42);
-  docPdf.text(`${cleanStr(mode==='me' ? sk : 'All Songs Archive')} (${rows.length} songs) | Sorted by Song ID | ${fd(tdy())}`, 14, 30);
-
-  const tableRows = rows.map((r, i) => [
-    i + 1,
-    cleanStr(r[0]),
-    fd(r[1]),
-    cleanStr(r[2]),
-    cleanStr(r[3])
-  ]);
-
-  docPdf.autoTable({
-    startY: 34,
-    head: [['#', 'Song ID', 'Date', 'Singer Name', 'Song Title']],
-    body: tableRows,
-    styles: {fontSize: 8, cellPadding: 2, valign: 'middle'},
-    headStyles: {fillColor: [15, 52, 96], textColor: [255, 255, 255], fontStyle: 'bold'},
-    didDrawPage: data => {
-      docPdf.setFontSize(8);
-      docPdf.setTextColor(100, 116, 139);
-      docPdf.text(`Page ${docPdf.internal.getNumberOfPages()}`, 105, 290, {align: 'center'});
+window.makeAdmin = async (id, name) => {
+  if (!IS_SUPER) return;
+  showConfirm('Promote ' + name + ' to Admin? They will be able to manage daily sessions, approve singers, and send messages.', async () => {
+    try {
+      await updateDoc(doc(fs, 'users', id), { role: 'admin' });
+      await loadAdm();
+      draw();
+      showNotice(name + ' is now an Admin.');
+    } catch (x) {
+      showNotice('Failed (' + (x.code || 'error') + ')');
     }
   });
-
-  docPdf.save('SFH_'+(mode==='me'?sk.replace(/\s+/g,'_'):'All_Songs')+'.pdf');
-  $('#pdf_st').textContent='Downloaded!';
 };
 
-/* ---------- PROFILE & PHOTO CROP ---------- */
-function vMe(){
-  return `<div class="c"><h2>My profile</h2>
-    <div class="row" style="margin:10px 0">
-      ${P.photo?`<img class="av" src="${P.photo}">`:''}
-      <div><input type="file" id="ph" accept="image/*" style="display:none" onchange="openCrop(this.files[0])">
-      <button onclick="$('#ph').click()">${P.photo?'Change photo':'Upload photo'}</button>
-      ${P.photo?` <button onclick="remPhoto()">Remove</button>`:''}</div>
-    </div>
-    <div class="f">
-      <input id="m_name" value="${e(P.name||'')}" placeholder="Display name">
-      <input id="m_phone" value="${e(P.phone||'')}" placeholder="WhatsApp / phone">
-      <input id="m_city" value="${e(P.city||'')}" placeholder="City">
-    </div>
-    <div class="row"><label class="m">Birthday (day &amp; month only):</label>
-      <select id="m_bd">${['','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31'].map(d=>`<option value="${d}"${(P.bday||'').slice(3)===d?' selected':''}>${d||'Day'}</option>`).join('')}</select>
-      <select id="m_bm">${['','01','02','03','04','05','06','07','08','09','10','11','12'].map((m,i)=>`<option value="${m}"${(P.bday||'').slice(0,2)===m?' selected':''}>${m?MN[i]:'Month'}</option>`).join('')}</select>
-    </div>
-    <label class="consent"><input type="checkbox" id="m_bshow"${P.showBday?' checked':''}><span>Display my birthday wishes to everyone in the app</span></label>
-    <p class="row"><button class="pri" onclick="saveMe()">Save profile</button><span class="m" id="m_st"></span></p>
-  </div>`;
-}
-window.saveMe=async()=>{
-  const bm=$('#m_bm').value,bd=$('#m_bd').value,bday=(bm&&bd)?bm+'-'+bd:'';
-  const showBday=$('#m_bshow').checked&&!!bday;
-  const name=$('#m_name').value.trim(),phone=$('#m_phone').value.trim(),city=$('#m_city').value.trim();
-  await updateDoc(doc(fs,'users',U.uid),{name,phone,city,bday,showBday});
-  Object.assign(P,{name,phone,city,bday,showBday});
-  const list=(PUB.birthdays||[]).filter(b=>b.uid!==U.uid);
-  if(showBday)list.push({uid:U.uid,name:P.singer||name,mmdd:bday});
-  try{await updateDoc(doc(fs,'pub','data'),{birthdays:list});}catch(x){}
-  $('#m_st').textContent='Saved!';
-};
-window.remPhoto=async()=>{await updateDoc(doc(fs,'users',U.uid),{photo:''});P.photo='';draw();};
-
-let CIMG=null,CX=0,CY=0,CZ=1,DRAG=null;
-window.openCrop=f=>{
-  if(!f)return;
-  const r=new FileReader();
-  r.onload=ev=>{const im=new Image();im.onload=()=>{CIMG=im;CX=0;CY=0;CZ=1;$('#cz').value=1;$('#crop').style.display='flex';drawCrop();};im.src=ev.target.result;};
-  r.readAsDataURL(f);
-};
-window.closeCrop=()=>{$('#crop').style.display='none';CIMG=null;};
-function drawCrop(){
-  if(!CIMG)return;
-  const cv=$('#cv'),ctx=cv.getContext('2d'),S=260;
-  ctx.fillStyle='#111';ctx.fillRect(0,0,S,S);
-  const sc=Math.max(S/CIMG.width,S/CIMG.height)*CZ,w=CIMG.width*sc,h=CIMG.height*sc;
-  ctx.drawImage(CIMG,(S-w)/2+CX,(S-h)/2+CY,w,h);
-}
-$('#cz').oninput=ev=>{CZ=+ev.target.value;drawCrop();};
-const cv=$('#cv');
-cv.onpointerdown=ev=>{DRAG={x:ev.clientX-CX,y:ev.clientY-CY};cv.setPointerCapture(ev.pointerId);};
-cv.onpointermove=ev=>{if(!DRAG)return;CX=ev.clientX-DRAG.x;CY=ev.clientY-DRAG.y;drawCrop();};
-cv.onpointerup=()=>{DRAG=null;};
-window.saveCrop=async()=>{
-  const out=document.createElement('canvas');out.width=out.height=240;
-  out.getContext('2d').drawImage($('#cv'),0,0,240,240);
-  const photo=out.toDataURL('image/jpeg',0.72);
-  await updateDoc(doc(fs,'users',U.uid),{photo});P.photo=photo;closeCrop();draw();
+window.revokeAdmin = async (id, name) => {
+  if (!IS_SUPER) return;
+  showConfirm('Remove Admin role from ' + name + '? They will become a standard participant.', async () => {
+    try {
+      await updateDoc(doc(fs, 'users', id), { role: 'participant' });
+      await loadAdm();
+      draw();
+      showNotice('Admin privileges removed for ' + name);
+    } catch (x) {
+      showNotice('Failed (' + (x.code || 'error') + ')');
+    }
+  });
 };
 
-/* ---------- MESSAGES ---------- */
-function vMsg(){
-  const toOpts=IS_ADMIN?`<select id="ms_to"><option value="all">Everyone (broadcast)</option>${USERS.filter(u=>u.status==='approved').map(u=>`<option value="${u.id}">${e(u.singer||u.name)}</option>`).join('')}</select>`:'';
-  return `<div class="c"><h2>Messages</h2>
-    ${IS_ADMIN?`<p class="m">Send a broadcast announcement or a private message to a singer.</p>`:`<p class="m">Send a message to the host, or read announcements below.</p>`}
-    <div class="f">${toOpts}<input id="ms_t" placeholder="Subject"></div>
-    <textarea id="ms_b" rows="3" style="width:100%" placeholder="Write your message…"></textarea>
-    <p><button class="pri" onclick="sendMsg()">Send</button></p>
-  </div>
-  ${MSGS.map(m=>`<div class="c">
-    <div class="row" style="justify-content:space-between"><b>${e(m.title||'Message')}</b><span class="m">${m.fromName?'from '+e(m.fromName)+' · ':''}${m.to&&m.to!=='all'?(m.toName?'to '+e(m.toName)+' · ':'private · '):''}${ago(m.ts||0)}</span></div>
-    <p style="margin:6px 0 0;white-space:pre-line">${e(m.body||'')}</p>
-    ${IS_ADMIN?`<p style="margin:6px 0 0"><button onclick="delMsg('${m.id}')">Delete</button></p>`:''}
-  </div>`).join('')||'<p class="m">No messages yet.</p>'}`;
-}
-window.sendMsg=async()=>{
-  const title=$('#ms_t').value.trim(),body=$('#ms_b').value.trim();if(!body)return;
-  const to=IS_ADMIN?$('#ms_to').value:'admin';
-  const target=USERS.find(u=>u.id===to);
-  await addDoc(collection(fs,'msgs'),{title,body,to,toName:target?(target.singer||target.name):'',from:U.uid,fromName:P.singer||P.name||'',ts:Date.now()});
-  $('#ms_t').value='';$('#ms_b').value='';
-};
-window.delMsg=id=>deleteDoc(doc(fs,'msgs',id));
+window.appr=async id=>{const v=(($('#lt_'+id).value||'').trim()||$('#lk_'+id).value||'').toUpperCase();if(!v){showNotice('Choose or type the singer name to link');return}
+  try{await updateDoc(doc(fs,'users',id),{status:'approved',singer:v});await loadAdm();draw()}catch(x){showNotice('Failed ('+(x.code||'error')+')')}};
+window.rej=async id=>{showConfirm('Remove access for this person?', async () => {try{await updateDoc(doc(fs,'users',id),{status:'rejected'});await loadAdm();draw()}catch(x){showNotice('Failed ('+(x.code||'error')+')')}})};
+window.saveZ=async()=>{try{await setDoc(doc(fs,'config','app'),{zoom:$('#zl').value.trim()});CONF.zoom=$('#zl').value.trim();showNotice('Zoom link saved');draw()}catch(x){showNotice('Failed ('+(x.code||'error')+')')}};
+const hsh=t=>{let h=5381;for(let i=0;i<t.length;i++)h=((h<<5)+h+t.charCodeAt(i))|0;return String(h>>>0)};
+window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=async()=>{
+  try{const x=JSON.parse(r.result);if(x.kind!='sfh-pub'||!Array.isArray(x.songs))throw 0;
+    const by={};x.songs.forEach(sg=>{const m=String(sg[1]).slice(0,7);(by[m]=by[m]||[]).push(sg)});
+    const ms=Object.keys(by).sort(),js={};let tot=0;
+    ms.forEach(m=>{js[m]=JSON.stringify(by[m]);tot+=js[m].length;if(js[m].length>900000)throw 'size'});
+    showConfirm('Publish '+x.songs.length+' songs ('+Math.round(tot/1024)+' KB in '+ms.length+' month'+(ms.length>1?'s':'')+'), '+(x.sotd||[]).length+' SOTD dates and '+(x.singers||[]).length+' singers to participants?', async () => {
+      const ix=await getDoc(doc(fs,'pub','idx')),old=ix.exists()?(ix.data().months||{}):{},nw={};let wr=0;
+      for(const m of ms){const hh=hsh(js[m]);nw[m]={n:by[m].length,h:hh};if(!old[m]||old[m].h!==hh){await setDoc(doc(fs,'pub','songs_'+m),{json:js[m],n:by[m].length,h:hh,ts:x.ts||''});wr++}}
+      await setDoc(doc(fs,'pub','data'),{singers:x.singers||[],sotd:x.sotd||[],som:x.som||{},somd:x.somd||{},stars:x.stars||{},ts:x.ts||''});
+      await setDoc(doc(fs,'pub','idx'),{months:nw,total:tot,ts:x.ts||''});
+      for(const m of Object.keys(old))if(!nw[m]){try{await deleteDoc(doc(fs,'pub','songs_'+m))}catch(y){}}
+      try{await deleteDoc(doc(fs,'pub','songs'))}catch(y){}
+      await load();draw();showNotice('Published. '+wr+' of '+ms.length+' month(s) updated.');
+    });
+  }catch(z){showNotice(z=='size'?'One month of songs is too large for a single document.':(z&&z.code?'Publishing failed ('+z.code+'). Check the Firebase rules and the admin email.':'That is not a valid participants file.'))}};r.readAsText(f)};
 
-/* ---------- ABOUT US & VOLUNTARY SUPPORT ---------- */
-function vAbout(){
-  const A=ABOUT,p=A.program;
-  const upi=`upi://pay?pa=${encodeURIComponent(A.upiId)}&pn=${encodeURIComponent(A.upiName)}&cu=INR`;
-  return `<div class="c">
-    <h2>${e(p.title)}</h2>
-    <p>${e(p.summary)}</p>
-    <p class="m"><b>Schedule:</b> ${e(p.schedule)}</p>
-    <h3>Rules &amp; Recognition</h3>
-    <ul>${p.rules.map(r=>`<li>${e(r)}</li>`).join('')}</ul>
-  </div>
-  <div class="c">
-    <h3>About the Foundation</h3>
-    <p><b>${e(A.foundation)}</b><br>
-    <span class="m">CIN: ${e(A.cin)} · ${e(A.taxStatus)}</span><br>
-    ${e(A.address)}</p>
-    <p>Conducted by <b>${e(A.school)}</b> · Director: <b>${e(A.director)}</b><br>
-    <span class="m">Contact: ${e(A.contact)}</span></p>
-  </div>
-  <div class="c" style="text-align:center">
-    <h3>Voluntary Support</h3>
-    <p class="m">Participation in Sing From Home is completely free. Those who wish to voluntarily support our cultural and musical initiatives may contribute directly to the Foundation.</p>
-    <img class="qr" src="${e(A.qrImage)}" alt="UPI QR code" onerror="this.style.display='none'">
-    <p style="margin:8px 0"><b>${e(A.upiName)}</b><br><span class="m">UPI ID: ${e(A.upiId)}</span></p>
-    <p class="row" style="justify-content:center">
-      <a class="zm" href="${upi}">Pay via UPI app</a>
-      <button onclick="navigator.clipboard?.writeText('${e(A.upiId)}');this.textContent='Copied!'">Copy UPI ID</button>
-    </p>
-    <p class="m" style="margin-top:8px">Contributions qualify for tax exemption under Section 80G of the Income Tax Act.</p>
-  </div>`;
-}
-
-/* ---------- ADMIN & SUPERADMIN ---------- */
-function vAdm(){
-  const pend=USERS.filter(u=>u.status==='pending');
-  const appr=USERS.filter(u=>u.status==='approved');
-  const f=LIVE.festival||{};
-  return `<div class="c"><h2>Admin · Today's Zoom &amp; Festival</h2>
-    <div class="f"><input id="z_u" value="${e(LIVE.zoomUrl||'')}" placeholder="Zoom link (https://...)"><input id="z_n" value="${e(LIVE.zoomNote||'')}" placeholder="Note (e.g. 8:30 PM onwards)"></div>
-    <p><button class="pri" onclick="saveZoom()">Update Zoom link</button></p>
-    <hr style="border:none;border-top:1px solid var(--bd);margin:14px 0">
-    <b>Festival / Occasion Greeting Banner</b>
-    <div class="f"><input id="f_t" value="${e(f.title||'')}" placeholder="Greeting title (e.g. Happy Diwali!)"><input id="f_d" type="date" value="${e(f.date||tdy())}"></div>
-    <div class="f"><input id="f_m" value="${e(f.msg||'')}" placeholder="Warm wishes message"></div>
-    <p class="row"><button class="pri" onclick="saveFest()">Publish greeting</button><button onclick="clearFest()">Clear greeting</button></p>
-  </div>
-  <div class="c">
-    <b>Waiting for approval (${pend.length})</b>
-    ${pend.length?pend.map(u=>`<div class="row" style="padding:8px 0;border-bottom:1px solid var(--bd)">
-      <div style="flex:1;min-width:160px"><b>${e(u.name)}</b> <span class="m">${e(u.phone||u.email||'')}</span></div>
-      <select id="s_${u.id}"><option value="">Choose singer…</option>${(PUB.singers||[]).map(s=>`<option${s===(u.name||'').toUpperCase()?' selected':''}>${e(s)}</option>`).join('')}</select>
-      <input id="sn_${u.id}" placeholder="or new singer name" style="width:160px">
-      <button class="pri" onclick="appr('${u.id}')">Approve</button>
-      <button onclick="rej('${u.id}')">Reject</button>
-    </div>`).join(''):'<p class="m">No pending requests.</p>'}
-  </div>
-  <div class="c">
-    <b>Today's planned songs (${PLANS.length})</b>
-    <p><button onclick="copyPlans()">Copy list</button> <span class="m" id="cp_st"></span></p>
-  </div>
-  <div class="c">
-    <b>Publish data</b>
-    <p class="m">Select the exported <code>sfh_pub_YYYY-MM-DD.json</code> from your desktop app to update the song catalog, SOTD and stars.</p>
-    <input type="file" accept=".json,application/json" onchange="pubFile(this.files[0])">
-    <p class="m" id="pub_st"></p>
-  </div>
-  <div class="c">
-    <b>Approved participants (${appr.length})</b>
-    ${IS_SUPER?'<p class="m">As Superadmin, you can grant or revoke Admin access for trusted hosts.</p>':''}
-    <div class="tbl"><table><tr><th>Singer</th><th>Name</th><th>Phone / Email</th><th>Role</th>${IS_SUPER?'<th>Access</th>':''}</tr>
-      ${appr.map(u=>{
-        const sup=(CFG.superadmins||[]).map(x=>x.toLowerCase()).includes((u.email||'').toLowerCase());
-        const adm=u.role==='admin';
-        return `<tr><td><b>${e(u.singer)}</b></td><td>${e(u.name)}</td><td class="m">${e(u.phone||u.email||'')}</td>
-          <td>${sup?'<span class="badge badge-super">Superadmin</span>':adm?'<span class="badge badge-admin">Admin</span>':'Participant'}</td>
-          ${IS_SUPER?`<td>${sup?'—':`<button onclick="setRole('${u.id}','${adm?'participant':'admin'}')">${adm?'Remove Admin':'Make Admin'}</button>`}</td>`:''}
-        </tr>`;
-      }).join('')}
-    </table></div>
-  </div>`;
-}
-window.saveZoom=()=>setDoc(doc(fs,'live','config'),{...LIVE,zoomUrl:$('#z_u').value.trim(),zoomNote:$('#z_n').value.trim(),ts:Date.now()});
-window.saveFest=()=>setDoc(doc(fs,'live','config'),{...LIVE,festival:{title:$('#f_t').value.trim(),date:$('#f_d').value,msg:$('#f_m').value.trim()},ts:Date.now()});
-window.clearFest=()=>setDoc(doc(fs,'live','config'),{...LIVE,festival:null,ts:Date.now()});
-window.appr=async id=>{
-  const singer=($('#sn_'+id).value.trim()||$('#s_'+id).value).toUpperCase();
-  if(!singer){showNotice('Choose or enter a singer name.');return;}
-  await updateDoc(doc(fs,'users',id),{status:'approved',singer,approvedAt:Date.now()});
-};
-window.rej=id=>updateDoc(doc(fs,'users',id),{status:'rejected'});
-window.setRole=(id,role)=>IS_SUPER&&updateDoc(doc(fs,'users',id),{role});
-window.copyPlans=()=>{
-  const txt=PLANS.map((r,i)=>`${i+1}. ${r.singer||r.name}: ${(r.songs||[]).join(' | ')}`).join('\n');
-  navigator.clipboard?.writeText(txt);$('#cp_st').textContent='Copied!';
-};
-window.pubFile=async f=>{
-  if(!f)return;
-  try{
-    $('#pub_st').textContent='Publishing…';
-    const d=JSON.parse(await f.text());if(d.kind!=='sfh-pub')throw new Error('Wrong file');
-    const byM={};for(const r of d.songs){const m=r[1].slice(0,7);(byM[m]=byM[m]||[]).push(r);}
-    for(const m of Object.keys(byM))await setDoc(doc(fs,'pub','songs_'+m),{json:JSON.stringify(byM[m]),n:byM[m].length,ts:d.ts});
-    await setDoc(doc(fs,'pub','idx'),{months:Object.fromEntries(Object.entries(byM).map(([m,a])=>[m,a.length])),ts:d.ts});
-    const cur=(await getDoc(doc(fs,'pub','data'))).data()||{};
-    await setDoc(doc(fs,'pub','data'),{singers:d.singers,sotd:d.sotd,som:d.som||{},somd:d.somd||{},somj:d.somj||{},stars:d.stars,birthdays:cur.birthdays||[],ts:d.ts});
-    localStorage.removeItem('sfh_pub');await loadPub();$('#pub_st').textContent=`Published ${d.songs.length} songs!`;draw();
-  }catch(err){$('#pub_st').textContent='Error: '+err.message;}
-};
-
-/* ---------- BOOT ---------- */
-getRedirectResult(auth).catch(()=>{});
-onAuthStateChanged(auth,async u=>{
-  U=u;
-  if(!u){clearSubs();P=null;TAB=location.hash==='#about'?'about':'home';draw();return;}
-  const ref=doc(fs,'users',u.uid),snap=await getDoc(ref);
-  const superUser=isSuper(u,null);
-  if(!snap.exists()){
-    P={name:u.displayName||'',email:u.email||'',phone:'',singer:superUser?'MANOJ TIKARIYA':'',status:superUser?'approved':'pending',role:superUser?'admin':'participant',consentAt:+(localStorage.getItem('sfh_consent')||Date.now()),createdAt:Date.now()};
-    await setDoc(ref,P);
-  }else{
-    P=snap.data();
-    if(superUser&&P.status!=='approved'){P.status='approved';P.role='admin';await updateDoc(ref,{status:'approved',role:'admin'});}
-  }
-  IS_SUPER=isSuper(u,P);IS_ADMIN=isAdmin(u,P);
-  if(location.hash.length>1)TAB=location.hash.slice(1);
-  await loadPub();startListeners();draw();
-});
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script></body></html>
