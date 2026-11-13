@@ -101,6 +101,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 .badge-ok{color:#15803d;background:#dcfce7;font-weight:700;padding:2px 6px;border-radius:6px;font-size:11px}
 .badge-late{color:#b91c1c;background:#fee2e2;font-weight:700;padding:2px 6px;border-radius:6px;font-size:11px}
 .badge-round{color:var(--ac);background:var(--ac-light);font-weight:800;padding:2px 8px;border-radius:6px;font-size:12px}
+.badge-count{color:#15803d;background:#dcfce7;font-weight:800;padding:2px 9px;border-radius:6px;font-size:12px;border:1px solid #bbf7d0}
 
 .score-box{display:inline-flex;gap:3px}
 .score-star{cursor:pointer;font-size:18px;user-select:none;opacity:0.25;transition:opacity .15s;padding:2px 1px}
@@ -116,12 +117,28 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 }
 .btn-pad.has-note{background:#fef3c7;border-color:#f59e0b;color:#92400e}
 
-.song-nav{
-  display:grid;grid-template-columns:repeat(5, 1fr);gap:6px;margin:10px 0 12px;
+/* Custom Alphabetical Song Auto-Complete Popup */
+#song_ac_popup{
+  position:fixed;z-index:85;background:var(--card);border:1px solid var(--ac);
+  border-radius:10px;box-shadow:0 12px 28px rgba(15,23,42,0.22);
+  max-height:220px;overflow-y:auto;display:none;min-width:220px;max-width:340px;
 }
-.song-nav button{
-  width:100%;padding:7px 2px;font-size:12px;font-weight:700;text-align:center;
+.song-ac-item{
+  padding:8px 11px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--bd);
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
 }
+.song-ac-item:last-child{border-bottom:none}
+.song-ac-item:hover,.song-ac-item.sel{background:var(--ac-light);color:var(--ac)}
+.song-ac-rep{
+  font-size:10.5px;font-weight:700;color:#b45309;background:#fef3c7;
+  padding:1px 6px;border-radius:5px;white-space:nowrap;flex:none;
+}
+
+.online-pill{
+  display:inline-flex;align-items:center;gap:6px;padding:4px 10px;
+  background:var(--bg);border:1px solid var(--bd);border-radius:999px;font-size:12.5px;font-weight:600;
+}
+.online-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block;flex:none}
 
 #custom-modal{
   position:fixed;inset:0;z-index:90;background:rgba(15,23,42,0.7);backdrop-filter:blur(6px);
@@ -161,6 +178,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 
 <main id="app"><p class="m">Connecting to live console…</p></main>
 
+<div id="song_ac_popup"></div>
+
 <div id="custom-modal">
   <div class="box" id="custom-modal-body"></div>
 </div>
@@ -170,7 +189,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {getAuth,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import {getFirestore,doc,getDoc,setDoc} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import {getFirestore,doc,getDoc,setDoc,collection,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const CFG = {
   firebase: {
@@ -224,15 +243,14 @@ window.showConfirm = (msg, onOk, title="Confirmation") => {
 };
 window.closeModal = () => { $('#custom-modal').style.display = 'none'; };
 
-let U=null, IS_SUPER=false, IS_ADMIN=false, KNOWN_SINGERS=[], ALL_SONGS=[], MAX_ID_NUM=167;
+let U=null, IS_SUPER=false, IS_ADMIN=false, KNOWN_SINGERS=[], ALL_SONGS=[], UNIQUE_SONGS_ALPHA=[], MAX_ID_NUM=167;
 let STARS_MAP = {};
 let SOTM_WINNER = null;
+let SOTM_VOTING = { active: false, month: tdy().slice(0, 7), candidates: [] };
+let SOTM_VOTES_LIST = [];
+let ONLINE_USERS = [];
 let currentRound = 1;
 let SOTD_LIST = [];
-let songListTab = 'today';
-let songArchivesExpanded = false;
-let selectedSingerFilter = '';
-let searchSongKeyword = '';
 
 let LIVE = {
   date: tdy(),
@@ -240,18 +258,36 @@ let LIVE = {
   performances: []
 };
 
+function getLiveSongCount() {
+  return LIVE.performances.filter(p => p.song && p.song.trim()).length;
+}
+
+function updateLiveSongCountBadge() {
+  const el = document.getElementById('live_song_count_badge');
+  if (el) el.textContent = `Songs Sung: ${getLiveSongCount()}`;
+}
+
 let syncTimer = null;
 function syncToFirestore() {
   clearTimeout(syncTimer);
   syncTimer = setTimeout(async () => {
     try {
+      // Strip 1-5 daily stars from participant-facing live session doc so participants cannot view daily stars
+      const publicPerformances = LIVE.performances.map(p => ({
+        round: p.round,
+        singer: p.singer,
+        song: p.song || '',
+        songId: p.songId || ''
+      }));
       await setDoc(doc(fs, 'live', 'session'), {
         date: LIVE.date,
         currentRound: currentRound,
         singers: LIVE.singers,
-        performances: LIVE.performances,
+        performances: publicPerformances,
         sotdList: SOTD_LIST,
         sotmWinner: SOTM_WINNER,
+        sotmVoting: SOTM_VOTING,
+        songCount: getLiveSongCount(),
         updatedAt: Date.now(),
         active: true
       });
@@ -262,7 +298,7 @@ function syncToFirestore() {
 }
 
 function saveLocal(){
-  try{ localStorage.setItem('sfh_live_session_'+LIVE.date, JSON.stringify({LIVE, currentRound, SOTD_LIST, SOTM_WINNER})); }catch(x){}
+  try{ localStorage.setItem('sfh_live_session_'+LIVE.date, JSON.stringify({LIVE, currentRound, SOTD_LIST, SOTM_WINNER, SOTM_VOTING})); }catch(x){}
   syncToFirestore();
 }
 
@@ -275,8 +311,18 @@ function loadLocal(){
       if(parsed.currentRound) currentRound = parsed.currentRound;
       if(parsed.SOTD_LIST) SOTD_LIST = parsed.SOTD_LIST;
       if(parsed.SOTM_WINNER) SOTM_WINNER = parsed.SOTM_WINNER;
+      if(parsed.SOTM_VOTING) SOTM_VOTING = parsed.SOTM_VOTING;
     }
   }catch(x){}
+}
+
+function rebuildAlphaSongs() {
+  const set = new Set();
+  ALL_SONGS.forEach(r => {
+    const t = String(r[3] || '').trim().toUpperCase();
+    if (t) set.add(t);
+  });
+  UNIQUE_SONGS_ALPHA = Array.from(set).sort((a, b) => a.localeCompare(b));
 }
 
 async function init(){
@@ -309,8 +355,30 @@ async function init(){
       if(num > 143 && String(r[0]).includes('0144')) num = 143;
       if(num > MAX_ID_NUM) MAX_ID_NUM = num;
     });
+    rebuildAlphaSongs();
   } catch(x) {
     console.warn("Songs catalog fetch bypassed:", x);
+  }
+
+  // Listen to real-time Online Presence
+  onSnapshot(collection(fs, 'presence'), snap => {
+    const now = Date.now();
+    ONLINE_USERS = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(u => u.ts && (now - u.ts) < 120000)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    renderOnlineSection();
+  }, () => {});
+
+  // Superadmin listens to live SOTM votes
+  if (IS_SUPER) {
+    onSnapshot(collection(fs, 'sotm_votes'), snap => {
+      const curMo = SOTM_VOTING.month || tdy().slice(0, 7);
+      SOTM_VOTES_LIST = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(v => v.month === curMo);
+      renderSOTMVotingSummary();
+    }, () => {});
   }
 
   draw();
@@ -380,6 +448,104 @@ function getOrCreatePerf(singerName, round) {
   return p;
 }
 
+/* ---------- ALPHABETICAL SONG POP-UP (DISMISSES CLEANLY ON ENTER OR CLICK) ---------- */
+let activeAcTarget = null; // { singerName, round, inputEl }
+let acMatches = [];
+let acSelIdx = -1;
+
+window.closeSongPopup = () => {
+  const pop = $('#song_ac_popup');
+  if (pop) pop.style.display = 'none';
+  activeAcTarget = null;
+  acMatches = [];
+  acSelIdx = -1;
+};
+
+window.pickPopupSong = (idx) => {
+  if (!activeAcTarget || acMatches[idx] === undefined) return;
+  const chosen = acMatches[idx];
+  const { singerName, round, inputEl } = activeAcTarget;
+  inputEl.value = chosen;
+  closeSongPopup();
+  onSongInput(singerName, round, true);
+};
+
+function showSongPopup(inputEl, singerName, round) {
+  const pop = $('#song_ac_popup');
+  if (!pop) return;
+  const queryStr = (inputEl.value || '').trim().toUpperCase();
+  if (!queryStr) {
+    closeSongPopup();
+    return;
+  }
+
+  // Strictly alphabetical A -> Z matches
+  const starts = UNIQUE_SONGS_ALPHA.filter(t => t.startsWith(queryStr));
+  const contains = UNIQUE_SONGS_ALPHA.filter(t => !t.startsWith(queryStr) && t.includes(queryStr));
+  acMatches = [...starts, ...contains].slice(0, 25);
+
+  if (!acMatches.length) {
+    closeSongPopup();
+    return;
+  }
+
+  activeAcTarget = { singerName, round, inputEl };
+  acSelIdx = -1;
+
+  const rect = inputEl.getBoundingClientRect();
+  pop.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - 260)) + 'px';
+  pop.style.top = (rect.bottom + 4) + 'px';
+  pop.style.width = Math.max(220, rect.width) + 'px';
+
+  pop.innerHTML = acMatches.map((title, idx) => {
+    const isRepeated = ALL_SONGS.some(r => String(r[3] || '').trim().toUpperCase() === title);
+    return `<div class="song-ac-item" data-idx="${idx}" onmousedown="event.preventDefault();pickPopupSong(${idx})">
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>${e(title)}</b></span>
+      ${isRepeated ? '<span class="song-ac-rep">Repeated</span>' : ''}
+    </div>`;
+  }).join('');
+  pop.style.display = 'block';
+}
+
+window.onSongKeyDown = (ev, singerName, round) => {
+  const pop = $('#song_ac_popup');
+  const isOpen = pop && pop.style.display === 'block';
+
+  if (ev.key === 'ArrowDown' && isOpen && acMatches.length) {
+    ev.preventDefault();
+    acSelIdx = (acSelIdx + 1) % acMatches.length;
+    pop.querySelectorAll('.song-ac-item').forEach((el, i) => el.classList.toggle('sel', i === acSelIdx));
+    return;
+  }
+  if (ev.key === 'ArrowUp' && isOpen && acMatches.length) {
+    ev.preventDefault();
+    acSelIdx = (acSelIdx - 1 + acMatches.length) % acMatches.length;
+    pop.querySelectorAll('.song-ac-item').forEach((el, i) => el.classList.toggle('sel', i === acSelIdx));
+    return;
+  }
+  if (ev.key === 'Enter') {
+    ev.preventDefault();
+    if (isOpen && acSelIdx >= 0 && acMatches[acSelIdx]) {
+      ev.target.value = acMatches[acSelIdx];
+    }
+    closeSongPopup();
+    onSongInput(singerName, round, true);
+    ev.target.blur();
+    return;
+  }
+  if (ev.key === 'Escape') {
+    closeSongPopup();
+  }
+};
+
+document.addEventListener('click', ev => {
+  const pop = $('#song_ac_popup');
+  if (!pop || pop.style.display !== 'block') return;
+  if (activeAcTarget && ev.target === activeAcTarget.inputEl) return;
+  if (pop.contains(ev.target)) return;
+  closeSongPopup();
+});
+
 window.addSinger = () => {
   if(LIVE.singers.length >= 59){
     showNotice('Session capacity reached.');
@@ -420,24 +586,26 @@ window.removeSinger = (idx) => {
   });
 };
 
-window.onSongInput = (singerName, round) => {
+window.onSongInput = (singerName, round, suppressPopup = false) => {
   const sIdSanitized = round + '_' + singerName.replace(/[^a-zA-Z0-9]/g, '_');
   const songInp = $('#sg_' + sIdSanitized);
   const song = (songInp.value || '').trim().toUpperCase();
 
+  if (!suppressPopup && songInp) {
+    showSongPopup(songInp, singerName, round);
+  }
+
   const p = getOrCreatePerf(singerName, round);
-  const repEl = $('#rep_' + sIdSanitized);
   const idEl = $('#id_' + sIdSanitized);
 
   if(!song){
     p.song = '';
     p.songId = '';
     p.repeatCount = 0;
-    if(repEl) repEl.innerHTML = '';
     if(idEl) idEl.innerHTML = '<span class="m">-</span>';
     saveLocal();
+    updateLiveSongCountBadge();
     drawSOTDSection();
-    renderSongListSection();
     return;
   }
 
@@ -448,16 +616,13 @@ window.onSongInput = (singerName, round) => {
     p.songId = getNextSongId();
   }
 
-  if(repEl){
-    repEl.innerHTML = rep > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${rep})</span>` : '';
-  }
   if(idEl){
     idEl.innerHTML = `<b>${p.songId}</b>`;
   }
 
   saveLocal();
+  updateLiveSongCountBadge();
   drawSOTDSection();
-  renderSongListSection();
 };
 
 window.openMeta = (singerName, round) => {
@@ -614,6 +779,96 @@ window.removeSOTD = (idx) => {
   draw();
 };
 
+/* ---------- SUPERADMIN SOTM VOTING CONTROL & RESULTS ---------- */
+window.toggleSOTMVoting = () => {
+  if (!IS_SUPER) return;
+  if (SOTM_VOTING.active) {
+    SOTM_VOTING.active = false;
+    saveLocal();
+    draw();
+    showNotice('SOTM participant voting has been stopped.');
+    return;
+  }
+  const fourStarAll = Object.entries(STARS_MAP).filter(([n, o]) => (o.t || 0) >= 4).map(([n]) => n).sort();
+  if (!fourStarAll.length) {
+    showNotice('No 4+ star SOTM finalists found yet.');
+    return;
+  }
+  SOTM_VOTING = {
+    active: true,
+    month: LIVE.date.slice(0, 7),
+    candidates: fourStarAll
+  };
+  saveLocal();
+  draw();
+  showNotice(`SOTM Voting is now LIVE on participants' Home screens for: ${fourStarAll.join(', ')}`);
+};
+
+window.showVoterBreakdown = (candidateName) => {
+  if (!IS_SUPER) return;
+  const rows = SOTM_VOTES_LIST
+    .filter(v => v.votes && v.votes[candidateName])
+    .map(v => ({
+      voter: v.voterName || v.voterSinger || v.uid || 'Participant',
+      score: Number(v.votes[candidateName]) || 0
+    }))
+    .sort((a, b) => b.score - a.score || a.voter.localeCompare(b.voter));
+
+  const total = rows.reduce((s, r) => s + r.score, 0);
+  const m = $('#custom-modal');
+  $('#custom-modal-body').innerHTML = `
+    <h3>SOTM Votes · ${e(candidateName)}</h3>
+    <p class="m" style="margin:2px 0 10px">Total Votes: <b>${total}</b> from <b>${rows.length}</b> participant(s) (Superadmin Eyes Only)</p>
+    ${rows.length ? `<div class="tbl"><table>
+      <tr><th>#</th><th>Participant</th><th style="text-align:center">Votes (1–5)</th></tr>
+      ${rows.map((r, i) => `<tr>
+        <td>${i + 1}</td>
+        <td><b>${e(r.voter)}</b></td>
+        <td style="text-align:center"><b>${r.score}</b></td>
+      </tr>`).join('')}
+    </table></div>` : '<p class="m">No votes received yet for this finalist.</p>'}
+    <p style="text-align:right;margin:14px 0 0"><button class="pri" onclick="closeModal()">Close</button></p>
+  `;
+  m.style.display = 'flex';
+};
+
+function renderSOTMVotingSummary() {
+  const box = document.getElementById('sotm_voting_summary');
+  if (!box || !IS_SUPER) return;
+  const cands = (SOTM_VOTING.candidates && SOTM_VOTING.candidates.length)
+    ? SOTM_VOTING.candidates
+    : Object.entries(STARS_MAP).filter(([n, o]) => (o.t || 0) >= 4).map(([n]) => n).sort();
+
+  if (!cands.length) {
+    box.innerHTML = '';
+    return;
+  }
+
+  const tally = cands.map(name => {
+    let total = 0, voters = 0;
+    SOTM_VOTES_LIST.forEach(v => {
+      const val = v.votes && Number(v.votes[name]);
+      if (val >= 1 && val <= 5) {
+        total += val;
+        voters++;
+      }
+    });
+    return { name, total, voters };
+  }).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+
+  box.innerHTML = `
+    <div class="tbl" style="margin-top:10px"><table>
+      <tr><th>Finalist</th><th style="text-align:center">Total Votes</th><th style="text-align:center">Voters</th><th style="text-align:center">Superadmin Breakdown</th></tr>
+      ${tally.map(t => `<tr>
+        <td><b>${e(t.name)}</b></td>
+        <td style="text-align:center"><b style="font-size:15px;color:var(--ac)">${t.total}</b></td>
+        <td style="text-align:center">${t.voters}</td>
+        <td style="text-align:center"><button onclick="showVoterBreakdown('${e(t.name)}')" style="padding:3px 8px;font-size:11.5px">View Votes</button></td>
+      </tr>`).join('')}
+    </table></div>
+  `;
+}
+
 // Superadmin-only Singer of the Month (SOTM) declaration modal & state
 window.openSOTMModal = () => {
   if (!IS_SUPER) return;
@@ -653,6 +908,7 @@ window.saveSOTM = () => {
   if (!name) { showNotice('Please select the Singer of the Month winner.'); return; }
   if (!judge) { showNotice('Please enter the Judge name.'); return; }
   SOTM_WINNER = { name, judge, month: LIVE.date.slice(0, 7), date: LIVE.date };
+  SOTM_VOTING.active = false;
   saveLocal();
   closeModal();
   draw();
@@ -700,6 +956,7 @@ window.swipeTodayData = () => {
       LIVE.performances = [];
       SOTD_LIST = [];
       SOTM_WINNER = null;
+      SOTM_VOTING = { active: false, month: LIVE.date.slice(0, 7), candidates: [] };
       currentRound = 1;
 
       try { localStorage.removeItem('sfh_live_session_' + LIVE.date); } catch(x){}
@@ -711,6 +968,8 @@ window.swipeTodayData = () => {
         performances: [],
         sotdList: [],
         sotmWinner: null,
+        sotmVoting: SOTM_VOTING,
+        songCount: 0,
         active: false,
         updatedAt: Date.now()
       });
@@ -759,6 +1018,7 @@ window.swipeTodayData = () => {
         if(num > 143 && String(r[0]).includes('0144')) num = 143;
         if(num > MAX_ID_NUM) MAX_ID_NUM = num;
       });
+      rebuildAlphaSongs();
 
       draw();
       showNotice("Today's trial records and test songs have been wiped clean.", "Clean Slate");
@@ -790,7 +1050,7 @@ window.downloadLivePDF = () => {
 
   docPdf.setFontSize(9.5);
   docPdf.setTextColor(15, 23, 42);
-  docPdf.text(`Live Session Record \xB7 ${fd(LIVE.date)} | Sorted by Song ID | Exported: ${curTime()}`, 14, 30);
+  docPdf.text(`Live Session Record \xB7 ${fd(LIVE.date)} | Total Songs: ${getLiveSongCount()} | Exported: ${curTime()}`, 14, 30);
 
   let startY = 34;
 
@@ -885,6 +1145,15 @@ window.endSession = async () => {
         ts: LIVE.date
       });
 
+      // Save any entered song metadata to pub/meta/{songId}
+      for (const p of performed) {
+        if (p.songId && p.meta && Object.values(p.meta).some(Boolean)) {
+          try {
+            await setDoc(doc(fs, 'pub', 'meta_' + p.songId), p.meta, { merge: true });
+          } catch (x) {}
+        }
+      }
+
       const dataDocRef = doc(fs, 'pub', 'data');
       const dataDoc = await getDoc(dataDocRef);
       let pData = dataDoc.exists() ? dataDoc.data() : {singers:[], sotd:[], stars:{}};
@@ -945,6 +1214,7 @@ window.endSession = async () => {
       await setDoc(doc(fs, 'live', 'session'), {
         date: LIVE.date,
         active: false,
+        sotmVoting: { active: false },
         updatedAt: Date.now()
       });
 
@@ -1038,354 +1308,17 @@ function drawSOTDSection() {
   }
 }
 
-// Master Archive: Sorted purely by numeric Song ID everywhere
-function getAllArchiveSongs() {
-  const t = LIVE.date;
-  const hist = ALL_SONGS.filter(r => r[1] !== t);
-  const todayLive = LIVE.performances.filter(p => p.song).map(p => [p.songId, t, p.singer, p.song]);
-  return [...hist, ...todayLive].sort(cmpBySongId);
-}
-
-window.toggleSongArchives = () => {
-  songArchivesExpanded = !songArchivesExpanded;
-  renderSongListSection();
-};
-
-window.setSongTab = (t) => {
-  songListTab = t;
-  renderSongListSection();
-};
-
-window.setSongSingerFilter = (name) => {
-  selectedSingerFilter = name;
-  renderSongListSection();
-};
-
-window.setSongSearchKeyword = (kw) => {
-  searchSongKeyword = (kw || '').trim().toUpperCase();
-  renderSongListSection();
-};
-
-// Pure Vector Song List PDF download
-window.downloadSongListPDF = () => {
-  if(!window.jspdf || !window.jspdf.jsPDF){
-    showNotice('PDF library loading, please try again.');
-    return;
-  }
-
-  const {jsPDF} = window.jspdf;
-  const docPdf = new jsPDF({unit:'mm', format:'a4'});
-  const cleanStr = s => String(s==null?'':s).replace(/[^\x20-\x7E]/g, '');
-
-  let title = "Song List";
-  if(songListTab === 'today') title = `Songs Performed Today (${fd(LIVE.date)})`;
-  if(songListTab === 'month') title = `Songs Performed in Month (${LIVE.date.slice(0,7)})`;
-  if(songListTab === 'singer') title = `Song Record: ${selectedSingerFilter || 'All'}`;
-  if(songListTab === 'unique') title = `Unique Song List (No Repetition)`;
-  if(songListTab === 'all') title = `Full Master Song Directory`;
-
-  docPdf.setFontSize(18);
-  docPdf.setTextColor(15, 52, 96);
-  docPdf.text('SING FROM HOME', 105, 14, {align:'center'});
-
-  docPdf.setFontSize(8.5);
-  docPdf.setTextColor(71, 85, 105);
-  docPdf.text('A project of B. S. Tikariya Cultural Foundation \xAE (CIN: U88900MH2025NPL454435)', 105, 19, {align:'center'});
-  docPdf.text("Conducted by TIKARIYA'S SCHOOL OF MUSIC \xB7 Director: Manoj Tikariya", 105, 23.5, {align:'center'});
-
-  docPdf.setFontSize(10);
-  docPdf.setTextColor(15, 23, 42);
-  docPdf.text(`${cleanStr(title)} | Sorted by Song ID | Exported: ${curTime()}`, 14, 30);
-
-  const allArchive = getAllArchiveSongs();
-  let headCols = [];
-  let tableRows = [];
-
-  if (songListTab === 'today') {
-    headCols = [['#', 'Song ID', 'Round', 'Singer Name', 'Song Title']];
-    const todayRows = LIVE.performances.filter(p => p.song).slice().sort(cmpBySongId);
-    tableRows = todayRows.map((p, i) => [
-      i + 1,
-      cleanStr(p.songId || '-'),
-      'Round ' + p.round,
-      cleanStr(p.singer),
-      cleanStr(p.song)
-    ]);
-  } else if (songListTab === 'month') {
-    headCols = [['#', 'Song ID', 'Date', 'Singer Name', 'Song Title']];
-    const monthRows = allArchive.filter(r => String(r[1]||'').slice(0, 7) === LIVE.date.slice(0, 7)).slice().sort(cmpBySongId);
-    tableRows = monthRows.map((r, i) => [
-      i + 1,
-      cleanStr(r[0]),
-      fd(r[1]),
-      cleanStr(r[2]),
-      cleanStr(r[3])
-    ]);
-  } else if (songListTab === 'singer') {
-    headCols = [['#', 'Song ID', 'Date', 'Song Title']];
-    const singerRows = allArchive.filter(r => r[2] === selectedSingerFilter).slice().sort(cmpBySongId);
-    tableRows = singerRows.map((r, i) => [
-      i + 1,
-      cleanStr(r[0]),
-      fd(r[1]),
-      cleanStr(r[3])
-    ]);
-  } else if (songListTab === 'unique') {
-    headCols = [['#', 'Song ID', 'Song Title (No Repetition)', 'Sung', 'Performers']];
-    const uniqueMap = new Map();
-    allArchive.forEach(r => {
-      const t = (r[3] || '').trim().toUpperCase();
-      if(!t) return;
-      if(!uniqueMap.has(t)) {
-        uniqueMap.set(t, { title: r[3], count: 0, firstId: r[0], singers: [] });
-      }
-      const item = uniqueMap.get(t);
-      item.count++;
-      item.singers.push({ singer: r[2], id: r[0] });
-    });
-    const uniqueList = Array.from(uniqueMap.values()).sort((a,b) => parseSongNum(a.firstId) - parseSongNum(b.firstId));
-    tableRows = uniqueList.map((u, i) => [
-      i + 1,
-      cleanStr(u.firstId),
-      cleanStr(u.title),
-      u.count + 'x',
-      cleanStr(u.singers.map(s => `${s.singer} (${s.id})`).join(', '))
-    ]);
-  } else {
-    headCols = [['#', 'Song ID', 'Date', 'Singer Name', 'Song Title']];
-    let filtered = allArchive.slice().sort(cmpBySongId);
-    if(searchSongKeyword){
-      filtered = filtered.filter(r => String(r[3]||'').toUpperCase().includes(searchSongKeyword) || String(r[2]||'').toUpperCase().includes(searchSongKeyword) || String(r[0]||'').toUpperCase().includes(searchSongKeyword));
-    }
-    tableRows = filtered.map((r, i) => [
-      i + 1,
-      cleanStr(r[0]),
-      fd(r[1]),
-      cleanStr(r[2]),
-      cleanStr(r[3])
-    ]);
-  }
-
-  docPdf.autoTable({
-    startY: 34,
-    head: headCols,
-    body: tableRows,
-    styles: {fontSize: 8, cellPadding: 2, valign: 'middle'},
-    headStyles: {fillColor: [15, 52, 96], textColor: [255, 255, 255], fontStyle: 'bold'},
-    didDrawPage: data => {
-      docPdf.setFontSize(8);
-      docPdf.setTextColor(100, 116, 139);
-      docPdf.text(`Page ${docPdf.internal.getNumberOfPages()}`, 105, 290, {align: 'center'});
-    }
-  });
-
-  docPdf.save(`SFH_${songListTab.toUpperCase()}_Songs_${LIVE.date}.pdf`);
-};
-
-function renderSongListSection() {
-  const container = document.getElementById('song_archives_card');
-  if(!container) return;
-
-  if(!songArchivesExpanded) {
-    container.innerHTML = `
-      <div class="row" style="justify-content:space-between">
-        <div>
-          <b>Song Archives & Performance Lists</b>
-          <p class="m" style="margin:2px 0 0">Cataloged strictly by Song ID.</p>
-        </div>
-        <button class="pri" onclick="toggleSongArchives()">Show Archives ▼</button>
-      </div>
-    `;
-    return;
-  }
-
-  const allArchive = getAllArchiveSongs();
-  const curMo = LIVE.date.slice(0, 7);
-  let tableHTML = '';
-  let subControls = '';
-
-  // 1. TODAY'S SONGS
-  if (songListTab === 'today') {
-    const todayRows = LIVE.performances.filter(p => p.song).slice().sort(cmpBySongId);
-    tableHTML = todayRows.length ? `
-      <div class="tbl" id="song_list_table_wrap"><table>
-        <tr>
-          <th class="col-ord">#</th>
-          <th>Song ID</th>
-          <th>Round</th>
-          <th>Singer Name</th>
-          <th>Song Title</th>
-        </tr>
-        ${todayRows.map((p, i) => `
-          <tr>
-            <td class="col-ord"><b>${i + 1}</b></td>
-            <td><b>${p.songId || '-'}</b></td>
-            <td>Round ${p.round}</td>
-            <td><b>${e(p.singer)}</b></td>
-            <td><b>${e(p.song)}</b></td>
-          </tr>
-        `).join('')}
-      </table></div>
-    ` : '<p class="m">No songs entered for today yet.</p>';
-  }
-
-  // 2. THIS MONTH'S SONGS
-  else if (songListTab === 'month') {
-    const monthRows = allArchive.filter(r => String(r[1]||'').slice(0, 7) === curMo).slice().sort(cmpBySongId);
-    tableHTML = monthRows.length ? `
-      <div class="tbl" id="song_list_table_wrap"><table>
-        <tr>
-          <th class="col-ord">#</th>
-          <th>Song ID</th>
-          <th>Date</th>
-          <th>Singer Name</th>
-          <th>Song Title</th>
-        </tr>
-        ${monthRows.map((r, i) => `
-          <tr>
-            <td class="col-ord"><b>${i + 1}</b></td>
-            <td><b>${e(r[0])}</b></td>
-            <td><span class="m">${fd(r[1])}</span></td>
-            <td><b>${e(r[2])}</b></td>
-            <td><b>${e(r[3])}</b></td>
-          </tr>
-        `).join('')}
-      </table></div>
-    ` : '<p class="m">No songs recorded for this month yet.</p>';
-  }
-
-  // 3. INDIVIDUAL SINGER'S SONGS
-  else if (songListTab === 'singer') {
-    const allSingers = [...new Set(allArchive.map(r => r[2]))].filter(Boolean).sort();
-    if(!selectedSingerFilter && allSingers.length) selectedSingerFilter = allSingers[0];
-
-    subControls = `
-      <div class="row" style="margin-bottom:8px">
-        <select onchange="setSongSingerFilter(this.value)" style="min-width:200px">
-          ${allSingers.map(s => `<option value="${e(s)}" ${s===selectedSingerFilter?'selected':''}>${e(s)}</option>`).join('')}
-        </select>
-        <span class="m">Total performed: <b>${allArchive.filter(r => r[2] === selectedSingerFilter).length}</b></span>
-      </div>
-    `;
-
-    const singerRows = allArchive.filter(r => r[2] === selectedSingerFilter).slice().sort(cmpBySongId);
-    tableHTML = singerRows.length ? `
-      <div class="tbl" id="song_list_table_wrap"><table>
-        <tr>
-          <th class="col-ord">#</th>
-          <th>Song ID</th>
-          <th>Date</th>
-          <th>Song Title</th>
-        </tr>
-        ${singerRows.map((r, i) => `
-          <tr>
-            <td class="col-ord"><b>${i + 1}</b></td>
-            <td><b>${e(r[0])}</b></td>
-            <td><span class="m">${fd(r[1])}</span></td>
-            <td><b>${e(r[3])}</b></td>
-          </tr>
-        `).join('')}
-      </table></div>
-    ` : '<p class="m">No songs found for this singer.</p>';
-  }
-
-  // 4. UNIQUE SONGS
-  else if (songListTab === 'unique') {
-    const uniqueMap = new Map();
-    allArchive.forEach(r => {
-      const title = (r[3] || '').trim().toUpperCase();
-      if(!title) return;
-      if(!uniqueMap.has(title)) {
-        uniqueMap.set(title, { title: r[3], count: 0, firstId: r[0], singers: [] });
-      }
-      const item = uniqueMap.get(title);
-      item.count++;
-      item.singers.push({ singer: r[2], id: r[0], date: r[1] });
-    });
-
-    const uniqueList = Array.from(uniqueMap.values()).sort((a,b) => parseSongNum(a.firstId) - parseSongNum(b.firstId));
-
-    tableHTML = uniqueList.length ? `
-      <p class="m" style="margin:2px 0 6px">Showing <b>${uniqueList.length}</b> distinct songs (sorted by Song ID).</p>
-      <div class="tbl" id="song_list_table_wrap"><table>
-        <tr>
-          <th class="col-ord">#</th>
-          <th>Song ID</th>
-          <th>Song Title (No Repetition)</th>
-          <th style="width:65px;text-align:center">Sung</th>
-          <th>Performers with Song ID</th>
-        </tr>
-        ${uniqueList.map((u, i) => `
-          <tr>
-            <td class="col-ord"><b>${i + 1}</b></td>
-            <td><b>${e(u.firstId)}</b></td>
-            <td><b>${e(u.title)}</b></td>
-            <td style="text-align:center"><b>${u.count}x</b></td>
-            <td style="font-size:12px">
-              ${u.singers.map(s => `<span><b>${e(s.singer)}</b> (${e(s.id)})</span>`).join(', ')}
-            </td>
-          </tr>
-        `).join('')}
-      </table></div>
-    ` : '<p class="m">No songs cataloged yet.</p>';
-  }
-
-  // 5. ALL SONGS ARCHIVE
-  else if (songListTab === 'all') {
-    subControls = `
-      <div class="row" style="margin-bottom:8px;justify-content:space-between">
-        <input placeholder="Search title or singer..." value="${e(searchSongKeyword)}" oninput="setSongSearchKeyword(this.value)" style="max-width:240px">
-        <button class="pri" onclick="downloadSongListPDF()">Download PDF</button>
-      </div>
-    `;
-
-    let filtered = allArchive.slice().sort(cmpBySongId);
-    if(searchSongKeyword){
-      filtered = filtered.filter(r => String(r[3]||'').toUpperCase().includes(searchSongKeyword) || String(r[2]||'').toUpperCase().includes(searchSongKeyword) || String(r[0]||'').toUpperCase().includes(searchSongKeyword));
-    }
-
-    tableHTML = filtered.length ? `
-      <p class="m" style="margin:2px 0 6px">Showing <b>${filtered.length}</b> songs sorted by Song ID.</p>
-      <div class="tbl" id="song_list_table_wrap"><table>
-        <tr>
-          <th class="col-ord">#</th>
-          <th>Song ID</th>
-          <th>Date</th>
-          <th>Singer Name</th>
-          <th>Song Title</th>
-        </tr>
-        ${filtered.map((r, i) => `
-          <tr>
-            <td class="col-ord"><b>${i + 1}</b></td>
-            <td><b>${e(r[0])}</b></td>
-            <td><span class="m">${fd(r[1])}</span></td>
-            <td><b>${e(r[2])}</b></td>
-            <td><b>${e(r[3])}</b></td>
-          </tr>
-        `).join('')}
-      </table></div>
-    ` : '<p class="m">No matching songs found.</p>';
-  }
-
+function renderOnlineSection() {
+  const container = document.getElementById('who_online_card');
+  if (!container) return;
   container.innerHTML = `
-    <div class="row" style="justify-content:space-between">
-      <b>Song Archives & Performance Lists</b>
-      <div class="row">
-        ${songListTab !== 'all' ? `<button onclick="downloadSongListPDF()" style="font-size:11.5px;padding:4px 8px">Export PDF</button>` : ''}
-        <button onclick="toggleSongArchives()" style="font-size:11.5px;padding:4px 8px">Hide ▲</button>
-      </div>
+    <div class="row" style="justify-content:space-between;margin-bottom:6px">
+      <b>Who Is Online (${ONLINE_USERS.length})</b>
+      <span class="m" style="font-size:11.5px">Live active participants in app</span>
     </div>
-
-    <div class="song-nav">
-      <button class="${songListTab==='today'?'on':''}" onclick="setSongTab('today')">Today</button>
-      <button class="${songListTab==='month'?'on':''}" onclick="setSongTab('month')">Month</button>
-      <button class="${songListTab==='singer'?'on':''}" onclick="setSongTab('singer')">Singer</button>
-      <button class="${songListTab==='unique'?'on':''}" onclick="setSongTab('unique')">Unique</button>
-      <button class="${songListTab==='all'?'on':''}" onclick="setSongTab('all')">All</button>
-    </div>
-
-    ${subControls}
-    ${tableHTML}
+    ${ONLINE_USERS.length ? `<div class="row" style="gap:6px">
+      ${ONLINE_USERS.map(u => `<span class="online-pill"><span class="online-dot"></span>${e(u.singer || u.name || 'Participant')}${u.role === 'superadmin' ? ' <span class="m">(Superadmin)</span>' : u.role === 'admin' ? ' <span class="m">(Admin)</span>' : ''}</span>`).join('')}
+    </div>` : '<p class="m" style="margin:4px 0 0">No participants active in the app right now.</p>'}
   `;
 }
 
@@ -1405,10 +1338,13 @@ function draw(){
       <div>
         <h2>Live Session · ${fd(LIVE.date)}</h2>
       </div>
-      <div><span class="badge-round">Round ${currentRound}</span></div>
+      <div class="row" style="gap:6px">
+        <span class="badge-count" id="live_song_count_badge">Songs Sung: ${getLiveSongCount()}</span>
+        <span class="badge-round">Round ${currentRound}</span>
+      </div>
     </div>
     <div class="f" style="margin-top:10px">
-      <input id="in_singer" list="dl_known" placeholder="Enter Singer Name" style="text-transform:uppercase">
+      <input id="in_singer" list="dl_known" placeholder="Enter Singer Name" style="text-transform:uppercase" onkeydown="if(event.key==='Enter'){event.preventDefault();addSinger();}">
       <datalist id="dl_known">
         ${KNOWN_SINGERS.map(s => `<option value="${e(s)}">`).join('')}
       </datalist>
@@ -1452,8 +1388,7 @@ function draw(){
             <td>${isEligible ? '<span class="badge-ok">Eligible</span>' : '<span class="badge-late">Ineligible (>8:45)</span>'}</td>
             <td>
               <div style="display:flex;align-items:center;white-space:nowrap">
-                <input id="sg_${sKey}" list="dl_allsongs" value="${e(p.song || '')}" placeholder="Type song..." style="width:190px;text-transform:uppercase" oninput="onSongInput('${e(s.name)}', ${currentRound})">
-                <span id="rep_${sKey}">${p.repeatCount > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${p.repeatCount})</span>` : ''}</span>
+                <input id="sg_${sKey}" autocomplete="off" value="${e(p.song || '')}" placeholder="Type song..." style="width:190px;text-transform:uppercase" oninput="onSongInput('${e(s.name)}', ${currentRound})" onkeydown="onSongKeyDown(event, '${e(s.name)}', ${currentRound})" onfocus="onSongInput('${e(s.name)}', ${currentRound})">
                 <button class="btn-meta" style="margin-left:5px" onclick="openMeta('${e(s.name)}', ${currentRound})" title="Movie & Song Info">i</button>
                 <button class="btn-pad ${hasNote ? 'has-note' : ''}" style="margin-left:4px" onclick="openPad('${e(s.name)}', ${currentRound})" title="${hasNote ? e(p.note || s.note) : 'Writing Pad (Short Notes)'}">📝</button>
               </div>
@@ -1474,10 +1409,6 @@ function draw(){
         }).join('')}
       </table></div>
     ` : '<p class="m">No singers registered in queue yet. Start adding members above.</p>'}
-    
-    <datalist id="dl_allsongs">
-      ${[...new Set(ALL_SONGS.map(r => r[3]))].filter(Boolean).map(t => `<option value="${e(t)}">`).join('')}
-    </datalist>
   </div>`;
 
   h += `<div class="c" id="sotd_section_card">${renderSOTDHTML()}</div>`;
@@ -1487,26 +1418,21 @@ function draw(){
       <div class="row" style="justify-content:space-between">
         <div>
           <b>Singer of the Month (SOTM)</b>
-          <p class="m" style="margin:2px 0 0">${SOTM_WINNER ? `Winner: <b>${e(SOTM_WINNER.name)}</b> · Judged by: <b>${e(SOTM_WINNER.judge)}</b>` : 'Superadmin control for 4+ star monthly finals.'}</p>
+          <p class="m" style="margin:2px 0 0">${SOTM_WINNER ? `Winner: <b>${e(SOTM_WINNER.name)}</b> · Judged by: <b>${e(SOTM_WINNER.judge)}</b>` : 'Superadmin control for 4+ star monthly finals & audience voting.'}</p>
         </div>
-        <button class="pri" onclick="openSOTMModal()">Declare Singer of the Month</button>
+        <div class="row" style="gap:6px">
+          <button class="${SOTM_VOTING.active ? 'danger' : ''}" onclick="toggleSOTMVoting()">${SOTM_VOTING.active ? '🔴 Stop SOTM Voting' : '🗳️ Start SOTM Voting'}</button>
+          <button class="pri" onclick="openSOTMModal()">Declare Singer of the Month</button>
+        </div>
       </div>
+      <div id="sotm_voting_summary"></div>
     </div>`;
   }
 
-  h += `<div class="c">
-    <b>Rules & Star Scoring Reference</b>
-    <div class="m" style="margin-top:6px;line-height:1.7">
-      ⭐1: Starts when announced · ⭐2: Ready on turn · ⭐3: No mic noise · ⭐4: Good singing · ⭐5: Better singing<br>
-      • <b>Attendance Rule:</b> Join at least 3 sessions in a week (Mon–Fri) to retain stars. Attending fewer drops 1 star.<br>
-      • <b>4 Stars Qualifier:</b> Earning 4 stars qualifies for the Singer of the Month (SOTM) round (awarded with custom physical G-Clef memento award).<br>
-      • <b>Cutoff:</b> Singers entering after 8:45 PM can sing (and may be chosen as Honorary SOTD).
-    </div>
-  </div>`;
-
-  h += `<div class="c" id="song_archives_card"></div>`;
+  h += `<div class="c" id="who_online_card"></div>`;
 
   $('#app').innerHTML = h;
-  renderSongListSection();
+  renderOnlineSection();
+  if (IS_SUPER) renderSOTMVotingSummary();
 }
 </script></body></html>
