@@ -1011,6 +1011,7 @@ window.saveSotmSetup = async () => {
 };
 
 // Trigger 30-second blind audience vote for ONE singer at a time
+// Trigger 30-second blind audience vote for ONE singer at a time (clock-skew safe)
 window.startSinger30SecVote = async (singerName) => {
   if (!IS_SUPER) return;
   const cleanName = String(singerName || '').trim().toUpperCase();
@@ -1032,6 +1033,9 @@ window.startSinger30SecVote = async (singerName) => {
       judges,
       judgeUids: judges.map(j => j.uid),
       activeSinger: cleanName,
+      voteRoundId: cleanName + '_' + now,
+      durationSec: 30,
+      closed: false,
       startedAt: now,
       endsAt: now + 30000,
       updatedAt: now
@@ -1046,7 +1050,9 @@ window.closeSingerVoteEarly = async () => {
   try {
     await setDoc(doc(fs, 'live', 'sotm_vote'), {
       ...SOTM_VOTE_STATE,
-      endsAt: Date.now() - 1000,
+      closed: true,
+      activeSinger: '',
+      endsAt: 0,
       updatedAt: Date.now()
     });
   } catch (err) {
