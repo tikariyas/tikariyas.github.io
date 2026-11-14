@@ -222,7 +222,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-14 b22';
+const VER='2026-11-14 b23';
 const CFG = {
   firebase: {
     apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
@@ -334,6 +334,8 @@ const okImg=s=>typeof s=='string'&&s.startsWith('data:image/');
 let U=null,P=null,PUB=null,SONGS=[],SONG_META={},CONF={},AU=[],tab='home',ADM=false,IS_SUPER=false,IS_ADMIN=false,LIVE_SESSION=null,loadErr='',HDATE='',EDU='',GRT=[],BD=[],GQ=[],showAbout=location.hash=='#about',MSGS=[],AM=[],AIN=[],PL=[],PD='',PLAN=null,pendingName='',seenAdm=(()=>{try{return +localStorage.getItem('sfh_seen_adm')||0}catch(x){return 0}})(),seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
 
 let SOTM_VOTE_STATE = null;
+let SOTM_LOCAL_DEADLINE = 0;
+let SOTM_LAST_ROUND_ID = '';
 let MY_SOTM_VOTE_DOC = null;
 let MY_JUDGE_EVAL_DOC = null;
 let PUBLISHED_SOTM_RESULT = null;
@@ -370,7 +372,12 @@ function startVoteCountdownLoop() {
   voteTimerInterval = setInterval(() => {
     const badge = document.getElementById('part_vote_timer_badge');
     if (!badge || !SOTM_VOTE_STATE || !SOTM_VOTE_STATE.activeSinger) return;
-    const rem = Math.max(0, Math.ceil(((SOTM_VOTE_STATE.endsAt || 0) - Date.now()) / 1000));
+    if (SOTM_VOTE_STATE.closed) {
+      badge.textContent = 'Voting Closed (00s)';
+      if (tab === 'home' || tab === 'sotd') draw();
+      return;
+    }
+    const rem = Math.max(0, Math.ceil((SOTM_LOCAL_DEADLINE - Date.now()) / 1000));
     if (rem > 0) {
       badge.textContent = `Time Left: ${String(rem).padStart(2, '0')}s`;
     } else {
@@ -445,9 +452,23 @@ onAuthStateChanged(auth, async u => {
     if (tab === 'home') draw();
   });
 
-  // Listen to SOTM Voting & Always-On Judge Panel configuration
+  // Listen to SOTM Voting & Always-On Judge Panel configuration (clock-skew safe)
   onSnapshot(doc(fs, 'live', 'sotm_vote'), snap => {
     SOTM_VOTE_STATE = snap.exists() ? snap.data() : null;
+    if (SOTM_VOTE_STATE && SOTM_VOTE_STATE.activeSinger && !SOTM_VOTE_STATE.closed) {
+      const rId = SOTM_VOTE_STATE.voteRoundId || (SOTM_VOTE_STATE.activeSinger + '_' + (SOTM_VOTE_STATE.startedAt || ''));
+      if (rId !== SOTM_LAST_ROUND_ID) {
+        SOTM_LAST_ROUND_ID = rId;
+        const dur = Number(SOTM_VOTE_STATE.durationSec) || 30;
+        const rawRem = Math.ceil(((SOTM_VOTE_STATE.endsAt || 0) - Date.now()) / 1000);
+        const clampedSec = (rawRem > 0 && rawRem <= dur) ? rawRem : dur;
+        SOTM_LOCAL_DEADLINE = Date.now() + (clampedSec * 1000);
+      }
+    } else {
+      SOTM_LAST_ROUND_ID = '';
+      SOTM_LOCAL_DEADLINE = 0;
+    }
+
     const mKey = (SOTM_VOTE_STATE && SOTM_VOTE_STATE.month) || nowM();
     getDoc(doc(fs, 'sotm_votes', `${mKey}_${u.uid}`)).then(d => {
       MY_SOTM_VOTE_DOC = d.exists() ? d.data() : null;
@@ -741,9 +762,9 @@ window.saveEditSong = async (songId) => {
 
 /* ---------- 100% BLIND 30-SEC PER-SINGER VOTE & ALWAYS-ON JUDGE PANEL ---------- */
 window.castSotmVote = async (singerName, scoreVal) => {
-  if (!U || !SOTM_VOTE_STATE || !SOTM_VOTE_STATE.activeSinger) return;
+  if (!U || !SOTM_VOTE_STATE || !SOTM_VOTE_STATE.activeSinger || SOTM_VOTE_STATE.closed) return;
   if (SOTM_VOTE_STATE.activeSinger !== singerName) return;
-  if (Date.now() > (SOTM_VOTE_STATE.endsAt || 0)) {
+  if (Date.now() > SOTM_LOCAL_DEADLINE) {
     showNotice('The 30-second voting window for this singer has closed.');
     return;
   }
@@ -865,10 +886,9 @@ function renderAlwaysOnJudgeCard() {
 }
 
 function renderSotmAudienceVoteCard() {
-  if (!U || !SOTM_VOTE_STATE || !SOTM_VOTE_STATE.activeSinger) return '';
+  if (!U || !SOTM_VOTE_STATE || !SOTM_VOTE_STATE.activeSinger || SOTM_VOTE_STATE.closed) return '';
   const activeSinger = SOTM_VOTE_STATE.activeSinger;
-  const endsAt = SOTM_VOTE_STATE.endsAt || 0;
-  const rem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+  const rem = Math.max(0, Math.ceil((SOTM_LOCAL_DEADLINE - Date.now()) / 1000));
   const myVotes = (MY_SOTM_VOTE_DOC && MY_SOTM_VOTE_DOC.votes) || {};
   const picked = Number(myVotes[activeSinger] || 0);
 
