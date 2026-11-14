@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f3460">
+<title>Missing Day Session Builder · Sing From Home</title>
+<style>
+:root{
+  --bg:#f8fafc;--fg:#0f172a;--card:#ffffff;--ac:#0f3460;--ac-light:#e8eef7;
+  --mut:#64748b;--bd:#cbd5e1;--btn-pri-bg:linear-gradient(135deg,#0f3460 0%,#1e4a7a 100%);
+  --shadow:0 4px 18px -2px rgba(15,23,42,0.06),0 2px 6px -1px rgba(15,23,42,0.03);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0a0f1d;--fg:#f8fafc;--card:#141d33;--ac:#60a5fa;--ac-light:#1e293b;
+    --mut:#94a3b8;--bd:#1e293b;--btn-pri-bg:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);
+    --shadow:0 10px 30px -4px rgba(0,0,0,0.5);
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--fg);
+  font:14.5px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif;
+}
+header{
+  padding:14px 16px;background:var(--card);border-bottom:1px solid var(--bd);
+  position:sticky;top:0;z-index:30;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;
+}
+h1{margin:0;font-size:19px;font-weight:800;color:var(--ac)}
+.sub{font-size:11.5px;color:var(--mut);margin-top:2px}
+main{max-width:880px;margin:14px auto;padding:0 12px 60px}
+.c{
+  background:var(--card);border:1px solid var(--bd);border-radius:12px;
+  padding:14px 16px;margin-bottom:14px;box-shadow:var(--shadow);
+}
+h2{margin:0 0 8px;font-size:16px;color:var(--ac)}
+.m{color:var(--mut);font-size:12.5px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin:8px 0}
+label{display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:600;color:var(--mut)}
+input,select,textarea{
+  font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--bd);
+  border-radius:8px;padding:8px 10px;width:100%;outline:none;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,96,0.16)}
+button{
+  font:inherit;font-size:13px;font-weight:600;border:1px solid var(--bd);
+  background:var(--card);color:var(--fg);border-radius:8px;padding:7px 12px;
+  cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;
+}
+button:hover{border-color:var(--ac)}
+button.pri{background:var(--btn-pri-bg);color:#fff;border-color:transparent;box-shadow:0 3px 10px rgba(15,52,96,0.3)}
+button.ok{background:#15803d;color:#fff;border-color:transparent}
+button.del{color:#dc2626;border-color:#fecaca}
+.tbl{overflow-x:auto;border:1px solid var(--bd);border-radius:8px;margin-top:8px}
+table{border-collapse:collapse;width:100%;min-width:540px}
+th,td{padding:7px 9px;border-bottom:1px solid var(--bd);text-align:left;font-size:13px;white-space:nowrap}
+th{background:var(--bg);color:var(--mut);font-size:11px;text-transform:uppercase}
+tr:last-child td{border-bottom:none}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:700;background:var(--ac-light);color:var(--ac)}
+.status-bar{padding:8px 12px;border-radius:8px;background:var(--ac-light);color:var(--ac);font-weight:600;font-size:13px;margin-top:8px}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>SING FROM HOME · Missing Day Session Builder</h1>
+    <div class="sub">Standalone offline recovery utility · Generates <code>sfh_pub_YYYY-MM-DD.json</code> for Admin → Publish data</div>
+  </div>
+  <div class="row">
+    <button class="ok" onclick="exportPubJson()">⬇ Download JSON for Admin Upload</button>
+  </div>
+</header>
+
+<main>
+  <!-- STEP 1: LOAD EXISTING BACKUP / CATALOG -->
+  <div class="c">
+    <h2>1. Load Existing Backup or Master JSON (Recommended)</h2>
+    <p class="m" style="margin:0 0 8px">
+      Load your previous <code>SFH_Backup_YYYY-MM-DD.json</code> or <code>sfh_pub_YYYY-MM-DD.json</code> so all older songs, singers, SOTD history, and star counts are preserved and merged cleanly with the recovered day.
+    </p>
+    <div class="row">
+      <input type="file" id="base_file" accept=".json,application/json" style="max-width:340px" onchange="loadBaseJson(this.files[0])">
+      <button onclick="clearBase()">Start Empty</button>
+    </div>
+    <div id="base_status" class="status-bar">No base file loaded yet (starting with empty catalog; next Song ID: S-0001).</div>
+  </div>
+
+  <!-- STEP 2: MISSING SESSION DATE & STARTING SONG ID -->
+  <div class="c">
+    <h2>2. Missing Session Date & Starting Song ID</h2>
+    <div class="grid">
+      <label>Missing Session Date (YYYY-MM-DD)
+        <input type="date" id="miss_date" onchange="onDateChange()">
+      </label>
+      <label>Next Song ID Number
+        <input type="number" id="next_id_num" min="1" value="1" oninput="updatePreviewId()">
+      </label>
+      <label>Next Auto Song ID Preview
+        <input id="preview_id" readonly value="S-0001" style="font-weight:800;color:var(--ac)">
+      </label>
+    </div>
+  </div>
+
+  <!-- STEP 3: ADD PERFORMED SONGS FOR THE MISSING DAY -->
+  <div class="c">
+    <h2>3. Add Songs Performed on That Day</h2>
+    <div class="grid">
+      <label>Singer Name
+        <input id="in_singer" list="dl_singers" placeholder="E.G. SANDHYA JOSHI" style="text-transform:uppercase">
+      </label>
+      <label>Song Title
+        <input id="in_song" list="dl_songs" placeholder="E.G. LAG JA GALE" style="text-transform:uppercase" onkeydown="if(event.key==='Enter'){event.preventDefault();addRow();}">
+      </label>
+      <label>Custom Song ID (Optional)
+        <input id="in_custom_id" placeholder="Auto (e.g. S-0168)" style="text-transform:uppercase">
+      </label>
+    </div>
+    <datalist id="dl_singers"></datalist>
+    <datalist id="dl_songs"></datalist>
+    <div class="row" style="margin-top:6px">
+      <button class="pri" onclick="addRow()">+ Add Song to Recovered Day</button>
+      <button onclick="bulkPasteOpen()">📋 Bulk Paste Lines (Singer - Song)</button>
+    </div>
+
+    <div id="bulk_box" style="display:none;margin-top:10px;padding:10px;border:1px dashed var(--bd);border-radius:8px">
+      <p class="m" style="margin:0 0 6px">Paste one performance per line in format: <code>SINGER NAME - SONG TITLE</code> (or tab-separated from Excel/WhatsApp):</p>
+      <textarea id="bulk_text" rows="5" placeholder="RAJENDRA WAGH - PAL PAL DIL KE PAAS&#10;SUNITA RAO - AJEeb DASTAN HAI YEH"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="pri" onclick="processBulk()">Add All Lines</button>
+        <button onclick="document.getElementById('bulk_box').style.display='none'">Close</button>
+      </div>
+    </div>
+
+    <div id="day_songs_wrap"></div>
+  </div>
+
+  <!-- STEP 4: DECLARE SOTD & CREDITED STARS FOR THAT DAY -->
+  <div class="c">
+    <h2>4. Declare Singer(s) of the Day (SOTD) for This Missing Date</h2>
+    <p class="m" style="margin:0 0 8px">Each SOTD added here will be recorded under this date and automatically credited +1 star in the exported JSON.</p>
+    <div class="grid">
+      <label>SOTD Winner Name
+        <input id="sotd_name" list="dl_day_singers" placeholder="Choose or type singer..." style="text-transform:uppercase">
+      </label>
+      <label>Award Mode
+        <select id="sotd_mode">
+          <option value="Score">By Score</option>
+          <option value="Quiz">By Quiz</option>
+          <option value="Special">Special Moments</option>
+          <option value="Honorary">Honorary SOTD</option>
+        </select>
+      </label>
+    </div>
+    <datalist id="dl_day_singers"></datalist>
+    <button class="pri" onclick="addSotd()">+ Add SOTD Winner</button>
+    <div id="day_sotd_wrap"></div>
+  </div>
+
+  <!-- STEP 5: OPTIONAL SOTM WINNER FOR THAT DAY -->
+  <div class="c">
+    <h2>5. Singer of the Month (Optional — Only if Declared on This Day)</h2>
+    <div class="grid">
+      <label>SOTM Winner (Leave blank if not SOTM day)
+        <input id="sotm_name" list="dl_singers" placeholder="Optional" style="text-transform:uppercase">
+      </label>
+      <label>Judged By
+        <input id="sotm_judge" placeholder="Judge Name (Optional)" style="text-transform:uppercase">
+      </label>
+    </div>
+    <label style="flex-direction:row;align-items:center;gap:8px;margin-top:6px;cursor:pointer">
+      <input type="checkbox" id="sotm_reset_4" style="width:18px;height:18px">
+      <span>Reset 4+ star finalists to 0 stars after declaring SOTM (standard monthly rule)</span>
+    </label>
+  </div>
+
+  <!-- STEP 6: EXPORT -->
+  <div class="c" style="border-left:4px solid #15803d">
+    <h2>6. Export & Upload to Your App</h2>
+    <p class="m" style="margin:0 0 10px">
+      1. Click <b>Download Recovery JSON</b> below.<br>
+      2. Open your live app (<code>index.html</code>) → tap <b>Admin</b> → under <b>Publish data</b>, choose the downloaded JSON file and confirm.
+    </p>
+    <button class="ok" style="padding:10px 18px;font-size:14.5px" onclick="exportPubJson()">⬇ Download Recovery JSON</button>
+  </div>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const e = s => String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const parseSongNum = id => {
+  const n = parseInt(String(id||'').replace(/\D/g,''), 10);
+  return isNaN(n) ? 0 : n;
+};
+const fmtId = n => 'S-' + String(Math.max(1, n)).padStart(4, '0');
+
+// Default date to yesterday
+(function setDefaultYesterday(){
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const iso = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  $('#miss_date').value = iso;
+})();
+
+let BASE = {
+  songs: [],
+  singers: [],
+  sotd: [],
+  som: {},
+  somd: {},
+  somj: {},
+  stars: {}
+};
+
+let DAY_SONGS = []; // [{id, singer, song}]
+let DAY_SOTD = [];  // [{n, h}]
+
+function updatePreviewId() {
+  const n = parseInt($('#next_id_num').value, 10) || 1;
+  $('#preview_id').value = fmtId(n);
+}
+
+function recalcNextId() {
+  let maxN = 0;
+  const targetDate = $('#miss_date').value;
+  BASE.songs.forEach(r => {
+    if (r[1] !== targetDate) {
+      const n = parseSongNum(r[0]);
+      if (n > maxN) maxN = n;
+    }
+  });
+  DAY_SONGS.forEach(r => {
+    const n = parseSongNum(r.id);
+    if (n > maxN) maxN = n;
+  });
+  $('#next_id_num').value = maxN + 1;
+  updatePreviewId();
+}
+
+function refreshDatalists() {
+  const singerSet = new Set(BASE.singers || []);
+  BASE.songs.forEach(r => { if (r[2]) singerSet.add(String(r[2]).toUpperCase()); });
+  DAY_SONGS.forEach(r => { if (r.singer) singerSet.add(r.singer); });
+  const sortedSingers = [...singerSet].sort();
+  $('#dl_singers').innerHTML = sortedSingers.map(s => `<option value="${e(s)}">`).join('');
+
+  const daySingerSet = new Set(DAY_SONGS.map(r => r.singer));
+  sortedSingers.forEach(s => daySingerSet.add(s));
+  $('#dl_day_singers').innerHTML = [...daySingerSet].map(s => `<option value="${e(s)}">`).join('');
+
+  const songSet = new Set();
+  BASE.songs.forEach(r => { if (r[3]) songSet.add(String(r[3]).toUpperCase()); });
+  DAY_SONGS.forEach(r => { if (r.song) songSet.add(r.song); });
+  $('#dl_songs').innerHTML = [...songSet].sort().map(t => `<option value="${e(t)}">`).join('');
+}
+
+window.loadBaseJson = async (file) => {
+  if (!file) return;
+  try {
+    const txt = await file.text();
+    const d = JSON.parse(txt);
+    if (d.kind !== 'sfh-pub' || !Array.isArray(d.songs)) {
+      alert('Invalid file format. Please select a valid sfh_pub or SFH_Backup JSON file.');
+      return;
+    }
+    BASE = {
+      songs: d.songs || [],
+      singers: d.singers || [],
+      sotd: d.sotd || [],
+      som: d.som || {},
+      somd: d.somd || {},
+      somj: d.somj || {},
+      stars: d.stars || {}
+    };
+    const targetDate = $('#miss_date').value;
+    // Pre-populate if that date already had entries in the backup
+    const existingForDate = BASE.songs.filter(r => r[1] === targetDate);
+    if (existingForDate.length && !DAY_SONGS.length) {
+      DAY_SONGS = existingForDate.map(r => ({ id: r[0], singer: r[2], song: r[3] }));
+    }
+    const existingSotd = (BASE.sotd || []).find(x => x.d === targetDate);
+    if (existingSotd && !DAY_SOTD.length) {
+      DAY_SOTD = (existingSotd.l || []).map(x => ({ n: x.n, h: x.h || 'Score' }));
+    }
+
+    recalcNextId();
+    refreshDatalists();
+    renderTables();
+    $('#base_status').textContent = `Loaded base catalog: ${BASE.songs.length} total songs, ${BASE.singers.length} singers, ${(BASE.sotd||[]).length} SOTD dates.`;
+  } catch (err) {
+    alert('Could not read JSON file: ' + err.message);
+  }
+};
+
+window.clearBase = () => {
+  BASE = { songs: [], singers: [], sotd: [], som: {}, somd: {}, somj: {}, stars: {} };
+  $('#base_file').value = '';
+  recalcNextId();
+  refreshDatalists();
+  renderTables();
+  $('#base_status').textContent = 'Cleared base file (starting fresh; next Song ID: S-0001).';
+};
+
+window.onDateChange = () => {
+  recalcNextId();
+  renderTables();
+};
+
+window.addRow = () => {
+  const singer = ($('#in_singer').value || '').trim().toUpperCase();
+  const song = ($('#in_song').value || '').trim().toUpperCase();
+  const customId = ($('#in_custom_id').value || '').trim().toUpperCase();
+
+  if (!singer || !song) {
+    alert('Please enter both Singer Name and Song Title.');
+    return;
+  }
+
+  let id = customId;
+  if (!id) {
+    const n = parseInt($('#next_id_num').value, 10) || 1;
+    id = fmtId(n);
+    $('#next_id_num').value = n + 1;
+    updatePreviewId();
+  }
+
+  DAY_SONGS.push({ id, singer, song });
+  $('#in_song').value = '';
+  $('#in_custom_id').value = '';
+  $('#in_singer').focus();
+
+  refreshDatalists();
+  renderTables();
+};
+
+window.removeRow = (idx) => {
+  DAY_SONGS.splice(idx, 1);
+  recalcNextId();
+  renderTables();
+};
+
+window.moveRow = (idx, dir) => {
+  const target = idx + dir;
+  if (target < 0 || target >= DAY_SONGS.length) return;
+  const tmp = DAY_SONGS[idx];
+  DAY_SONGS[idx] = DAY_SONGS[target];
+  DAY_SONGS[target] = tmp;
+  renderTables();
+};
+
+window.resequenceIds = () => {
+  let startN = parseInt(prompt('Enter starting Song ID number for row #1:', DAY_SONGS.length ? parseSongNum(DAY_SONGS[0].id) : 1), 10);
+  if (isNaN(startN) || startN < 1) return;
+  DAY_SONGS.forEach((r, i) => {
+    r.id = fmtId(startN + i);
+  });
+  $('#next_id_num').value = startN + DAY_SONGS.length;
+  updatePreviewId();
+  renderTables();
+};
+
+window.bulkPasteOpen = () => {
+  const box = $('#bulk_box');
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+};
+
+window.processBulk = () => {
+  const raw = ($('#bulk_text').value || '').trim();
+  if (!raw) return;
+  let n = parseInt($('#next_id_num').value, 10) || 1;
+  const lines = raw.split(/?
+/);
+  let added = 0;
+
+  lines.forEach(line => {
+    const clean = line.replace(/^\d+[\.\)\-\s]+/, '').trim();
+    if (!clean) return;
+    let parts = clean.split(/	|\s+-\s+|\s+–\s+/);
+    if (parts.length < 2 && clean.includes('-')) {
+      const idx = clean.indexOf('-');
+      parts = [clean.slice(0, idx), clean.slice(idx + 1)];
+    }
+    if (parts.length >= 2) {
+      const singer = parts[0].trim().toUpperCase();
+      const song = parts.slice(1).join(' - ').trim().toUpperCase();
+      if (singer && song) {
+        DAY_SONGS.push({ id: fmtId(n++), singer, song });
+        added++;
+      }
+    }
+  });
+
+  if (added > 0) {
+    $('#next_id_num').value = n;
+    updatePreviewId();
+    $('#bulk_text').value = '';
+    $('#bulk_box').style.display = 'none';
+    refreshDatalists();
+    renderTables();
+  } else {
+    alert('Could not parse any lines. Use format: SINGER NAME - SONG TITLE');
+  }
+};
+
+window.addSotd = () => {
+  const name = ($('#sotd_name').value || '').trim().toUpperCase();
+  const mode = $('#sotd_mode').value;
+  if (!name) {
+    alert('Enter or select SOTD singer name.');
+    return;
+  }
+  if (DAY_SOTD.some(x => x.n === name)) {
+    alert(name + ' is already added as SOTD for this day.');
+    return;
+  }
+  DAY_SOTD.push({ n: name, h: mode });
+  $('#sotd_name').value = '';
+  renderTables();
+};
+
+window.removeSotd = (idx) => {
+  DAY_SOTD.splice(idx, 1);
+  renderTables();
+};
+
+function renderTables() {
+  const wrap = $('#day_songs_wrap');
+  if (!DAY_SONGS.length) {
+    wrap.innerHTML = '<p class="m" style="margin-top:10px">No songs added yet for this missing date.</p>';
+  } else {
+    wrap.innerHTML = `
+      <div class="row" style="justify-content:space-between;margin-top:12px">
+        <span class="pill">${DAY_SONGS.length} song(s) queued for ${e($('#miss_date').value)}</span>
+        <button style="font-size:12px;padding:4px 8px" onclick="resequenceIds()">Resequence IDs</button>
+      </div>
+      <div class="tbl"><table>
+        <tr><th>#</th><th>Song ID</th><th>Singer Name</th><th>Song Title</th><th style="text-align:center">Order</th><th style="text-align:center">Remove</th></tr>
+        ${DAY_SONGS.map((r, i) => `
+          <tr>
+            <td><b>${i + 1}</b></td>
+            <td><b>${e(r.id)}</b></td>
+            <td><b>${e(r.singer)}</b></td>
+            <td>${e(r.song)}</td>
+            <td style="text-align:center">
+              <button style="padding:2px 6px" onclick="moveRow(${i},-1)">↑</button>
+              <button style="padding:2px 6px" onclick="moveRow(${i},1)">↓</button>
+            </td>
+            <td style="text-align:center"><button class="del" style="padding:2px 8px" onclick="removeRow(${i})">✕</button></td>
+          </tr>
+        `).join('')}
+      </table></div>
+    `;
+  }
+
+  const sWrap = $('#day_sotd_wrap');
+  if (!DAY_SOTD.length) {
+    sWrap.innerHTML = '<p class="m" style="margin-top:8px">No SOTD added for this date yet.</p>';
+  } else {
+    sWrap.innerHTML = `
+      <div class="tbl" style="margin-top:8px"><table>
+        <tr><th>#</th><th>SOTD Winner</th><th>Mode</th><th style="text-align:center">Action</th></tr>
+        ${DAY_SOTD.map((w, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td><b>${e(w.n)}</b></td>
+            <td><span class="pill">${e(w.h)}</span></td>
+            <td style="text-align:center"><button class="del" style="padding:2px 8px" onclick="removeSotd(${i})">Remove</button></td>
+          </tr>
+        `).join('')}
+      </table></div>
+    `;
+  }
+}
+
+window.exportPubJson = () => {
+  const targetDate = $('#miss_date').value;
+  if (!targetDate) {
+    alert('Please select the missing session date.');
+    return;
+  }
+  if (!DAY_SONGS.length && !DAY_SOTD.length) {
+    alert('Please add at least one song or SOTD winner before downloading.');
+    return;
+  }
+
+  // 1. Merge songs: replace any old entries on targetDate and sort strictly by numeric Song ID
+  const mergedSongs = (BASE.songs || []).filter(r => r[1] !== targetDate);
+  DAY_SONGS.forEach(r => {
+    mergedSongs.push([r.id, targetDate, r.singer, r.song]);
+  });
+  mergedSongs.sort((a, b) => parseSongNum(a[0]) - parseSongNum(b[0]));
+
+  // 2. Merge singers directory
+  const singerSet = new Set(BASE.singers || []);
+  DAY_SONGS.forEach(r => singerSet.add(r.singer));
+  DAY_SOTD.forEach(w => singerSet.add(w.n));
+  const mergedSingers = [...singerSet].filter(Boolean).sort();
+
+  // 3. Merge SOTD list
+  const mergedSotd = (BASE.sotd || []).filter(x => x.d !== targetDate);
+  if (DAY_SOTD.length) {
+    mergedSotd.push({
+      d: targetDate,
+      l: DAY_SOTD.map(x => ({ n: x.n, h: x.h }))
+    });
+  }
+  mergedSotd.sort((a, b) => a.d.localeCompare(b.d));
+
+  // 4. Deep-clone stars & credit +1 star to each SOTD winner on targetDate
+  const mergedStars = JSON.parse(JSON.stringify(BASE.stars || {}));
+  // First remove targetDate from any singer if re-exporting
+  Object.keys(mergedStars).forEach(sk => {
+    if (mergedStars[sk] && Array.isArray(mergedStars[sk].d)) {
+      const before = mergedStars[sk].d.length;
+      mergedStars[sk].d = mergedStars[sk].d.filter(d => d !== targetDate);
+      const diff = before - mergedStars[sk].d.length;
+      if (diff > 0) mergedStars[sk].t = Math.max(0, (mergedStars[sk].t || 0) - diff);
+    }
+  });
+  DAY_SOTD.forEach(w => {
+    const sk = w.n.toUpperCase();
+    mergedStars[sk] = mergedStars[sk] || { t: 0, d: [], m: {} };
+    if (!Array.isArray(mergedStars[sk].d)) mergedStars[sk].d = [];
+    if (!mergedStars[sk].d.includes(targetDate)) {
+      mergedStars[sk].d.push(targetDate);
+      mergedStars[sk].d.sort();
+      mergedStars[sk].t = (mergedStars[sk].t || 0) + 1;
+    }
+  });
+
+  // 5. Optional SOTM winner
+  const mergedSom = Object.assign({}, BASE.som || {});
+  const mergedSomd = Object.assign({}, BASE.somd || {});
+  const mergedSomj = Object.assign({}, BASE.somj || {});
+  const sotmName = ($('#sotm_name').value || '').trim().toUpperCase();
+  const sotmJudge = ($('#sotm_judge').value || '').trim().toUpperCase();
+  if (sotmName) {
+    const mKey = targetDate.slice(0, 7);
+    mergedSom[mKey] = sotmName;
+    mergedSomd[mKey] = targetDate;
+    if (sotmJudge) mergedSomj[mKey] = sotmJudge;
+    if ($('#sotm_reset_4').checked) {
+      Object.keys(mergedStars).forEach(sk => {
+        if ((mergedStars[sk].t || 0) >= 4) {
+          mergedStars[sk].t = 0;
+          mergedStars[sk].d = [];
+        }
+      });
+    }
+  }
+
+  const outObj = {
+    kind: 'sfh-pub',
+    ts: targetDate + ' (Recovered)',
+    songs: mergedSongs,
+    singers: mergedSingers,
+    sotd: mergedSotd,
+    som: mergedSom,
+    somd: mergedSomd,
+    somj: mergedSomj,
+    stars: mergedStars
+  };
+
+  const blob = new Blob([JSON.stringify(outObj, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `sfh_pub_${targetDate}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+renderTables();
+</script>
+</body>
+</html>
