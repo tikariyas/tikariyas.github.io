@@ -4,7 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0f3460">
 <link rel="icon" href="icon-192.png">
-<title>Live Session · Sing From Home</title>
+<title>Live Session - Sing From Home</title>
 <style>
 :root{
   --bg:#f8fafc;--fg:#0f172a;--card:#ffffff;--ac:#0f3460;--ac-light:#e8eef7;
@@ -54,7 +54,7 @@ h1{
   background:var(--ac-light);padding:4px 8px;border-radius:8px;border:1px solid var(--bd);white-space:nowrap;
 }
 h2{margin:4px 0 8px;font-size:18px;font-weight:700}
-main{padding:12px;max-width:960px;margin:auto}
+main{padding:12px;max-width:980px;margin:auto}
 .c{
   background:var(--card);border:1px solid var(--bd);border-radius:12px;
   padding:12px 14px;margin-bottom:12px;box-shadow:var(--shadow);
@@ -72,7 +72,7 @@ button.on,button.pri{
   box-shadow:0 3px 12px -2px rgba(15,52,96,0.35);
 }
 button.danger{
-  background:transparent;color:inherit;border-color:var(--bd);box-shadow:none;
+  background:transparent;color:#b91c1c;border-color:#fca5a5;box-shadow:none;
 }
 button.warn{
   background:transparent;color:inherit;border-color:var(--bd);
@@ -102,17 +102,21 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 .badge-late{color:#b91c1c;background:#fee2e2;font-weight:700;padding:2px 6px;border-radius:6px;font-size:11px}
 .badge-round{color:var(--ac);background:var(--ac-light);font-weight:800;padding:3px 9px;border-radius:6px;font-size:12px}
 .badge-count{color:#15803d;background:#dcfce7;font-weight:800;padding:3px 9px;border-radius:6px;font-size:12px;border:1px solid #bbf7d0}
+.timer-pill{
+  font-variant-numeric:tabular-nums;font-weight:800;font-size:13px;
+  padding:3px 10px;border-radius:999px;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;
+}
 
 .score-box{display:inline-flex;gap:3px}
-.score-star{cursor:pointer;font-size:18px;user-select:none;opacity:0.25;transition:opacity .15s;padding:2px 1px}
-.score-star.active{opacity:1;color:#f59e0b}
+.score-star{cursor:pointer;font-size:16px;font-weight:800;user-select:none;opacity:0.25;transition:opacity .15s;padding:2px 2px}
+.score-star.active{opacity:1;color:#d97706}
 .btn-meta{
   min-width:24px;height:26px;padding:0 6px;font-size:13px;border-radius:6px;
   background:var(--ac-light);color:var(--ac);border:1px solid var(--bd);
   font-family:Georgia,"Times New Roman",serif;font-style:italic;font-weight:700;
 }
 .btn-pad{
-  min-width:26px;height:26px;padding:0 5px;font-size:12px;border-radius:6px;
+  min-width:34px;height:26px;padding:0 6px;font-size:11px;font-weight:700;border-radius:6px;
   background:var(--bg);color:var(--fg);border:1px solid var(--bd);
 }
 .btn-pad.has-note{background:#fef3c7;border-color:#f59e0b;color:#92400e}
@@ -142,12 +146,18 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 }
 .online-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;flex-shrink:0}
 
+/* Judge Chips */
+.judge-chip{
+  display:inline-flex;align-items:center;gap:6px;padding:4px 10px;
+  background:var(--ac-light);color:var(--ac);border:1px solid var(--bd);border-radius:8px;font-size:12.5px;font-weight:700;
+}
+
 #custom-modal{
   position:fixed;inset:0;z-index:90;background:rgba(15,23,42,0.7);backdrop-filter:blur(6px);
   display:none;align-items:center;justify-content:center;padding:16px;
 }
 #custom-modal .box{
-  background:var(--card);color:var(--fg);max-width:440px;width:100%;border-radius:14px;
+  background:var(--card);color:var(--fg);max-width:480px;width:100%;border-radius:14px;
   padding:20px 18px;border:1px solid var(--bd);box-shadow:var(--shadow);max-height:90vh;overflow-y:auto;
 }
 #custom-modal .box h3{margin:0 0 12px;font-size:16px;color:var(--ac)}
@@ -157,7 +167,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 .meta-field-group label{
   display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:600;color:var(--mut);
 }
-.meta-field-group input{
+.meta-field-group input,.meta-field-group select,.meta-field-group textarea{
   width:100%;font-size:13.5px;padding:7px 9px;
 }
 .sotd-sug-chip{
@@ -171,14 +181,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
   <div class="header-top">
     <div>
       <h1>SING FRO<span style="color:#b30000;font-weight:900">M</span> HO<span style="color:#b30000;font-weight:900">M</span>E</h1>
-      <div class="sub-fnd">A project of B. S. Tikariya Cultural Foundation ®<br>(CIN: U88900MH2025NPL454435)</div>
+      <div class="sub-fnd">A project of B. S. Tikariya Cultural Foundation (R)<br>(CIN: U88900MH2025NPL454435)</div>
     </div>
     <div id="live-clock">--:--:--</div>
   </div>
   <div class="header-toolbar" id="hb"></div>
 </header>
 
-<main id="app"><p class="m">Connecting to live console…</p></main>
+<main id="app"><p class="m">Connecting to live console...</p></main>
 
 <div id="song-ac-popup"></div>
 
@@ -191,7 +201,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {getAuth,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import {getFirestore,doc,getDoc,setDoc,collection,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import {getFirestore,doc,getDoc,setDoc,getDocs,collection,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const CFG = {
   firebase: {
@@ -210,7 +220,6 @@ const fd = k => k.slice(8)+'/'+k.slice(5,7)+'/'+k.slice(0,4);
 const tdy = () => {const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 const curTime = () => new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', hour12:true});
 
-// Pure Numeric Song ID Comparator: S-0001 < S-0002 < S-0168
 const parseSongNum = id => {
   if (!id) return 0;
   const num = parseInt(String(id).replace(/\D/g, ''), 10);
@@ -233,7 +242,7 @@ updateClock();
 
 window.showNotice = (msg, title="Sing From Home") => {
   const m = $('#custom-modal');
-  $('#custom-modal-body').innerHTML = `<h3>${e(title)}</h3><p style="margin:12px 0 16px">${e(msg)}</p><p style="text-align:right;margin:0"><button class="pri" onclick="closeModal()">OK</button></p>`;
+  $('#custom-modal-body').innerHTML = `<h3>${e(title)}</h3><p style="margin:12px 0 16px;white-space:pre-line">${e(msg)}</p><p style="text-align:right;margin:0"><button class="pri" onclick="closeModal()">OK</button></p>`;
   m.style.display = 'flex';
 };
 
@@ -247,13 +256,17 @@ window.closeModal = () => { $('#custom-modal').style.display = 'none'; };
 
 let U=null, IS_SUPER=false, IS_ADMIN=false, KNOWN_SINGERS=[], ALL_SONGS=[], SORTED_UNIQUE_SONGS=[], SONG_COUNTS_MAP={}, MAX_ID_NUM=167;
 let STARS_MAP = {};
+let APPROVED_USERS = [];
 let SOTM_WINNER = null;
 let SOTM_VOTE_STATE = null;
 let ALL_SOTM_VOTES = [];
+let ALL_JUDGE_EVALS = [];
+let PUBLISHED_SOTM_RESULT = null;
 let ONLINE_USERS = [];
 let currentRound = 1;
 let SOTD_LIST = [];
 let presenceTimer = null;
+let voteCountdownTimer = null;
 
 let LIVE = {
   date: tdy(),
@@ -343,6 +356,21 @@ async function pingPresence() {
   } catch (x) {}
 }
 
+function startVoteTimerLoop() {
+  if (voteCountdownTimer) clearInterval(voteCountdownTimer);
+  voteCountdownTimer = setInterval(() => {
+    const el = document.getElementById('sotm_vote_timer_badge');
+    if (!el || !SOTM_VOTE_STATE || !SOTM_VOTE_STATE.activeSinger) return;
+    const rem = Math.max(0, Math.ceil(((SOTM_VOTE_STATE.endsAt || 0) - Date.now()) / 1000));
+    if (rem > 0) {
+      el.textContent = `Time Left: ${String(rem).padStart(2, '0')}s`;
+    } else {
+      el.textContent = 'Timer Ended (00s)';
+      renderSotmSection();
+    }
+  }, 500);
+}
+
 function startPresenceAndListeners() {
   if (presenceTimer) clearInterval(presenceTimer);
   pingPresence();
@@ -369,6 +397,16 @@ function startPresenceAndListeners() {
       ALL_SOTM_VOTES = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderSotmSection();
     }, () => {});
+
+    onSnapshot(collection(fs, 'sotm_judges'), snap => {
+      ALL_JUDGE_EVALS = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderSotmSection();
+    }, () => {});
+
+    onSnapshot(doc(fs, 'pub', 'sotm_results'), snap => {
+      PUBLISHED_SOTM_RESULT = snap.exists() ? snap.data() : null;
+      renderSotmSection();
+    }, () => {});
   }
 }
 
@@ -383,6 +421,16 @@ async function init(){
     }
   } catch(e) {
     console.warn("Singer directory fetch bypassed:", e);
+  }
+
+  try {
+    const uSnap = await getDocs(collection(fs, 'users'));
+    APPROVED_USERS = uSnap.docs
+      .map(d => ({ uid: d.id, ...d.data() }))
+      .filter(u => u.status === 'approved')
+      .sort((a, b) => String(a.singer || a.name || '').localeCompare(String(b.singer || b.name || '')));
+  } catch (e) {
+    APPROVED_USERS = [];
   }
 
   try {
@@ -408,6 +456,7 @@ async function init(){
 
   rebuildAlphabeticalSongCatalog();
   startPresenceAndListeners();
+  startVoteTimerLoop();
   draw();
 }
 
@@ -720,7 +769,6 @@ window.saveMeta = (singerName, round) => {
   closeModal();
 };
 
-// Participant Writing Pad for short live notes
 window.openPad = (singerName, round) => {
   const p = getOrCreatePerf(singerName, round);
   const sObj = LIVE.singers.find(x => x.name === singerName);
@@ -728,9 +776,9 @@ window.openPad = (singerName, round) => {
 
   const m = $('#custom-modal');
   $('#custom-modal-body').innerHTML = `
-    <h3>Writing Pad · ${e(singerName)} (Round ${round})</h3>
+    <h3>Writing Pad - ${e(singerName)} (Round ${round})</h3>
     <p class="m" style="margin:2px 0 8px">Short remarks, scale/sur notes, or feedback during performance:</p>
-    <textarea id="pad_note_inp" rows="5" style="width:100%;resize:vertical" placeholder="Write short notes here…">${e(currentNote)}</textarea>
+    <textarea id="pad_note_inp" rows="5" style="width:100%;resize:vertical" placeholder="Write short notes here...">${e(currentNote)}</textarea>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
       ${currentNote ? `<button onclick="clearPad('${e(singerName)}', ${round})">Clear</button>` : '<span></span>'}
       <div style="display:flex;gap:8px">
@@ -824,43 +872,261 @@ window.removeSOTD = (idx) => {
   draw();
 };
 
-// Superadmin Blind SOTM Voting Control & Declaration
-window.startSotmVoting = async () => {
-  if (!IS_SUPER) return;
+/* ---------- SOTM ALWAYS-ON JUDGE PANEL & 30-SEC PER-SINGER BLIND VOTING ---------- */
+function getDefaultSotmFinalists() {
+  const existing = (SOTM_VOTE_STATE && Array.isArray(SOTM_VOTE_STATE.finalists) && SOTM_VOTE_STATE.finalists.length)
+    ? SOTM_VOTE_STATE.finalists
+    : [];
+  if (existing.length) return existing;
+
   const fourStarAll = Object.entries(STARS_MAP).filter(([n, o]) => (o.t || 0) >= 4).map(([n]) => n);
   const inSession = LIVE.singers.map(s => s.name).filter(n => fourStarAll.includes(n));
-  const finalists = inSession.length ? inSession : fourStarAll;
+  if (inSession.length) return inSession;
+  if (fourStarAll.length) return fourStarAll;
+  return LIVE.singers.map(s => s.name);
+}
 
-  if (!finalists.length) {
-    showNotice('No 4+ star finalists found for SOTM voting.');
-    return;
-  }
+window.openSotmSetupModal = () => {
+  if (!IS_SUPER) return;
+  const curFinalists = getDefaultSotmFinalists();
+  const curJudges = (SOTM_VOTE_STATE && Array.isArray(SOTM_VOTE_STATE.judges)) ? SOTM_VOTE_STATE.judges : [];
+  const allCandidates = [...new Set([...curFinalists, ...LIVE.singers.map(s => s.name), ...KNOWN_SINGERS])].filter(Boolean).sort();
 
-  try {
-    await setDoc(doc(fs, 'live', 'sotm_vote'), {
-      active: true,
-      month: LIVE.date.slice(0, 7),
-      date: LIVE.date,
-      finalists,
-      startedAt: Date.now()
-    });
-    showNotice(`SOTM Audience Voting is now LIVE for ${finalists.length} finalist(s)! Participants can cast 1–5 votes from their Home screen.`);
-  } catch (err) {
-    showNotice('Error starting SOTM voting: ' + (err.code || err.message));
-  }
+  const m = $('#custom-modal');
+  $('#custom-modal-body').innerHTML = `
+    <h3>SOTM Round & Judge Panel Setup</h3>
+    <p class="m" style="margin:2px 0 10px">Configure finalists and appoint 1 or more judges. The Judge Panel remains active throughout the SOTM session.</p>
+    <div class="meta-field-group">
+      <label>Appoint Judge(s) from Approved Participants / Online Users
+        <div style="display:flex;gap:6px">
+          <select id="sotm_judge_picker">
+            <option value="">Select user to appoint as Judge...</option>
+            ${APPROVED_USERS.map(u => `<option value="${e(u.uid)}" data-name="${e((u.singer || u.name || '').toUpperCase())}">${e((u.singer || u.name || u.email || u.uid).toUpperCase())}</option>`).join('')}
+          </select>
+          <button type="button" class="pri" onclick="addSotmJudgeFromPicker()">Add Judge</button>
+        </div>
+      </label>
+      <div id="sotm_setup_judges_list" class="row" style="gap:6px">
+        ${curJudges.map((j, idx) => `<span class="judge-chip">${e(j.name)} <button type="button" style="padding:1px 6px;font-size:11px" onclick="removeSotmJudgeIdx(${idx})">Remove</button></span>`).join('') || '<span class="m">No judges appointed yet.</span>'}
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--bd);margin:4px 0">
+
+      <label>Add / Confirm SOTM Finalist Singer
+        <div style="display:flex;gap:6px">
+          <select id="sotm_fin_picker">
+            <option value="">Select singer...</option>
+            ${allCandidates.map(n => `<option value="${e(n)}">${e(n)}${(STARS_MAP[n] && STARS_MAP[n].t) ? ` (${STARS_MAP[n].t} Stars)` : ''}</option>`).join('')}
+          </select>
+          <button type="button" class="pri" onclick="addSotmFinalistFromPicker()">Add Finalist</button>
+        </div>
+      </label>
+      <div id="sotm_setup_finalists_list" class="row" style="gap:6px">
+        ${curFinalists.map((f, idx) => `<span class="judge-chip">${e(f)} <button type="button" style="padding:1px 6px;font-size:11px" onclick="removeSotmFinalistIdx(${idx})">Remove</button></span>`).join('') || '<span class="m">No finalists selected yet.</span>'}
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+      <button onclick="closeModal()">Close</button>
+      <button class="pri" onclick="saveSotmSetup()">Save & Activate Judge Panel</button>
+    </div>
+  `;
+  window._tempSotmJudges = JSON.parse(JSON.stringify(curJudges));
+  window._tempSotmFinalists = [...curFinalists];
+  m.style.display = 'flex';
 };
 
-window.stopSotmVoting = async () => {
+function refreshSotmSetupLists() {
+  const jEl = document.getElementById('sotm_setup_judges_list');
+  if (jEl) {
+    jEl.innerHTML = (window._tempSotmJudges || []).map((j, idx) =>
+      `<span class="judge-chip">${e(j.name)} <button type="button" style="padding:1px 6px;font-size:11px" onclick="removeSotmJudgeIdx(${idx})">Remove</button></span>`
+    ).join('') || '<span class="m">No judges appointed yet.</span>';
+  }
+  const fEl = document.getElementById('sotm_setup_finalists_list');
+  if (fEl) {
+    fEl.innerHTML = (window._tempSotmFinalists || []).map((f, idx) =>
+      `<span class="judge-chip">${e(f)} <button type="button" style="padding:1px 6px;font-size:11px" onclick="removeSotmFinalistIdx(${idx})">Remove</button></span>`
+    ).join('') || '<span class="m">No finalists selected yet.</span>';
+  }
+}
+
+window.addSotmJudgeFromPicker = () => {
+  const sel = $('#sotm_judge_picker');
+  if (!sel || !sel.value) return;
+  const uid = sel.value;
+  const name = sel.selectedOptions[0].getAttribute('data-name') || sel.selectedOptions[0].text;
+  if (!window._tempSotmJudges.some(j => j.uid === uid)) {
+    window._tempSotmJudges.push({ uid, name });
+  }
+  sel.value = '';
+  refreshSotmSetupLists();
+};
+
+window.removeSotmJudgeIdx = (idx) => {
+  window._tempSotmJudges.splice(idx, 1);
+  refreshSotmSetupLists();
+};
+
+window.addSotmFinalistFromPicker = () => {
+  const sel = $('#sotm_fin_picker');
+  if (!sel || !sel.value) return;
+  const name = sel.value.toUpperCase();
+  if (!window._tempSotmFinalists.includes(name)) {
+    window._tempSotmFinalists.push(name);
+  }
+  sel.value = '';
+  refreshSotmSetupLists();
+};
+
+window.removeSotmFinalistIdx = (idx) => {
+  window._tempSotmFinalists.splice(idx, 1);
+  refreshSotmSetupLists();
+};
+
+window.saveSotmSetup = async () => {
   if (!IS_SUPER) return;
+  const finalists = window._tempSotmFinalists || [];
+  const judges = window._tempSotmJudges || [];
+  if (!finalists.length) {
+    showNotice('Please add at least one SOTM finalist.');
+    return;
+  }
+  const monthKey = LIVE.date.slice(0, 7);
   try {
     await setDoc(doc(fs, 'live', 'sotm_vote'), {
       ...(SOTM_VOTE_STATE || {}),
-      active: false,
-      stoppedAt: Date.now()
+      panelActive: true,
+      month: monthKey,
+      date: LIVE.date,
+      finalists,
+      judges,
+      judgeUids: judges.map(j => j.uid),
+      updatedAt: Date.now()
     });
-    showNotice('SOTM Audience Voting has been closed.');
+    closeModal();
+    showNotice('SOTM Round & Always-On Judge Panel activated.');
   } catch (err) {
-    showNotice('Error stopping SOTM voting: ' + (err.code || err.message));
+    showNotice('Error saving SOTM setup: ' + (err.code || err.message));
+  }
+};
+
+// Trigger 30-second blind audience vote for ONE singer at a time
+window.startSinger30SecVote = async (singerName) => {
+  if (!IS_SUPER) return;
+  const cleanName = String(singerName || '').trim().toUpperCase();
+  if (!cleanName) return;
+
+  const monthKey = (SOTM_VOTE_STATE && SOTM_VOTE_STATE.month) || LIVE.date.slice(0, 7);
+  const existingFinalists = (SOTM_VOTE_STATE && Array.isArray(SOTM_VOTE_STATE.finalists)) ? [...SOTM_VOTE_STATE.finalists] : [];
+  if (!existingFinalists.includes(cleanName)) existingFinalists.push(cleanName);
+
+  const judges = (SOTM_VOTE_STATE && Array.isArray(SOTM_VOTE_STATE.judges)) ? SOTM_VOTE_STATE.judges : [];
+  const now = Date.now();
+
+  try {
+    await setDoc(doc(fs, 'live', 'sotm_vote'), {
+      panelActive: true,
+      month: monthKey,
+      date: LIVE.date,
+      finalists: existingFinalists,
+      judges,
+      judgeUids: judges.map(j => j.uid),
+      activeSinger: cleanName,
+      startedAt: now,
+      endsAt: now + 30000,
+      updatedAt: now
+    });
+  } catch (err) {
+    showNotice('Could not start 30-second vote: ' + (err.code || err.message));
+  }
+};
+
+window.closeSingerVoteEarly = async () => {
+  if (!IS_SUPER || !SOTM_VOTE_STATE) return;
+  try {
+    await setDoc(doc(fs, 'live', 'sotm_vote'), {
+      ...SOTM_VOTE_STATE,
+      endsAt: Date.now() - 1000,
+      updatedAt: Date.now()
+    });
+  } catch (err) {
+    showNotice('Error closing vote: ' + (err.code || err.message));
+  }
+};
+
+// Superadmin Manual Judge Entry (in case external judge shares scores verbally on Zoom)
+window.openManualJudgeModal = () => {
+  if (!IS_SUPER) return;
+  const finalists = getDefaultSotmFinalists();
+  if (!finalists.length) {
+    showNotice('Please add SOTM finalists first.');
+    return;
+  }
+  const m = $('#custom-modal');
+  $('#custom-modal-body').innerHTML = `
+    <h3>Manual Judge Score Entry</h3>
+    <p class="m" style="margin:2px 0 10px">Enter evaluation marks (10 each) on behalf of an external guest judge.</p>
+    <div class="meta-field-group">
+      <label>Judge Name
+        <input id="mj_judge_name" placeholder="e.g. SHRI GUEST JUDGE" style="text-transform:uppercase">
+      </label>
+      <label>Finalist Singer
+        <select id="mj_finalist">
+          ${finalists.map(f => `<option value="${e(f)}">${e(f)}</option>`).join('')}
+        </select>
+      </label>
+      <div class="f">
+        <label>Sur (Max 10)<input id="mj_sur" type="number" min="0" max="10" step="0.5" value="0"></label>
+        <label>Taal (Max 10)<input id="mj_taal" type="number" min="0" max="10" step="0.5" value="0"></label>
+        <label>Selection (Max 10)<input id="mj_sel" type="number" min="0" max="10" step="0.5" value="0"></label>
+        <label>Overall Performance (Max 10)<input id="mj_perf" type="number" min="0" max="10" step="0.5" value="0"></label>
+      </div>
+      <label>Judge Opinion / Remarks
+        <textarea id="mj_remarks" rows="3" placeholder="Enter official judge remarks..."></textarea>
+      </label>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+      <button onclick="closeModal()">Cancel</button>
+      <button class="pri" onclick="saveManualJudgeEval()">Save Judge Evaluation</button>
+    </div>
+  `;
+  m.style.display = 'flex';
+};
+
+window.saveManualJudgeEval = async () => {
+  if (!IS_SUPER) return;
+  const jName = ($('#mj_judge_name').value || '').trim().toUpperCase();
+  const finalist = ($('#mj_finalist').value || '').trim().toUpperCase();
+  if (!jName || !finalist) {
+    showNotice('Enter judge name and select finalist.');
+    return;
+  }
+  const clamp10 = v => Math.max(0, Math.min(10, parseFloat(v) || 0));
+  const sur = clamp10($('#mj_sur').value);
+  const taal = clamp10($('#mj_taal').value);
+  const selection = clamp10($('#mj_sel').value);
+  const performance = clamp10($('#mj_perf').value);
+  const remarks = ($('#mj_remarks').value || '').trim();
+  const monthKey = (SOTM_VOTE_STATE && SOTM_VOTE_STATE.month) || LIVE.date.slice(0, 7);
+  const manualId = 'manual_' + jName.replace(/[^A-Z0-9]/g, '_');
+  const docId = `${monthKey}_${manualId}`;
+
+  const existing = ALL_JUDGE_EVALS.find(x => x.id === docId);
+  const evalsMap = Object.assign({}, existing && existing.evaluations ? existing.evaluations : {});
+  evalsMap[finalist] = { sur, taal, selection, performance, total: sur + taal + selection + performance, remarks };
+
+  try {
+    await setDoc(doc(fs, 'sotm_judges', docId), {
+      judgeUid: manualId,
+      judgeName: jName,
+      month: monthKey,
+      evaluations: evalsMap,
+      updatedAt: Date.now()
+    });
+    closeModal();
+    showNotice(`Saved evaluation by ${jName} for ${finalist}.`);
+  } catch (err) {
+    showNotice('Error saving judge score: ' + (err.code || err.message));
   }
 };
 
@@ -868,12 +1134,12 @@ window.viewSotmBallots = () => {
   if (!IS_SUPER) return;
   const monthKey = (SOTM_VOTE_STATE && SOTM_VOTE_STATE.month) || LIVE.date.slice(0, 7);
   const monthVotes = ALL_SOTM_VOTES.filter(x => x.month === monthKey);
-  const finalists = (SOTM_VOTE_STATE && SOTM_VOTE_STATE.finalists) || [];
+  const finalists = getDefaultSotmFinalists();
 
   const m = $('#custom-modal');
   $('#custom-modal-body').innerHTML = `
-    <h3>Private SOTM Ballots (${e(monthKey)})</h3>
-    <p class="m" style="margin:2px 0 10px">Visible only to Superadmin. Total ballots cast: <b>${monthVotes.length}</b></p>
+    <h3>Private SOTM Audience Ballots (${e(monthKey)})</h3>
+    <p class="m" style="margin:2px 0 10px">Visible only to Superadmin. Total voters: <b>${monthVotes.length}</b></p>
     ${monthVotes.length ? `
       <div class="tbl"><table>
         <tr><th>Voter</th>${finalists.map(f => `<th class="n">${e(f)}</th>`).join('')}</tr>
@@ -882,55 +1148,166 @@ window.viewSotmBallots = () => {
           ${finalists.map(f => `<td class="n"><b>${(v.votes && v.votes[f]) || '-'}</b></td>`).join('')}
         </tr>`).join('')}
       </table></div>
-    ` : '<p class="m">No votes cast yet.</p>'}
+    ` : '<p class="m">No audience votes cast yet.</p>'}
     <p style="text-align:right;margin:14px 0 0"><button class="pri" onclick="closeModal()">Close</button></p>
   `;
   m.style.display = 'flex';
 };
 
+function computeSotmScoreboard() {
+  const monthKey = (SOTM_VOTE_STATE && SOTM_VOTE_STATE.month) || LIVE.date.slice(0, 7);
+  const finalists = getDefaultSotmFinalists();
+  const monthVotes = ALL_SOTM_VOTES.filter(x => x.month === monthKey);
+  const monthJudges = ALL_JUDGE_EVALS.filter(x => x.month === monthKey);
+
+  const rows = finalists.map(fName => {
+    let audTotal = 0;
+    let audVoters = 0;
+    monthVotes.forEach(v => {
+      const val = Number((v.votes && v.votes[fName]) || 0);
+      if (val >= 1 && val <= 5) {
+        audTotal += val;
+        audVoters++;
+      }
+    });
+
+    let surSum = 0, taalSum = 0, selSum = 0, perfSum = 0, judgeTotal = 0, judgeCount = 0;
+    const judgeRemarks = [];
+    monthJudges.forEach(jDoc => {
+      const ev = jDoc.evaluations && jDoc.evaluations[fName];
+      if (ev) {
+        const s = Number(ev.sur || 0);
+        const t = Number(ev.taal || 0);
+        const sel = Number(ev.selection || 0);
+        const perf = Number(ev.performance || 0);
+        const sub = s + t + sel + perf;
+        surSum += s;
+        taalSum += t;
+        selSum += sel;
+        perfSum += perf;
+        judgeTotal += sub;
+        judgeCount++;
+        judgeRemarks.push({
+          judgeName: jDoc.judgeName || 'Judge',
+          sur: s,
+          taal: t,
+          selection: sel,
+          performance: perf,
+          subtotal: sub,
+          remarks: ev.remarks || ''
+        });
+      }
+    });
+
+    const songsSung = LIVE.performances
+      .filter(p => p.singer === fName && p.song)
+      .map(p => p.song);
+
+    return {
+      singer: fName,
+      songs: songsSung,
+      sur: parseFloat(surSum.toFixed(1)),
+      taal: parseFloat(taalSum.toFixed(1)),
+      selection: parseFloat(selSum.toFixed(1)),
+      performance: parseFloat(perfSum.toFixed(1)),
+      judgeTotal: parseFloat(judgeTotal.toFixed(1)),
+      judgeCount,
+      judgeRemarks,
+      audienceTotal: audTotal,
+      audienceVoters: audVoters,
+      grandTotal: parseFloat((judgeTotal + audTotal).toFixed(1))
+    };
+  }).sort((a, b) => b.grandTotal - a.grandTotal || b.judgeTotal - a.judgeTotal || b.audienceTotal - a.audienceTotal);
+
+  return { monthKey, finalists, rows, totalAudienceVoters: monthVotes.length, monthJudges };
+}
+
 function renderSotmSection() {
-  const container = document.getElementById('sotd_sotm_holder') || document.getElementById('sotm_superadmin_card');
+  const container = document.getElementById('sotm_superadmin_card');
   if (!container || !IS_SUPER) return;
 
-  const isVotingOpen = Boolean(SOTM_VOTE_STATE && SOTM_VOTE_STATE.active);
-  const monthKey = (SOTM_VOTE_STATE && SOTM_VOTE_STATE.month) || LIVE.date.slice(0, 7);
-  const finalists = (SOTM_VOTE_STATE && SOTM_VOTE_STATE.finalists) || [];
-  const monthVotes = ALL_SOTM_VOTES.filter(x => x.month === monthKey);
-
-  const totals = {};
-  finalists.forEach(f => { totals[f] = 0; });
-  monthVotes.forEach(entry => {
-    const vMap = entry.votes || {};
-    finalists.forEach(f => {
-      const val = Number(vMap[f] || 0);
-      if (val >= 1 && val <= 5) totals[f] += val;
-    });
-  });
+  const board = computeSotmScoreboard();
+  const activeSinger = SOTM_VOTE_STATE && SOTM_VOTE_STATE.activeSinger;
+  const endsAt = (SOTM_VOTE_STATE && SOTM_VOTE_STATE.endsAt) || 0;
+  const remSec = activeSinger ? Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)) : 0;
+  const appointedJudges = (SOTM_VOTE_STATE && SOTM_VOTE_STATE.judges) || [];
 
   container.innerHTML = `
     <div class="row" style="justify-content:space-between">
       <div>
-        <b>Singer of the Month (SOTM)</b>
-        <p class="m" style="margin:2px 0 0">${SOTM_WINNER ? `Winner: <b>${e(SOTM_WINNER.name)}</b> · Judged by: <b>${e(SOTM_WINNER.judge)}</b>` : 'Superadmin control for 4+ star monthly finals & audience voting.'}</p>
+        <b>Singer of the Month (SOTM) - Judge Panel & 30s Blind Voting</b>
+        <p class="m" style="margin:2px 0 0">
+          ${SOTM_WINNER ? `Declared Winner: <b>${e(SOTM_WINNER.name)}</b> | Judge(s): <b>${e(SOTM_WINNER.judge)}</b>` : 'Judge Panel is always on when configured. Trigger a 30s blind audience vote per singer after they sing.'}
+        </p>
       </div>
       <div class="row">
-        ${isVotingOpen
-          ? `<button class="danger" onclick="stopSotmVoting()">Stop SOTM Voting</button>`
-          : `<button onclick="startSotmVoting()">Start SOTM Voting</button>`}
-        <button class="pri" onclick="openSOTMModal()">Declare Singer of the Month</button>
+        <button onclick="openSotmSetupModal()">Setup Finalists & Judges</button>
+        <button onclick="openManualJudgeModal()">+ Manual Judge Score</button>
+        <button class="pri" onclick="openSOTMModal()">Declare & Publish SOTM</button>
       </div>
     </div>
-    ${finalists.length ? `
+
+    ${appointedJudges.length ? `
+      <div style="margin-top:8px" class="row">
+        <span class="m"><b>Appointed Judge Panel (Always On):</b></span>
+        ${appointedJudges.map(j => `<span class="judge-chip">${e(j.name)}</span>`).join('')}
+      </div>
+    ` : ''}
+
+    ${activeSinger ? `
+      <div style="margin-top:10px;padding:10px 12px;background:var(--ac-light);border:1px solid var(--ac);border-radius:10px">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <b>Active 30s Audience Vote: ${e(activeSinger)}</b>
+            <div class="m">Participants see zero vote counts during or after the timer.</div>
+          </div>
+          <div class="row">
+            <span id="sotm_vote_timer_badge" class="timer-pill">${remSec > 0 ? `Time Left: ${String(remSec).padStart(2, '0')}s` : 'Timer Ended (00s)'}</span>
+            ${remSec > 0 ? `<button class="danger" onclick="closeSingerVoteEarly()">Close Now</button>` : ''}
+          </div>
+        </div>
+      </div>
+    ` : ''}
+
+    ${board.rows.length ? `
       <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">
         <div class="row" style="justify-content:space-between;margin-bottom:6px">
-          <span class="m"><b>Live SOTM Vote Tally</b> (${monthVotes.length} voter${monthVotes.length === 1 ? '' : 's'})</span>
-          <button style="font-size:11.5px;padding:4px 8px" onclick="viewSotmBallots()">Inspect Individual Votes (Superadmin)</button>
+          <span class="m"><b>Consolidated Live Tally (Superadmin Only)</b> - ${board.totalAudienceVoters} audience voter(s)</span>
+          <div class="row">
+            <button style="font-size:11.5px;padding:4px 8px" onclick="viewSotmBallots()">Inspect Audience Ballots</button>
+            ${PUBLISHED_SOTM_RESULT ? `<button class="pri" style="font-size:11.5px;padding:4px 8px" onclick="downloadOfficialSotmPDF()">Download Official SOTM PDF</button>` : ''}
+          </div>
         </div>
         <div class="tbl"><table>
-          <tr><th>Finalist</th><th class="n">Total Votes</th></tr>
-          ${finalists.slice().sort((a, b) => (totals[b] || 0) - (totals[a] || 0)).map(f => `
-            <tr><td><b>${e(f)}</b></td><td class="n"><b>${totals[f] || 0}</b></td></tr>
-          `).join('')}
+          <tr>
+            <th class="col-ord">#</th>
+            <th>Finalist</th>
+            <th class="n">Sur (10)</th>
+            <th class="n">Taal (10)</th>
+            <th class="n">Sel (10)</th>
+            <th class="n">Perf (10)</th>
+            <th class="n">Judge Total</th>
+            <th class="n">Audience</th>
+            <th class="n">Grand Total</th>
+            <th style="text-align:center">30s Vote</th>
+          </tr>
+          ${board.rows.map((r, idx) => {
+            const isVotingThis = activeSinger === r.singer && remSec > 0;
+            return `<tr>
+              <td class="col-ord"><b>${idx + 1}</b></td>
+              <td><b>${e(r.singer)}</b></td>
+              <td class="n">${r.sur}</td>
+              <td class="n">${r.taal}</td>
+              <td class="n">${r.selection}</td>
+              <td class="n">${r.performance}</td>
+              <td class="n"><b>${r.judgeTotal}</b></td>
+              <td class="n"><b>${r.audienceTotal}</b></td>
+              <td class="n"><b>${r.grandTotal}</b></td>
+              <td style="text-align:center">
+                <button class="${isVotingThis ? 'on' : ''}" style="font-size:11.5px;padding:3px 8px" onclick="startSinger30SecVote('${e(r.singer)}')">${isVotingThis ? 'Voting...' : 'Vote (30s)'}</button>
+              </td>
+            </tr>`;
+          }).join('')}
         </table></div>
       </div>
     ` : ''}
@@ -939,46 +1316,81 @@ function renderSotmSection() {
 
 window.openSOTMModal = () => {
   if (!IS_SUPER) return;
-  const fourStarAll = Object.entries(STARS_MAP).filter(([n, o]) => (o.t || 0) >= 4).map(([n]) => n);
-  const inSession = LIVE.singers.map(s => s.name).filter(n => fourStarAll.includes(n));
-  const candidates = inSession.length ? inSession : fourStarAll;
+  const board = computeSotmScoreboard();
+  const candidates = board.rows.length ? board.rows.map(r => r.singer) : getDefaultSotmFinalists();
+  const appointedNames = ((SOTM_VOTE_STATE && SOTM_VOTE_STATE.judges) || []).map(j => j.name);
+  const evalJudgeNames = board.monthJudges.map(j => j.judgeName);
+  const allJudgeNames = [...new Set([...appointedNames, ...evalJudgeNames])].filter(Boolean).join(', ');
 
   const m = $('#custom-modal');
   $('#custom-modal-body').innerHTML = `
-    <h3>Declare Singer of the Month (SOTM)</h3>
-    <p class="m" style="margin:4px 0 10px">Select the winner from 4+ star finalists and enter the Judge's name.</p>
+    <h3>Declare & Publish Official SOTM Result</h3>
+    <p class="m" style="margin:4px 0 10px">Publishing reveals the complete official scorecard, judge criteria marks, and remarks to all participants with PDF download.</p>
     <div class="meta-field-group">
-      <label>SOTM Winner (4+ Stars)
+      <label>SOTM Winner
         <select id="sotm_winner_sel">
-          <option value="">Choose Finalist…</option>
-          ${candidates.map(n => `<option value="${e(n)}" ${SOTM_WINNER && SOTM_WINNER.name === n ? 'selected' : ''}>${e(n)} (${(STARS_MAP[n] && STARS_MAP[n].t) || 4}★)</option>`).join('')}
+          <option value="">Choose Finalist...</option>
+          ${candidates.map((n, i) => {
+            const row = board.rows.find(r => r.singer === n);
+            const label = row ? `${n} (Total: ${row.grandTotal} | Judge: ${row.judgeTotal}, Aud: ${row.audienceTotal})` : n;
+            return `<option value="${e(n)}" ${(SOTM_WINNER && SOTM_WINNER.name === n) || (!SOTM_WINNER && i === 0) ? 'selected' : ''}>${e(label)}</option>`;
+          }).join('')}
         </select>
       </label>
-      <label>Judged By
-        <input id="sotm_judge_inp" value="${e(SOTM_WINNER ? SOTM_WINNER.judge : '')}" placeholder="Enter Judge Name" style="text-transform:uppercase">
+      <label>Appointed Judge(s)
+        <input id="sotm_judge_inp" value="${e((SOTM_WINNER && SOTM_WINNER.judge) || allJudgeNames)}" placeholder="Enter Judge Name(s)" style="text-transform:uppercase">
       </label>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
       ${SOTM_WINNER ? `<button onclick="clearSOTM()">Clear SOTM</button>` : '<span></span>'}
       <div style="display:flex;gap:8px">
         <button onclick="closeModal()">Cancel</button>
-        <button class="pri" onclick="saveSOTM()">Declare SOTM</button>
+        <button class="pri" onclick="saveAndPublishSOTM()">Declare & Publish Result</button>
       </div>
     </div>
   `;
   m.style.display = 'flex';
 };
 
-window.saveSOTM = () => {
+window.saveAndPublishSOTM = async () => {
   const name = ($('#sotm_winner_sel').value || '').trim().toUpperCase();
   const judge = ($('#sotm_judge_inp').value || '').trim().toUpperCase();
   if (!name) { showNotice('Please select the Singer of the Month winner.'); return; }
-  if (!judge) { showNotice('Please enter the Judge name.'); return; }
-  SOTM_WINNER = { name, judge, month: LIVE.date.slice(0, 7), date: LIVE.date };
+  if (!judge) { showNotice('Please enter the Judge name(s).'); return; }
+
+  const board = computeSotmScoreboard();
+  SOTM_WINNER = { name, judge, month: board.monthKey, date: LIVE.date };
   saveLocal();
-  closeModal();
-  draw();
-  showNotice(`${name} marked as Singer of the Month (Judged by ${judge}). Click "End" when finished to publish.`);
+
+  const resultPayload = {
+    active: true,
+    month: board.monthKey,
+    declaredDate: LIVE.date,
+    winner: name,
+    judgesText: judge,
+    totalAudienceVoters: board.totalAudienceVoters,
+    standings: board.rows,
+    publishedAt: Date.now()
+  };
+
+  try {
+    await setDoc(doc(fs, 'pub', 'sotm_results'), resultPayload);
+    if (SOTM_VOTE_STATE) {
+      await setDoc(doc(fs, 'live', 'sotm_vote'), {
+        ...SOTM_VOTE_STATE,
+        panelActive: false,
+        activeSinger: '',
+        endsAt: Date.now() - 1000,
+        updatedAt: Date.now()
+      });
+    }
+    PUBLISHED_SOTM_RESULT = resultPayload;
+    closeModal();
+    draw();
+    showNotice(`${name} declared as Singer of the Month and official results published to everyone! Click "End" when session finishes to update monthly archives.`);
+  } catch (err) {
+    showNotice('Error publishing SOTM result: ' + (err.code || err.message));
+  }
 };
 
 window.clearSOTM = () => {
@@ -986,6 +1398,114 @@ window.clearSOTM = () => {
   saveLocal();
   closeModal();
   draw();
+};
+
+// Official SOTM Result PDF Generator (Shared Format)
+window.downloadOfficialSotmPDF = () => {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    showNotice('PDF library loading, please try again.');
+    return;
+  }
+  const res = PUBLISHED_SOTM_RESULT || (() => {
+    const b = computeSotmScoreboard();
+    return {
+      month: b.monthKey,
+      declaredDate: LIVE.date,
+      winner: (SOTM_WINNER && SOTM_WINNER.name) || (b.rows[0] && b.rows[0].singer) || '-',
+      judgesText: (SOTM_WINNER && SOTM_WINNER.judge) || '-',
+      totalAudienceVoters: b.totalAudienceVoters,
+      standings: b.rows
+    };
+  })();
+
+  const { jsPDF } = window.jspdf;
+  const docPdf = new jsPDF({ unit: 'mm', format: 'a4' });
+  const cleanStr = s => String(s == null ? '' : s).replace(/[^\x20-\x7E]/g, '');
+
+  docPdf.setFontSize(18);
+  docPdf.setTextColor(15, 52, 96);
+  docPdf.text('SING FROM HOME', 105, 14, { align: 'center' });
+
+  docPdf.setFontSize(8.5);
+  docPdf.setTextColor(71, 85, 105);
+  docPdf.text('A project of B. S. Tikariya Cultural Foundation (R) (CIN: U88900MH2025NPL454435)', 105, 19, { align: 'center' });
+  docPdf.text("Conducted by TIKARIYA'S SCHOOL OF MUSIC - Director: Manoj Tikariya", 105, 23.5, { align: 'center' });
+
+  docPdf.setFillColor(232, 238, 247);
+  docPdf.roundedRect(14, 27, 182, 16, 2, 2, 'F');
+  docPdf.setFontSize(11);
+  docPdf.setTextColor(15, 52, 96);
+  docPdf.text(`OFFICIAL SINGER OF THE MONTH (SOTM) RESULT - ${cleanStr(res.month)}`, 18, 33.5);
+  docPdf.setFontSize(9);
+  docPdf.setTextColor(15, 23, 42);
+  docPdf.text(`Winner: ${cleanStr(res.winner)} (G-Clef Memento Award)   |   Judge(s): ${cleanStr(res.judgesText)}   |   Date: ${fd(res.declaredDate || LIVE.date)}`, 18, 39.5);
+
+  const tableBody = (res.standings || []).map((r, i) => [
+    i + 1,
+    cleanStr(r.singer),
+    cleanStr((r.songs || []).join(' / ') || '-'),
+    r.sur,
+    r.taal,
+    r.selection,
+    r.performance,
+    r.judgeTotal,
+    r.audienceTotal,
+    r.grandTotal
+  ]);
+
+  docPdf.autoTable({
+    startY: 47,
+    head: [['Rank', 'Finalist Name', 'Songs Performed', 'Sur (10)', 'Taal (10)', 'Sel (10)', 'Perf (10)', 'Judge', 'Aud.', 'Total']],
+    body: tableBody,
+    styles: { fontSize: 8, cellPadding: 2, valign: 'middle' },
+    headStyles: { fillColor: [15, 52, 96], textColor: [255, 255, 255], fontStyle: 'bold' },
+    columnStyles: {
+      0: { cellWidth: 11, halign: 'center' },
+      1: { cellWidth: 34, fontStyle: 'bold' },
+      2: { cellWidth: 45 },
+      3: { cellWidth: 13, halign: 'center' },
+      4: { cellWidth: 13, halign: 'center' },
+      5: { cellWidth: 13, halign: 'center' },
+      6: { cellWidth: 13, halign: 'center' },
+      7: { cellWidth: 13, halign: 'center', fontStyle: 'bold' },
+      8: { cellWidth: 13, halign: 'center' },
+      9: { cellWidth: 14, halign: 'center', fontStyle: 'bold' }
+    }
+  });
+
+  let y = (docPdf.lastAutoTable && docPdf.lastAutoTable.finalY ? docPdf.lastAutoTable.finalY : 90) + 8;
+  docPdf.setFontSize(10);
+  docPdf.setTextColor(15, 52, 96);
+  docPdf.text('JUDGE PANEL OPINIONS & REMARKS', 14, y);
+  y += 5;
+
+  docPdf.setFontSize(8.5);
+  docPdf.setTextColor(30, 41, 59);
+  (res.standings || []).forEach(r => {
+    if (y > 272) { docPdf.addPage(); y = 16; }
+    docPdf.setFont(undefined, 'bold');
+    docPdf.text(`${cleanStr(r.singer)} (Judge Total: ${r.judgeTotal} | Audience Votes: ${r.audienceTotal} | Grand Total: ${r.grandTotal})`, 14, y);
+    y += 4.5;
+    docPdf.setFont(undefined, 'normal');
+    if (r.judgeRemarks && r.judgeRemarks.length) {
+      r.judgeRemarks.forEach(jr => {
+        const line = `- ${cleanStr(jr.judgeName)} [Sur: ${jr.sur}/10, Taal: ${jr.taal}/10, Selection: ${jr.selection}/10, Overall: ${jr.performance}/10 = ${jr.subtotal}/40]: ${cleanStr(jr.remarks || 'No additional remarks.')}`;
+        const wrapped = docPdf.splitTextToSize(line, 180);
+        docPdf.text(wrapped, 17, y);
+        y += wrapped.length * 4;
+      });
+    } else {
+      docPdf.text('- No individual judge remarks recorded.', 17, y);
+      y += 4;
+    }
+    y += 2;
+  });
+
+  docPdf.setFontSize(8);
+  docPdf.setTextColor(100, 116, 139);
+  docPdf.text(`Total Participating Audience Voters: ${res.totalAudienceVoters || 0} | Individual audience ballots remain confidential.`, 14, Math.min(285, y + 4));
+
+  docPdf.save(`SFH_SOTM_Result_${res.month || LIVE.date}.pdf`);
 };
 
 window.downloadBackupJSON = () => {
@@ -1014,7 +1534,6 @@ window.downloadBackupJSON = () => {
   showNotice("Backup JSON downloaded! You can upload this manually under the Admin tab if needed.");
 };
 
-// 100% Comprehensive Wipe
 window.swipeTodayData = () => {
   showConfirm("Reset and wipe today's trial session data completely?\n\nThis will permanently clear today's test queue, remove any trial songs published today, and reset test stars so you start 100% clean at 8:30 PM.", async () => {
     try {
@@ -1091,7 +1610,6 @@ window.swipeTodayData = () => {
   }, "Swipe Today's Data");
 };
 
-// Pure Vector PDF generation
 window.downloadLivePDF = () => {
   if(!window.jspdf || !window.jspdf.jsPDF){
     showNotice('PDF library loading, please try again.');
@@ -1108,17 +1626,17 @@ window.downloadLivePDF = () => {
 
   docPdf.setFontSize(8.5);
   docPdf.setTextColor(71, 85, 105);
-  docPdf.text('A project of B. S. Tikariya Cultural Foundation \xAE (CIN: U88900MH2025NPL454435)', 105, 19, {align:'center'});
-  docPdf.text("Conducted by TIKARIYA'S SCHOOL OF MUSIC \xB7 Director: Manoj Tikariya", 105, 23.5, {align:'center'});
+  docPdf.text('A project of B. S. Tikariya Cultural Foundation (R) (CIN: U88900MH2025NPL454435)', 105, 19, {align:'center'});
+  docPdf.text("Conducted by TIKARIYA'S SCHOOL OF MUSIC - Director: Manoj Tikariya", 105, 23.5, {align:'center'});
 
   docPdf.setFontSize(9.5);
   docPdf.setTextColor(15, 23, 42);
-  docPdf.text(`Live Session Record \xB7 ${fd(LIVE.date)} | Sorted by Song ID | Exported: ${curTime()}`, 14, 30);
+  docPdf.text(`Live Session Record - ${fd(LIVE.date)} | Sorted by Song ID | Exported: ${curTime()}`, 14, 30);
 
   let startY = 34;
 
   if (SOTD_LIST.length) {
-    const sotdText = SOTD_LIST.map(x => `${cleanStr(x.n)} (${cleanStr(x.h)}${x.reason ? ' - ' + cleanStr(x.reason) : ''})`).join('  \xB7  ');
+    const sotdText = SOTD_LIST.map(x => `${cleanStr(x.n)} (${cleanStr(x.h)}${x.reason ? ' - ' + cleanStr(x.reason) : ''})`).join('  |  ');
     docPdf.setFillColor(232, 238, 247);
     docPdf.roundedRect(14, startY, 182, 10, 2, 2, 'F');
     docPdf.setFontSize(8.5);
@@ -1241,7 +1759,6 @@ window.endSession = async () => {
         somdObj[mKey] = SOTM_WINNER.date;
         somjObj[mKey] = SOTM_WINNER.judge;
 
-        // Reset 4+ star finalists to 0 after SOTM is chosen; 1-3 star singers keep theirs
         Object.keys(starsObj).forEach(sk => {
           if ((starsObj[sk].t || 0) >= 4) {
             starsObj[sk].t = 0;
@@ -1306,11 +1823,11 @@ function renderSOTDHTML() {
 
     ${topSuggestions.length ? `
       <div style="margin:8px 0 10px;padding:8px 10px;background:var(--ac-light);border-radius:8px;border:1px solid var(--bd)">
-        <span style="font-size:12px;font-weight:700;color:var(--ac)">⭐ Top Suggestions (Highest Score & Average):</span>
+        <span style="font-size:12px;font-weight:700;color:var(--ac)">Top Suggestions (Highest Score & Average):</span>
         <div class="row" style="margin-top:6px;gap:6px">
           ${topSuggestions.slice(0, 4).map(c => `
             <button type="button" class="sotd-sug-chip" onclick="selectSuggestedSOTD('${e(c.name)}')">
-              <b>${e(c.name)}</b>: ${c.totalStars}★ <span class="m">(Avg: ${c.avgStars}★)</span>
+              <b>${e(c.name)}</b>: ${c.totalStars}/5 <span class="m">(Avg: ${c.avgStars})</span>
             </button>
           `).join('')}
         </div>
@@ -1319,8 +1836,8 @@ function renderSOTDHTML() {
 
     <div class="f">
       <select id="sotd_winner">
-        <option value="">Choose SOTD Singer…</option>
-        ${ranked.map(c => `<option value="${e(c.name)}">${e(c.name)}${!c.eligible ? ' (>8:45)' : ''}${c.totalStars > 0 ? ` — ${c.totalStars}★ (Avg: ${c.avgStars})` : ''}</option>`).join('')}
+        <option value="">Choose SOTD Singer...</option>
+        ${ranked.map(c => `<option value="${e(c.name)}">${e(c.name)}${!c.eligible ? ' (>8:45)' : ''}${c.totalStars > 0 ? ` - ${c.totalStars} pts (Avg: ${c.avgStars})` : ''}</option>`).join('')}
       </select>
       <select id="sotd_mode">
         <option value="score">By Score</option>
@@ -1400,7 +1917,7 @@ function draw(){
   h += `<div class="c">
     <div class="row" style="justify-content:space-between">
       <div>
-        <h2>Live Session · ${fd(LIVE.date)}</h2>
+        <h2>Live Session - ${fd(LIVE.date)}</h2>
       </div>
       <div class="row">
         <span id="live_song_count_badge" class="badge-count">Songs Sung: ${getLiveSongCount()}</span>
@@ -1435,7 +1952,7 @@ function draw(){
           <th>SOTD Status</th>
           <th>Song Title (Round ${currentRound})</th>
           <th>Song ID</th>
-          <th style="min-width:145px">Scoring (1 to 5 Stars)</th>
+          <th style="min-width:145px">Scoring (1 to 5)</th>
           <th style="text-align:center">Action</th>
         </tr>
         ${LIVE.singers.map((s, idx) => {
@@ -1454,7 +1971,7 @@ function draw(){
               <div style="display:flex;align-items:center;white-space:nowrap">
                 <input id="sg_${sKey}" autocomplete="off" value="${e(p.song || '')}" placeholder="Type song..." style="width:195px;text-transform:uppercase" onfocus="showSongAcFor(this, '${e(s.name)}', ${currentRound})" oninput="onSongInput('${e(s.name)}', ${currentRound})" onkeydown="onSongKeyDown(event, '${e(s.name)}', ${currentRound})">
                 <button class="btn-meta" style="margin-left:5px" onclick="openMeta('${e(s.name)}', ${currentRound})" title="Movie & Song Info">i</button>
-                <button class="btn-pad ${hasNote ? 'has-note' : ''}" style="margin-left:4px" onclick="openPad('${e(s.name)}', ${currentRound})" title="${hasNote ? e(p.note || s.note) : 'Writing Pad (Short Notes)'}">📝</button>
+                <button class="btn-pad ${hasNote ? 'has-note' : ''}" style="margin-left:4px" onclick="openPad('${e(s.name)}', ${currentRound})" title="${hasNote ? e(p.note || s.note) : 'Writing Pad (Short Notes)'}">Note</button>
               </div>
             </td>
             <td id="id_${sKey}">
@@ -1462,11 +1979,12 @@ function draw(){
             </td>
             <td>
               <div class="score-box" title="1: Announced | 2: Turn ready | 3: No mic noise | 4: Good singing | 5: Better singing">
-                ${[0,1,2,3,4].map(sIdx => `<span id="star_${sKey}_${sIdx}" class="score-star ${p.stars[sIdx]?'active':''}" onclick="toggleStar('${e(s.name)}', ${currentRound}, ${sIdx})">★</span>`).join('')}
+                ${[0,1,2,3,4].map(sIdx => `<span id="star_${sKey}_${sIdx}" class="score-star ${p.stars[sIdx]?'active':''}" onclick="toggleStar('${e(s.name)}', ${currentRound}, ${sIdx})">${sIdx+1}</span>`).join('')}
               </div>
               <span id="score_txt_${sKey}" class="m" style="font-size:11px;margin-left:4px">(${starCount}/5)</span>
             </td>
-            <td style="text-align:center">
+            <td style="text-align:center;white-space:nowrap">
+              ${IS_SUPER ? `<button style="font-size:11.5px;padding:3px 7px;margin-right:4px" onclick="startSinger30SecVote('${e(s.name)}')">Vote 30s</button>` : ''}
               <button onclick="removeSinger(${idx})">Remove</button>
             </td>
           </tr>`;
