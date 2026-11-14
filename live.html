@@ -142,12 +142,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 }
 .online-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;flex-shrink:0}
 
-/* 30s SOTM Timer Badge */
-.sotm-timer-pill{
-  font-size:13px;font-weight:900;font-variant-numeric:tabular-nums;
-  padding:3px 10px;border-radius:999px;background:#dc2626;color:#fff;
-}
-
 #custom-modal{
   position:fixed;inset:0;z-index:90;background:rgba(15,23,42,0.7);backdrop-filter:blur(6px);
   display:none;align-items:center;justify-content:center;padding:16px;
@@ -266,18 +260,6 @@ let LIVE = {
   singers: [],
   performances: []
 };
-
-// Live 1-second timer tick for individual 30-second SOTM voting
-setInterval(() => {
-  if (!IS_SUPER || !SOTM_VOTE_STATE || !SOTM_VOTE_STATE.active || !SOTM_VOTE_STATE.endsAt) return;
-  const remMs = SOTM_VOTE_STATE.endsAt - Date.now();
-  const remSec = Math.max(0, Math.ceil(remMs / 1000));
-  const pill = document.getElementById('super_sotm_timer');
-  if (pill) pill.textContent = `00:${String(remSec).padStart(2, '0')}`;
-  if (remMs <= 0) {
-    stopSotmVoting(true);
-  }
-}, 500);
 
 function rebuildAlphabeticalSongCatalog() {
   const counts = {};
@@ -524,7 +506,7 @@ window.addSinger = () => {
 };
 
 window.removeSinger = (idx) => {
-  showConfirm('Remove ' + LIVE.singers[idx].name + ' from today's singing order?', () => {
+  showConfirm('Remove ' + LIVE.singers[idx].name + ' from today\'s singing order?', () => {
     const name = LIVE.singers[idx].name;
     LIVE.singers.splice(idx, 1);
     LIVE.performances = LIVE.performances.filter(p => p.singer !== name);
@@ -842,48 +824,43 @@ window.removeSOTD = (idx) => {
   draw();
 };
 
-// Individual Singer 30-Second SOTM Voting Control (Superadmin)
-function getSotmFinalistsList() {
+// Superadmin Blind SOTM Voting Control & Declaration
+window.startSotmVoting = async () => {
+  if (!IS_SUPER) return;
   const fourStarAll = Object.entries(STARS_MAP).filter(([n, o]) => (o.t || 0) >= 4).map(([n]) => n);
   const inSession = LIVE.singers.map(s => s.name).filter(n => fourStarAll.includes(n));
-  const base = inSession.length ? inSession : fourStarAll;
-  const prev = (SOTM_VOTE_STATE && SOTM_VOTE_STATE.finalists) || [];
-  return [...new Set([...prev, ...base])];
-}
+  const finalists = inSession.length ? inSession : fourStarAll;
 
-window.openVoteForSinger = async (singerName) => {
-  if (!IS_SUPER || !singerName) return;
-  const finalists = getSotmFinalistsList();
-  if (!finalists.includes(singerName)) finalists.push(singerName);
-  const now = Date.now();
+  if (!finalists.length) {
+    showNotice('No 4+ star finalists found for SOTM voting.');
+    return;
+  }
+
   try {
     await setDoc(doc(fs, 'live', 'sotm_vote'), {
       active: true,
       month: LIVE.date.slice(0, 7),
       date: LIVE.date,
       finalists,
-      currentSinger: singerName,
-      startedAt: now,
-      endsAt: now + 30000
+      startedAt: Date.now()
     });
+    showNotice(`SOTM Audience Voting is now LIVE for ${finalists.length} finalist(s)! Participants can cast 1–5 votes from their Home screen.`);
   } catch (err) {
-    showNotice('Error opening 30s vote: ' + (err.code || err.message));
+    showNotice('Error starting SOTM voting: ' + (err.code || err.message));
   }
 };
 
-window.stopSotmVoting = async (silent = false) => {
+window.stopSotmVoting = async () => {
   if (!IS_SUPER) return;
-  if (SOTM_VOTE_STATE && !SOTM_VOTE_STATE.active) return;
   try {
     await setDoc(doc(fs, 'live', 'sotm_vote'), {
       ...(SOTM_VOTE_STATE || {}),
       active: false,
-      currentSinger: '',
       stoppedAt: Date.now()
     });
-    if (!silent) showNotice('Voting closed and locked. Participants can no longer edit their votes.');
+    showNotice('SOTM Audience Voting has been closed.');
   } catch (err) {
-    if (!silent) showNotice('Error stopping voting: ' + (err.code || err.message));
+    showNotice('Error stopping SOTM voting: ' + (err.code || err.message));
   }
 };
 
@@ -891,12 +868,12 @@ window.viewSotmBallots = () => {
   if (!IS_SUPER) return;
   const monthKey = (SOTM_VOTE_STATE && SOTM_VOTE_STATE.month) || LIVE.date.slice(0, 7);
   const monthVotes = ALL_SOTM_VOTES.filter(x => x.month === monthKey);
-  const finalists = getSotmFinalistsList();
+  const finalists = (SOTM_VOTE_STATE && SOTM_VOTE_STATE.finalists) || [];
 
   const m = $('#custom-modal');
   $('#custom-modal-body').innerHTML = `
     <h3>Private SOTM Ballots (${e(monthKey)})</h3>
-    <p class="m" style="margin:2px 0 10px">Visible only to Superadmin. Total voters: <b>${monthVotes.length}</b></p>
+    <p class="m" style="margin:2px 0 10px">Visible only to Superadmin. Total ballots cast: <b>${monthVotes.length}</b></p>
     ${monthVotes.length ? `
       <div class="tbl"><table>
         <tr><th>Voter</th>${finalists.map(f => `<th class="n">${e(f)}</th>`).join('')}</tr>
@@ -912,15 +889,12 @@ window.viewSotmBallots = () => {
 };
 
 function renderSotmSection() {
-  const container = document.getElementById('sotm_superadmin_card');
+  const container = document.getElementById('sotd_sotm_holder') || document.getElementById('sotm_superadmin_card');
   if (!container || !IS_SUPER) return;
 
-  const isVotingOpen = Boolean(SOTM_VOTE_STATE && SOTM_VOTE_STATE.active && (!SOTM_VOTE_STATE.endsAt || SOTM_VOTE_STATE.endsAt > Date.now()));
-  const activeSinger = isVotingOpen ? (SOTM_VOTE_STATE.currentSinger || '') : '';
-  const remSec = isVotingOpen && SOTM_VOTE_STATE.endsAt ? Math.max(0, Math.ceil((SOTM_VOTE_STATE.endsAt - Date.now()) / 1000)) : 0;
-
+  const isVotingOpen = Boolean(SOTM_VOTE_STATE && SOTM_VOTE_STATE.active);
   const monthKey = (SOTM_VOTE_STATE && SOTM_VOTE_STATE.month) || LIVE.date.slice(0, 7);
-  const finalists = getSotmFinalistsList();
+  const finalists = (SOTM_VOTE_STATE && SOTM_VOTE_STATE.finalists) || [];
   const monthVotes = ALL_SOTM_VOTES.filter(x => x.month === monthKey);
 
   const totals = {};
@@ -936,45 +910,38 @@ function renderSotmSection() {
   container.innerHTML = `
     <div class="row" style="justify-content:space-between">
       <div>
-        <b>Singer of the Month (SOTM) — Individual 30s Voting</b>
-        <p class="m" style="margin:2px 0 0">${SOTM_WINNER ? `Winner: <b>${e(SOTM_WINNER.name)}</b> · Judged by: <b>${e(SOTM_WINNER.judge)}</b>` : 'Open 30-second voting for each singer individually after their song finishes.'}</p>
+        <b>Singer of the Month (SOTM)</b>
+        <p class="m" style="margin:2px 0 0">${SOTM_WINNER ? `Winner: <b>${e(SOTM_WINNER.name)}</b> · Judged by: <b>${e(SOTM_WINNER.judge)}</b>` : 'Superadmin control for 4+ star monthly finals & audience voting.'}</p>
       </div>
       <div class="row">
-        ${isVotingOpen ? `<span id="super_sotm_timer" class="sotm-timer-pill">00:${String(remSec).padStart(2, '0')}</span>` : ''}
-        ${isVotingOpen ? `<button class="danger" onclick="stopSotmVoting()">Stop & Lock Vote</button>` : ''}
-        <button class="pri" onclick="openSOTMModal()">Declare SOTM Winner</button>
+        ${isVotingOpen
+          ? `<button class="danger" onclick="stopSotmVoting()">Stop SOTM Voting</button>`
+          : `<button onclick="startSotmVoting()">Start SOTM Voting</button>`}
+        <button class="pri" onclick="openSOTMModal()">Declare Singer of the Month</button>
       </div>
     </div>
     ${finalists.length ? `
       <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">
         <div class="row" style="justify-content:space-between;margin-bottom:6px">
-          <span class="m"><b>SOTM Finalists & Live Vote Tally</b> (${monthVotes.length} voter${monthVotes.length === 1 ? '' : 's'})</span>
+          <span class="m"><b>Live SOTM Vote Tally</b> (${monthVotes.length} voter${monthVotes.length === 1 ? '' : 's'})</span>
           <button style="font-size:11.5px;padding:4px 8px" onclick="viewSotmBallots()">Inspect Individual Votes (Superadmin)</button>
         </div>
         <div class="tbl"><table>
-          <tr><th class="col-ord">#</th><th>Finalist</th><th class="n">Total Votes</th><th style="text-align:center">30s Voting Control</th></tr>
-          ${finalists.map((f, idx) => {
-            const isThisActive = isVotingOpen && activeSinger === f;
-            return `<tr>
-              <td class="col-ord"><b>${idx + 1}</b></td>
-              <td><b>${e(f)}</b></td>
-              <td class="n"><b>${totals[f] || 0}</b></td>
-              <td style="text-align:center">
-                ${isThisActive
-                  ? `<button class="danger" onclick="stopSotmVoting()">Stop Now</button>`
-                  : `<button class="pri" onclick="openVoteForSinger('${e(f)}')">Open 30s Vote</button>`}
-              </td>
-            </tr>`;
-          }).join('')}
+          <tr><th>Finalist</th><th class="n">Total Votes</th></tr>
+          ${finalists.slice().sort((a, b) => (totals[b] || 0) - (totals[a] || 0)).map(f => `
+            <tr><td><b>${e(f)}</b></td><td class="n"><b>${totals[f] || 0}</b></td></tr>
+          `).join('')}
         </table></div>
       </div>
-    ` : '<p class="m" style="margin-top:8px">No 4+ star finalists found yet.</p>'}
+    ` : ''}
   `;
 }
 
 window.openSOTMModal = () => {
   if (!IS_SUPER) return;
-  const candidates = getSotmFinalistsList();
+  const fourStarAll = Object.entries(STARS_MAP).filter(([n, o]) => (o.t || 0) >= 4).map(([n]) => n);
+  const inSession = LIVE.singers.map(s => s.name).filter(n => fourStarAll.includes(n));
+  const candidates = inSession.length ? inSession : fourStarAll;
 
   const m = $('#custom-modal');
   $('#custom-modal-body').innerHTML = `
@@ -1049,9 +1016,7 @@ window.downloadBackupJSON = () => {
 
 // 100% Comprehensive Wipe
 window.swipeTodayData = () => {
-  showConfirm("Reset and wipe today's trial session data completely?
-
-This will permanently clear today's test queue, remove any trial songs published today, and reset test stars so you start 100% clean at 8:30 PM.", async () => {
+  showConfirm("Reset and wipe today's trial session data completely?\n\nThis will permanently clear today's test queue, remove any trial songs published today, and reset test stars so you start 100% clean at 8:30 PM.", async () => {
     try {
       LIVE.singers = [];
       LIVE.performances = [];
@@ -1135,7 +1100,7 @@ window.downloadLivePDF = () => {
 
   const {jsPDF} = window.jspdf;
   const docPdf = new jsPDF({unit:'mm', format:'a4'});
-  const cleanStr = s => String(s==null?'':s).replace(/[^ -~]/g, '');
+  const cleanStr = s => String(s==null?'':s).replace(/[^\x20-\x7E]/g, '');
 
   docPdf.setFontSize(18);
   docPdf.setTextColor(15, 52, 96);
@@ -1143,17 +1108,17 @@ window.downloadLivePDF = () => {
 
   docPdf.setFontSize(8.5);
   docPdf.setTextColor(71, 85, 105);
-  docPdf.text('A project of B. S. Tikariya Cultural Foundation ® (CIN: U88900MH2025NPL454435)', 105, 19, {align:'center'});
-  docPdf.text("Conducted by TIKARIYA'S SCHOOL OF MUSIC · Director: Manoj Tikariya", 105, 23.5, {align:'center'});
+  docPdf.text('A project of B. S. Tikariya Cultural Foundation \xAE (CIN: U88900MH2025NPL454435)', 105, 19, {align:'center'});
+  docPdf.text("Conducted by TIKARIYA'S SCHOOL OF MUSIC \xB7 Director: Manoj Tikariya", 105, 23.5, {align:'center'});
 
   docPdf.setFontSize(9.5);
   docPdf.setTextColor(15, 23, 42);
-  docPdf.text(`Live Session Record · ${fd(LIVE.date)} | Sorted by Song ID | Exported: ${curTime()}`, 14, 30);
+  docPdf.text(`Live Session Record \xB7 ${fd(LIVE.date)} | Sorted by Song ID | Exported: ${curTime()}`, 14, 30);
 
   let startY = 34;
 
   if (SOTD_LIST.length) {
-    const sotdText = SOTD_LIST.map(x => `${cleanStr(x.n)} (${cleanStr(x.h)}${x.reason ? ' - ' + cleanStr(x.reason) : ''})`).join('  ·  ');
+    const sotdText = SOTD_LIST.map(x => `${cleanStr(x.n)} (${cleanStr(x.h)}${x.reason ? ' - ' + cleanStr(x.reason) : ''})`).join('  \xB7  ');
     docPdf.setFillColor(232, 238, 247);
     docPdf.roundedRect(14, startY, 182, 10, 2, 2, 'F');
     docPdf.setFontSize(8.5);
@@ -1221,9 +1186,7 @@ window.downloadLivePDF = () => {
 };
 
 window.endSession = async () => {
-  showConfirm("End today's live session?
-
-This will permanently update all songs, stars, and SOTD winners, and immediately update all participants' Home screens.", async () => {
+  showConfirm("End today's live session?\n\nThis will permanently update all songs, stars, and SOTD winners, and immediately update all participants' Home screens.", async () => {
     try {
       const performed = LIVE.performances.filter(p => p.song);
       const mo = LIVE.date.slice(0, 7);

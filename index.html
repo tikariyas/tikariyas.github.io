@@ -148,18 +148,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
   font-family:Georgia,"Times New Roman",serif;font-style:italic;font-weight:700;
 }
 
-.vote-active-box{
-  padding:12px;margin:8px 0;background:var(--card);border:2px solid #dc2626;border-radius:12px;
+.vote-row{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;
+  padding:10px;margin:8px 0;background:var(--card);border:1px solid var(--bd);border-radius:10px;
 }
-.vote-timer-badge{
-  font-size:14px;font-weight:900;font-variant-numeric:tabular-nums;
-  padding:3px 11px;border-radius:999px;background:#dc2626;color:#fff;
-  animation:pulseTimer 1s infinite;
-}
-@keyframes pulseTimer{0%,100%{opacity:1}50%{opacity:0.75}}
-.vote-btns{display:inline-flex;gap:6px;margin-top:8px}
+.vote-btns{display:inline-flex;gap:5px}
 .vote-btn{
-  min-width:38px;height:38px;padding:0 8px;font-size:14px;font-weight:800;border-radius:8px;
+  min-width:34px;height:34px;padding:0 6px;font-size:13.5px;font-weight:700;border-radius:8px;
 }
 .vote-btn.picked{
   background:var(--btn-pri-bg);color:#fff;border-color:transparent;
@@ -219,7 +214,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-14 b22';
+const VER='2026-11-13 b21';
 const CFG = {
   firebase: {
     apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
@@ -339,18 +334,6 @@ let songArchivesExpanded = false;
 let selectedSingerFilter = '';
 let searchSongKeyword = '';
 
-// Live 1-second timer tick for individual singer 30s voting
-setInterval(() => {
-  if (!SOTM_VOTE_STATE || !SOTM_VOTE_STATE.active || !SOTM_VOTE_STATE.endsAt) return;
-  const remMs = SOTM_VOTE_STATE.endsAt - Date.now();
-  const remSec = Math.max(0, Math.ceil(remMs / 1000));
-  const badge = document.getElementById('participant_vote_timer');
-  if (badge) badge.textContent = `00:${String(remSec).padStart(2, '0')}`;
-  if (remMs <= 0 && (tab === 'home' || tab === 'sotd')) {
-    draw();
-  }
-}, 500);
-
 async function pingPresence() {
   if (!U || (!ADM && (!P || P.status !== 'approved'))) return;
   try {
@@ -434,11 +417,13 @@ onAuthStateChanged(auth, async u => {
     if (tab === 'home') draw();
   });
 
+  // Listen to Blind SOTM Audience Voting state
   onSnapshot(doc(fs, 'live', 'sotm_vote'), snap => {
     SOTM_VOTE_STATE = snap.exists() ? snap.data() : null;
     if (tab === 'home' || tab === 'sotd') draw();
   });
 
+  // Listen to sotm_votes collection (all approved users read aggregated totals; only Superadmin sees individual breakdowns)
   onSnapshot(collection(fs, 'sotm_votes'), snap => {
     ALL_SOTM_VOTES = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     if (tab === 'home' || tab === 'sotd') draw();
@@ -456,10 +441,9 @@ window.login=async()=>{
 window.out=()=>signOut(auth);
 window.refresh=async()=>{await load();if(P&&P.status=='approved'&&P.role=='admin'){IS_ADMIN=ADM=true;}if(tab=='adm')await loadAdm();draw()};
 
+// Superadmin Swipe: Fully wipes trial live session AND published trial records for today
 window.swipeLiveSession = () => {
-  showConfirm("Reset and wipe today's trial live session data completely?
-
-This will clear all registered singers, performances, and test SOTDs for today from the live screen so you can start fresh at 8:30 PM.", async () => {
+  showConfirm("Reset and wipe today's trial live session data completely?\n\nThis will clear all registered singers, performances, and test SOTDs for today from the live screen so you can start fresh at 8:30 PM.", async () => {
     try {
       const todayDate = tdy();
 
@@ -615,6 +599,7 @@ function getAllArchiveSongs() {
   return [...hist, ...todayLive].sort(cmpBySongId);
 }
 
+// Archive Song Spelling & Metadata (i) Editor for Admins / Superadmins
 window.openEditSong = (songId) => {
   if (!IS_ADMIN) return;
   const row = SONGS.find(r => r[0] === songId);
@@ -718,29 +703,16 @@ window.saveEditSong = async (songId) => {
   }
 };
 
-// Individual 30-Second Voting Submission (strictly blocked once timer ends or host stops voting)
-window.castSotmVote = async (singerName, scoreVal) => {
-  if (!U || !SOTM_VOTE_STATE || !SOTM_VOTE_STATE.active) {
-    showNotice('Voting is currently closed.');
-    return;
-  }
-  if (SOTM_VOTE_STATE.endsAt && Date.now() > SOTM_VOTE_STATE.endsAt) {
-    showNotice('Time is up! Voting for this singer is now locked.');
-    draw();
-    return;
-  }
-  if (SOTM_VOTE_STATE.currentSinger && SOTM_VOTE_STATE.currentSinger !== singerName) {
-    showNotice('Voting is only open for ' + SOTM_VOTE_STATE.currentSinger + ' right now.');
-    return;
-  }
-
+// Blind SOTM Audience Voting (1 to 5 votes per finalist)
+window.castSotmVote = async (finalistName, scoreVal) => {
+  if (!U || !SOTM_VOTE_STATE || !SOTM_VOTE_STATE.active) return;
   const v = Math.max(1, Math.min(5, Number(scoreVal) || 0));
   if (!v) return;
   const monthKey = SOTM_VOTE_STATE.month || nowM();
   const docId = `${monthKey}_${U.uid}`;
   const existing = ALL_SOTM_VOTES.find(x => x.id === docId);
   const votesMap = Object.assign({}, existing && existing.votes ? existing.votes : {});
-  votesMap[singerName] = v;
+  votesMap[finalistName] = v;
 
   try {
     await setDoc(doc(fs, 'sotm_votes', docId), {
@@ -756,18 +728,16 @@ window.castSotmVote = async (singerName, scoreVal) => {
 };
 
 function renderSotmVotingCard() {
-  if (!SOTM_VOTE_STATE) return '';
+  if (!SOTM_VOTE_STATE || !SOTM_VOTE_STATE.active) return '';
   const finalists = SOTM_VOTE_STATE.finalists || [];
-  const isNowOpen = Boolean(SOTM_VOTE_STATE.active && (!SOTM_VOTE_STATE.endsAt || SOTM_VOTE_STATE.endsAt > Date.now()));
-  const activeSinger = SOTM_VOTE_STATE.currentSinger || '';
-
-  if (!isNowOpen && !finalists.length) return '';
+  if (!finalists.length) return '';
 
   const monthKey = SOTM_VOTE_STATE.month || nowM();
   const monthVotes = ALL_SOTM_VOTES.filter(x => x.month === monthKey);
   const myDoc = monthVotes.find(x => x.uid === U.uid);
   const myVotes = (myDoc && myDoc.votes) || {};
 
+  // Aggregate total votes per finalist (participants see totals only; individual ballots are hidden)
   const totals = {};
   finalists.forEach(f => { totals[f] = 0; });
   monthVotes.forEach(entry => {
@@ -778,52 +748,26 @@ function renderSotmVotingCard() {
     });
   });
 
-  const remSec = isNowOpen && SOTM_VOTE_STATE.endsAt ? Math.max(0, Math.ceil((SOTM_VOTE_STATE.endsAt - Date.now()) / 1000)) : 0;
-  const myActivePick = activeSinger ? Number(myVotes[activeSinger] || 0) : 0;
-
   return `<div class="c" style="border:2px solid #f59e0b;background:var(--ac-light)">
     <div class="row" style="justify-content:space-between">
       <div>
         <b style="color:var(--ac)">🏆 SINGER OF THE MONTH — LIVE AUDIENCE VOTING</b>
-        <p class="m" style="margin:2px 0 6px">Cast <b>1 to 5</b> votes during the 30-second window after each singer's song. Once closed, votes are locked.</p>
+        <p class="m" style="margin:2px 0 6px">Give <b>1 to 5</b> votes to each SOTM finalist. Your individual vote is private; only total counts are visible.</p>
       </div>
       <span class="badge-round">${e(fm(monthKey))}</span>
     </div>
-
-    ${isNowOpen && activeSinger ? `
-      <div class="vote-active-box">
-        <div class="row" style="justify-content:space-between">
-          <div>
-            <span style="font-size:11.5px;font-weight:800;color:#dc2626;text-transform:uppercase">🔴 Vote Now (30s Window)</span>
-            <div style="font-size:18px;font-weight:800;margin-top:2px">${e(activeSinger)}</div>
-          </div>
-          <span id="participant_vote_timer" class="vote-timer-badge">00:${String(remSec).padStart(2, '0')}</span>
+    ${finalists.map((fName, idx) => {
+      const picked = Number(myVotes[fName] || 0);
+      return `<div class="vote-row">
+        <div>
+          <b>${idx + 1}. ${e(fName)}</b>
+          <div style="margin-top:4px"><span class="vote-count-pill">Total Votes: ${totals[fName] || 0}</span></div>
         </div>
-        <div class="row" style="justify-content:space-between;margin-top:8px">
-          <div class="vote-btns">
-            ${[1, 2, 3, 4, 5].map(num => `<button type="button" class="vote-btn ${myActivePick === num ? 'picked' : ''}" onclick="castSotmVote('${e(activeSinger)}', ${num})">${num}</button>`).join('')}
-          </div>
-          <span class="vote-count-pill">Total Votes: ${totals[activeSinger] || 0}</span>
+        <div class="vote-btns">
+          ${[1, 2, 3, 4, 5].map(num => `<button type="button" class="vote-btn ${picked === num ? 'picked' : ''}" onclick="castSotmVote('${e(fName)}', ${num})">${num}</button>`).join('')}
         </div>
-        ${myActivePick ? `<div class="m" style="margin-top:6px;color:#15803d;font-weight:600">✓ Your vote (${myActivePick}) recorded — you may adjust it until timer hits 00:00.</div>` : ''}
-      </div>
-    ` : ''}
-
-    ${finalists.length ? `
-      <div class="tbl" style="margin-top:8px;background:var(--card)"><table>
-        <tr><th class="n">#</th><th>Singer Name</th><th>Status</th><th class="n">Total Votes</th></tr>
-        ${finalists.map((f, idx) => {
-          const isOpenForThis = isNowOpen && activeSinger === f;
-          const votedByMe = Number(myVotes[f] || 0) > 0;
-          return `<tr>
-            <td class="n"><b>${idx + 1}</b></td>
-            <td><b>${e(f)}</b>${votedByMe ? ' <span class="m" style="font-size:11px;color:#15803d">✓</span>' : ''}</td>
-            <td>${isOpenForThis ? '<span style="color:#dc2626;font-weight:700">Voting Open</span>' : '<span class="m">Closed · Locked</span>'}</td>
-            <td class="n"><b>${totals[f] || 0}</b></td>
-          </tr>`;
-        }).join('')}
-      </table></div>
-    ` : ''}
+      </div>`;
+    }).join('')}
   </div>`;
 }
 
@@ -847,6 +791,7 @@ window.setSongSearchKeyword = (kw) => {
   draw();
 };
 
+// Pure jsPDF + autoTable exporter
 window.downloadSongListPDF = () => {
   if (!window.jspdf || !window.jspdf.jsPDF) {
     showNotice('PDF generator is initializing. Please wait a moment.');
@@ -860,7 +805,7 @@ window.downloadSongListPDF = () => {
     format: 'a4'
   });
 
-  const clean = s => String(s == null ? '' : s).replace(/[^ -ÿ]/g, '?');
+  const clean = s => String(s == null ? '' : s).replace(/[^\x20-\xff]/g, '?');
   const allArchive = getAllArchiveSongs();
   const curMo = nowM();
 
@@ -965,7 +910,7 @@ window.downloadSongListPDF = () => {
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(8.5);
   pdf.setTextColor(71, 85, 105);
-  pdf.text('A project of B. S. Tikariya Cultural Foundation ® (CIN: U88900MH2025NPL454435)', 105, 19, { align: 'center' });
+  pdf.text('A project of B. S. Tikariya Cultural Foundation \xAE (CIN: U88900MH2025NPL454435)', 105, 19, { align: 'center' });
   pdf.text("Conducted by TIKARIYA'S SCHOOL OF MUSIC - Director: Manoj Tikariya", 105, 23.5, { align: 'center' });
 
   pdf.setDrawColor(203, 213, 225);
@@ -1045,6 +990,7 @@ function renderBottomSongListHTML() {
   let tableHTML = '';
   let subControls = '';
 
+  // 1. TODAY'S SONGS (Sorted by Song ID)
   if (songListTab === 'today') {
     let todayRows = [];
     if (LIVE_SESSION && LIVE_SESSION.date === tdy() && LIVE_SESSION.performances) {
@@ -1088,6 +1034,7 @@ function renderBottomSongListHTML() {
     ` : '<p class="m">No songs recorded for today yet.</p>';
   }
 
+  // 2. THIS MONTH'S SONGS (Sorted by Song ID)
   else if (songListTab === 'month') {
     const monthRows = allArchive.filter(r => String(r[1]||'').slice(0, 7) === curMo).slice().sort(cmpBySongId);
     tableHTML = monthRows.length ? `
@@ -1114,6 +1061,7 @@ function renderBottomSongListHTML() {
     ` : '<p class="m">No songs recorded for this month yet.</p>';
   }
 
+  // 3. INDIVIDUAL SINGER'S SONGS (Sorted by Song ID)
   else if (songListTab === 'singer') {
     const allSingers = [...new Set(allArchive.map(r => r[2]))].filter(Boolean).sort();
     if(!selectedSingerFilter) {
@@ -1152,6 +1100,7 @@ function renderBottomSongListHTML() {
     ` : '<p class="m">No songs found for this singer.</p>';
   }
 
+  // 4. UNIQUE SONGS WITHOUT REPETITION (Sorted by lowest Song ID)
   else if (songListTab === 'unique') {
     const uniqueMap = new Map();
     allArchive.forEach(r => {
@@ -1192,6 +1141,7 @@ function renderBottomSongListHTML() {
     ` : '<p class="m">No songs cataloged yet.</p>';
   }
 
+  // 5. ALL SONGS ARCHIVE (Sorted strictly by Song ID)
   else if (songListTab === 'all') {
     subControls = `
       <div class="row" style="margin-bottom:8px;justify-content:space-between">
@@ -1360,7 +1310,7 @@ const vPdf=()=>`<div class="c"><b>PDF downloads</b><p class="m">Both PDFs show y
 
 window.pdf=kind=>{
   if(!PUB||!window.jspdf){showNotice('Data or PDF tool not ready. Check your internet and try again.');return}
-  const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'}),a=s=>String(s==null?'':s).replace(/[^ -ÿ]/g,'?');
+  const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'}),a=s=>String(s==null?'':s).replace(/[^\x20-\xff]/g,'?');
   const sk=(P.singer||'').toUpperCase(),s=(PUB.stars||{})[sk]||{t:0,m:{},d:[]},mo=nowM();
   const som=Object.entries(PUB.som||{}).filter(x=>x[1]==sk).map(x=>fm(x[0]));
   const rows=SONGS.filter(r=>kind=='all'||r[2]==sk).slice().sort(cmpBySongId);
@@ -1370,7 +1320,7 @@ window.pdf=kind=>{
   const cc=d.splitTextToSize('Core Committee: RAJESH GARJE, SANTOSH BHAROTE, VIJAY SUTRAVE, SUREKHA TIKARIYA, MANOJ TIKARIYA, NITIN POL, SURESH GHADSING, SHILA RAITHATHA',182);
   d.setFontSize(8);d.text(cc,105,28,{align:'center'});d.setFontSize(9);
   const yp=28+cc.length*3.4+1.5;
-  d.text('A Project of B. S. Tikariya Cultural Foundation ® - CIN: U88900MH2025NPL454435',105,yp,{align:'center'});
+  d.text('A Project of B. S. Tikariya Cultural Foundation \xAE - CIN: U88900MH2025NPL454435',105,yp,{align:'center'});
   d.setFontSize(13);d.text(kind=='all'?'All Songs List (Sorted by Song ID)':'My Songs (Sorted by Song ID)',14,yp+9);
   d.setFontSize(9);
   const info=[sk?'Singer: '+sk:'',sk?'Stars: '+s.t:'',sk?'SOTD: '+((s.d&&s.d.length)||0)+' time(s)'+(s.d&&s.d.length?' - '+s.d.map(fd).join(', '):''):'',sk?'Singer of the Month: '+(som.length?som.join(', '):'-'):'','Total songs: '+rows.length+'   Date: '+fd(new Date().toISOString().slice(0,10))].filter(Boolean);
@@ -1430,9 +1380,7 @@ window.sendHost=async()=>{const t=($('#hm').value||'').trim();if(!t){showNotice(
   catch(x){showNotice('Could not send ('+(x.code||'error')+'). Check that the latest rules are published.')}};
 async function loadPlans(){PD=PD||tdy();try{const q=await getDocs(query(collection(fs,'plans'),where('date','==',PD)));PL=q.docs.map(x=>x.data()).sort((a,b)=>a.ts-b.ts)}catch(x){PL=[]}}
 window.setPD=v=>{PD=v||tdy();loadPlans().then(draw)};
-window.copyPlans=()=>{const t='SING FROM HOME - songs declared for '+fd(PD||tdy())+'
-'+(PL.length?PL.map((p,i)=>(i+1)+'. '+p.singer+' - '+(p.songs||[]).join(' / ')).join('
-'):'(none)');
+window.copyPlans=()=>{const t='SING FROM HOME - songs declared for '+fd(PD||tdy())+'\n'+(PL.length?PL.map((p,i)=>(i+1)+'. '+p.singer+' - '+(p.songs||[]).join(' / ')).join('\n'):'(none)');
   const done=()=>showNotice('List copied');
   if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(done,()=>showNotice(t));else{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');done()}catch(x){showNotice(t)}a.remove()}};
 window.replyTo=uid=>{const sl=$('#mto');if(sl&&[...sl.options].some(o=>o.value==uid)){sl.value=uid;$('#mt').focus();$('#mt').scrollIntoView({block:'center'})}else showNotice('That person is not approved yet, so you cannot reply.')};
