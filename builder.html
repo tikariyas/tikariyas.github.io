@@ -371,7 +371,8 @@ window.processBulk = () => {
   const raw = ($('#bulk_text').value || '').trim();
   if (!raw) return;
   let n = parseInt($('#next_id_num').value, 10) || 1;
-  const lines = raw.split(/?
+  const lines = raw.split(/
+?
 /);
   let added = 0;
 
