@@ -222,7 +222,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-14 b23';
+const VER='2026-11-14 b24';
 const CFG = {
   firebase: {
     apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
@@ -336,6 +336,18 @@ let U=null,P=null,PUB=null,SONGS=[],SONG_META={},CONF={},AU=[],tab='home',ADM=fa
 let SOTM_VOTE_STATE = null;
 let SOTM_LOCAL_DEADLINE = 0;
 let SOTM_LAST_ROUND_ID = '';
+let SOTM_TIMER_EXPIRED_DRAWN = '';
+let SOTM_DISMISSED_ROUND = '';
+
+function isEditingJudgeForm() {
+  const el = document.activeElement;
+  return !!(el && el.id && el.id.startsWith('jg_'));
+}
+
+function safeDraw() {
+  if (isEditingJudgeForm()) return;
+  draw();
+}
 let MY_SOTM_VOTE_DOC = null;
 let MY_JUDGE_EVAL_DOC = null;
 let PUBLISHED_SOTM_RESULT = null;
@@ -372,17 +384,20 @@ function startVoteCountdownLoop() {
   voteTimerInterval = setInterval(() => {
     const badge = document.getElementById('part_vote_timer_badge');
     if (!badge || !SOTM_VOTE_STATE || !SOTM_VOTE_STATE.activeSinger) return;
+    const rId = SOTM_VOTE_STATE.voteRoundId || SOTM_VOTE_STATE.activeSinger;
     if (SOTM_VOTE_STATE.closed) {
-      badge.textContent = 'Voting Closed (00s)';
-      if (tab === 'home' || tab === 'sotd') draw();
+      if (SOTM_TIMER_EXPIRED_DRAWN !== rId) {
+        SOTM_TIMER_EXPIRED_DRAWN = rId;
+        safeDraw();
+      }
       return;
     }
     const rem = Math.max(0, Math.ceil((SOTM_LOCAL_DEADLINE - Date.now()) / 1000));
     if (rem > 0) {
       badge.textContent = `Time Left: ${String(rem).padStart(2, '0')}s`;
-    } else {
-      badge.textContent = 'Voting Closed (00s)';
-      if (tab === 'home' || tab === 'sotd') draw();
+    } else if (SOTM_TIMER_EXPIRED_DRAWN !== rId) {
+      SOTM_TIMER_EXPIRED_DRAWN = rId;
+      safeDraw();
     }
   }, 500);
 }
@@ -449,20 +464,29 @@ onAuthStateChanged(auth, async u => {
     } else {
       LIVE_SESSION = null;
     }
-    if (tab === 'home') draw();
+    if (tab === 'home') safeDraw();
   });
 
-  // Listen to SOTM Voting & Always-On Judge Panel configuration (clock-skew safe)
+  // Listen to SOTM Voting & Always-On Judge Panel configuration (refresh-safe & clock-skew safe)
   onSnapshot(doc(fs, 'live', 'sotm_vote'), snap => {
     SOTM_VOTE_STATE = snap.exists() ? snap.data() : null;
     if (SOTM_VOTE_STATE && SOTM_VOTE_STATE.activeSinger && !SOTM_VOTE_STATE.closed) {
       const rId = SOTM_VOTE_STATE.voteRoundId || (SOTM_VOTE_STATE.activeSinger + '_' + (SOTM_VOTE_STATE.startedAt || ''));
       if (rId !== SOTM_LAST_ROUND_ID) {
         SOTM_LAST_ROUND_ID = rId;
-        const dur = Number(SOTM_VOTE_STATE.durationSec) || 30;
-        const rawRem = Math.ceil(((SOTM_VOTE_STATE.endsAt || 0) - Date.now()) / 1000);
-        const clampedSec = (rawRem > 0 && rawRem <= dur) ? rawRem : dur;
-        SOTM_LOCAL_DEADLINE = Date.now() + (clampedSec * 1000);
+        SOTM_TIMER_EXPIRED_DRAWN = '';
+        const storeKey = 'sfh_vdl_' + rId;
+        let savedDl = 0;
+        try { savedDl = +localStorage.getItem(storeKey) || 0; } catch (x) {}
+        if (savedDl > 0) {
+          SOTM_LOCAL_DEADLINE = savedDl;
+        } else {
+          const dur = Number(SOTM_VOTE_STATE.durationSec) || 30;
+          const rawRem = Math.ceil(((SOTM_VOTE_STATE.endsAt || 0) - Date.now()) / 1000);
+          const clampedSec = (rawRem > 0 && rawRem <= dur) ? rawRem : dur;
+          SOTM_LOCAL_DEADLINE = Date.now() + (clampedSec * 1000);
+          try { localStorage.setItem(storeKey, String(SOTM_LOCAL_DEADLINE)); } catch (x) {}
+        }
       }
     } else {
       SOTM_LAST_ROUND_ID = '';
@@ -472,19 +496,19 @@ onAuthStateChanged(auth, async u => {
     const mKey = (SOTM_VOTE_STATE && SOTM_VOTE_STATE.month) || nowM();
     getDoc(doc(fs, 'sotm_votes', `${mKey}_${u.uid}`)).then(d => {
       MY_SOTM_VOTE_DOC = d.exists() ? d.data() : null;
-      if (tab === 'home' || tab === 'sotd') draw();
+      if (tab === 'home' || tab === 'sotd') safeDraw();
     }).catch(() => {});
     getDoc(doc(fs, 'sotm_judges', `${mKey}_${u.uid}`)).then(d => {
       MY_JUDGE_EVAL_DOC = d.exists() ? d.data() : null;
-      if (tab === 'home' || tab === 'sotd') draw();
+      if (tab === 'home' || tab === 'sotd') safeDraw();
     }).catch(() => {});
-    if (tab === 'home' || tab === 'sotd') draw();
+    if (tab === 'home' || tab === 'sotd') safeDraw();
   });
 
   // Listen to Official Published SOTM Result Card
   onSnapshot(doc(fs, 'pub', 'sotm_results'), snap => {
     PUBLISHED_SOTM_RESULT = snap.exists() ? snap.data() : null;
-    if (tab === 'home' || tab === 'sotd') draw();
+    if (tab === 'home' || tab === 'sotd') safeDraw();
   }, () => {});
 
   draw();
@@ -885,10 +909,22 @@ function renderAlwaysOnJudgeCard() {
   </div>`;
 }
 
+window.dismissVoteCard = () => {
+  if (SOTM_VOTE_STATE) {
+    SOTM_DISMISSED_ROUND = SOTM_VOTE_STATE.voteRoundId || SOTM_VOTE_STATE.activeSinger || '';
+  }
+  draw();
+};
+
 function renderSotmAudienceVoteCard() {
   if (!U || !SOTM_VOTE_STATE || !SOTM_VOTE_STATE.activeSinger || SOTM_VOTE_STATE.closed) return '';
   const activeSinger = SOTM_VOTE_STATE.activeSinger;
+  const rId = SOTM_VOTE_STATE.voteRoundId || activeSinger;
+  if (SOTM_DISMISSED_ROUND === rId) return '';
+
   const rem = Math.max(0, Math.ceil((SOTM_LOCAL_DEADLINE - Date.now()) / 1000));
+  if (rem <= 0) return '';
+
   const myVotes = (MY_SOTM_VOTE_DOC && MY_SOTM_VOTE_DOC.votes) || {};
   const picked = Number(myVotes[activeSinger] || 0);
 
@@ -896,22 +932,23 @@ function renderSotmAudienceVoteCard() {
     <div class="row" style="justify-content:space-between">
       <div>
         <b style="color:var(--ac)">SOTM AUDIENCE VOTE - ONE SINGER AT A TIME</b>
-        <p class="m" style="margin:2px 0 0">Vote 1 to 5. Total counts are hidden during and after the timer to ensure zero bias.</p>
+        <p class="m" style="margin:2px 0 0">Vote 1 to 5. Total counts remain hidden to ensure zero bias.</p>
       </div>
-      <span id="part_vote_timer_badge" class="timer-pill">${rem > 0 ? `Time Left: ${String(rem).padStart(2, '0')}s` : 'Voting Closed (00s)'}</span>
+      <div class="row">
+        <span id="part_vote_timer_badge" class="timer-pill">Time Left: ${String(rem).padStart(2, '0')}s</span>
+        <button type="button" style="padding:3px 8px;font-size:12px" onclick="dismissVoteCard()">Close</button>
+      </div>
     </div>
     <div class="vote-row">
       <div>
-        <span class="m" style="font-size:11px;text-transform:uppercase;font-weight:700">${rem > 0 ? 'Now Voting For' : 'Voting Ended For'}</span>
+        <span class="m" style="font-size:11px;text-transform:uppercase;font-weight:700">Now Voting For</span>
         <div class="big" style="margin-top:2px">${e(activeSinger)}</div>
       </div>
-      ${rem > 0 ? `
-        <div class="vote-btns">
-          ${[1, 2, 3, 4, 5].map(num => `<button type="button" class="vote-btn ${picked === num ? 'picked' : ''}" onclick="castSotmVote('${e(activeSinger)}', ${num})">${num}</button>`).join('')}
-        </div>
-      ` : `<span class="m"><b>${picked ? `Your vote (${picked}) was recorded.` : 'Window closed.'}</b> Waiting for next singer...</span>`}
+      <div class="vote-btns">
+        ${[1, 2, 3, 4, 5].map(num => `<button type="button" class="vote-btn ${picked === num ? 'picked' : ''}" onclick="castSotmVote('${e(activeSinger)}', ${num})">${num}</button>`).join('')}
+      </div>
     </div>
-    ${rem > 0 && picked ? `<p class="m" style="margin:4px 0 0">Your private vote (<b>${picked}</b>) is saved. You may adjust it before the 30s timer ends.</p>` : ''}
+    ${picked ? `<p class="m" style="margin:4px 0 0">Your private vote (<b>${picked}</b>) is saved. Tap Close or wait for timer to end.</p>` : ''}
   </div>`;
 }
 
