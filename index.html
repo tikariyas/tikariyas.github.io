@@ -222,7 +222,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-14 b24';
+const VER='2026-11-14 b25';
 const CFG = {
   firebase: {
     apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
@@ -597,12 +597,22 @@ window.go=async t=>{
   draw();
 };
 
+function isAppointedJudgeUser() {
+  return !!(U && !IS_SUPER && SOTM_VOTE_STATE && SOTM_VOTE_STATE.panelActive && Array.isArray(SOTM_VOTE_STATE.judgeUids) && SOTM_VOTE_STATE.judgeUids.includes(U.uid));
+}
+
+function vJudgeOnlyView() {
+  const zoomBar = CONF.zoom ? `<div style="margin-bottom:12px"><a class="zm" style="display:block;width:100%;text-align:center;padding:10px 12px;font-size:14px;font-weight:700;box-sizing:border-box;background:linear-gradient(135deg,#0284c7,#0369a1);color:#fff;border-radius:8px;text-decoration:none" href="${e(CONF.zoom)}" target="_blank" rel="noopener">Start Zoom</a></div>` : '';
+  return zoomBar + renderAlwaysOnJudgeCard();
+}
+
 function draw(){
   $('#hb').innerHTML=U?'<a href="#" onclick="out();return false" style="color:var(--ac);font-size:14px;text-decoration:underline;cursor:pointer;white-space:nowrap">Sign out</a>':'';
   if(showAbout){$('#app').innerHTML=vAbout(true);return}
   if(!U){$('#app').innerHTML=vLogin();return}
   if(loadErr){$('#app').innerHTML='<div class="c"><b>Could not load data</b><p class="m">'+e(loadErr)+'</p><p class="m">Check your internet and try again.</p><p><button class="pri" onclick="refresh()">Try again</button></p></div>';return}
   if(!ADM&&P.status!='approved'){$('#app').innerHTML=vWait();return}
+  if(isAppointedJudgeUser()){$('#app').innerHTML=vJudgeOnlyView();return}
   $('#app').innerHTML=tabs()+(tab=='home'?vHome():tab=='sotd'?vSotd():tab=='prof'?vProf():tab=='pdf'?vPdf():tab=='today'?vToday():tab=='msg'?vMsg():tab=='about'?vAbout(false):vAdm());
 }
 const idOf=em=>(em||'').endsWith('@singfromhome-phone.app')?em.split('@')[0]:(em||'');

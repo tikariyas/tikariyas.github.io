@@ -65,7 +65,7 @@ button,.zm{
   cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;
   transition:all 0.15s ease;
 }
-button:hover{border-color:var(--ac);transform:translateY(-1px)}
+button:hover{border-color:var(--ac)}
 button:active{transform:scale(0.98)}
 button.on,button.pri{
   background:var(--btn-pri-bg);color:#fff;border-color:transparent;
@@ -201,7 +201,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {getAuth,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import {getFirestore,doc,getDoc,setDoc,getDocs,collection,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import {getFirestore,doc,getDoc,setDoc,deleteDoc,query,where,getDocs,collection,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const CFG = {
   firebase: {
@@ -356,17 +356,22 @@ async function pingPresence() {
   } catch (x) {}
 }
 
+let lastRenderedExpiredRound = '';
 function startVoteTimerLoop() {
   if (voteCountdownTimer) clearInterval(voteCountdownTimer);
   voteCountdownTimer = setInterval(() => {
     const el = document.getElementById('sotm_vote_timer_badge');
     if (!el || !SOTM_VOTE_STATE || !SOTM_VOTE_STATE.activeSinger) return;
+    const rId = SOTM_VOTE_STATE.voteRoundId || SOTM_VOTE_STATE.activeSinger;
     const rem = Math.max(0, Math.ceil(((SOTM_VOTE_STATE.endsAt || 0) - Date.now()) / 1000));
     if (rem > 0) {
       el.textContent = `Time Left: ${String(rem).padStart(2, '0')}s`;
     } else {
       el.textContent = 'Timer Ended (00s)';
-      renderSotmSection();
+      if (lastRenderedExpiredRound !== rId) {
+        lastRenderedExpiredRound = rId;
+        renderSotmSection();
+      }
     }
   }, 500);
 }
@@ -1135,6 +1140,37 @@ window.saveManualJudgeEval = async () => {
   }
 };
 
+window.resetSotmTrialData = () => {
+  if (!IS_SUPER) return;
+  const monthKey = (SOTM_VOTE_STATE && SOTM_VOTE_STATE.month) || LIVE.date.slice(0, 7);
+  showConfirm(`Reset all SOTM trial data for ${monthKey} to zero?\n\nThis will permanently delete all test audience votes, all test judge evaluations, the active SOTM voting state, and any published SOTM trial result.`, async () => {
+    try {
+      const vSnap = await getDocs(query(collection(fs, 'sotm_votes'), where('month', '==', monthKey)));
+      for (const d of vSnap.docs) {
+        await deleteDoc(doc(fs, 'sotm_votes', d.id));
+      }
+      const jSnap = await getDocs(query(collection(fs, 'sotm_judges'), where('month', '==', monthKey)));
+      for (const d of jSnap.docs) {
+        await deleteDoc(doc(fs, 'sotm_judges', d.id));
+      }
+      await deleteDoc(doc(fs, 'live', 'sotm_vote')).catch(() => {});
+      await deleteDoc(doc(fs, 'pub', 'sotm_results')).catch(() => {});
+
+      SOTM_VOTE_STATE = null;
+      ALL_SOTM_VOTES = [];
+      ALL_JUDGE_EVALS = [];
+      PUBLISHED_SOTM_RESULT = null;
+      SOTM_WINNER = null;
+      lastRenderedExpiredRound = '';
+      saveLocal();
+      renderSotmSection();
+      showNotice(`SOTM trial data for ${monthKey} has been reset to zero.`, 'SOTM Reset Complete');
+    } catch (err) {
+      showNotice('Error resetting SOTM trial data: ' + (err.code || err.message));
+    }
+  }, 'Reset SOTM to Zero');
+};
+
 window.viewSotmBallots = () => {
   if (!IS_SUPER) return;
   const monthKey = (SOTM_VOTE_STATE && SOTM_VOTE_STATE.month) || LIVE.date.slice(0, 7);
@@ -1248,6 +1284,7 @@ function renderSotmSection() {
       <div class="row">
         <button onclick="openSotmSetupModal()">Setup Finalists & Judges</button>
         <button onclick="openManualJudgeModal()">+ Manual Judge Score</button>
+        <button class="danger" onclick="resetSotmTrialData()">Reset to Zero</button>
         <button class="pri" onclick="openSOTMModal()">Declare & Publish SOTM</button>
       </div>
     </div>
