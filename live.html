@@ -233,6 +233,8 @@ function calcStarPoints(stars) {
   let groupA = (s1 ? 1 : 0) + (s2 ? 1 : 0) + (s3 ? 1 : 0);
   if (s1 && s2 && s3) {
     groupA += 3; // 1 + 1 + 1 + 3 bonus = 6 pts
+  } else if (s1 && s3) {
+    groupA += 3; // 1 + 1 + 3 bonus = 5 pts
   } else if (s1 && s2) {
     groupA += 2; // 1 + 1 + 2 bonus = 4 pts
   }
@@ -1630,7 +1632,7 @@ function draw(){
               ${p.song ? `<b>${p.songId}</b>` : '<span class="m">-</span>'}
             </td>
             <td>
-              <div class="score-box" title="★1: Ready on turn (1pt) | ★2: Start <=30s (1pt; ★1+2=4pts) | ★3: Clean/No noise (1pt; ★1+2+3=6pts) | ★4: Good singing (1pt) | ★5: Better singing (2pts; ★4+5=5pts)">
+              <div class="score-box" title="★1: Ready (1pt) | ★2: <=30s (1pt; ★1+2=4pts) | ★3: Clean (1pt; ★1+3=5pts; ★1+2+3=6pts) | ★4: Good (1pt) | ★5: Better (2pts; ★4+5=5pts)">
                 ${[0,1,2,3,4].map(sIdx => `<span id="star_${sKey}_${sIdx}" class="score-star ${p.stars[sIdx]?'active':''}" onclick="toggleStar('${e(s.name)}', ${currentRound}, ${sIdx})">★</span>`).join('')}
               </div>
               <span id="score_txt_${sKey}" class="m" style="font-size:11px;margin-left:4px">(${pts} pts)</span>
@@ -1657,7 +1659,7 @@ function draw(){
     <b>5-Star Point & Bonus Logic Reference</b>
     <div class="m" style="margin-top:4px;line-height:1.6">
       • <b>★1 Ready on Turn:</b> 1 pt &nbsp;|&nbsp; <b>★2 Start within ≤ 30 sec:</b> 1 pt &nbsp;→&nbsp; <b>★1 + ★2 = 1 + 1 + 2 bonus = 4 pts</b><br>
-      • <b>★3 Cleanliness (No Noise):</b> 1 pt &nbsp;→&nbsp; <b>★1 + ★2 + ★3 = 1 + 1 + 1 + 3 bonus = 6 pts</b><br>
+      • <b>★3 Cleanliness (No Noise):</b> 1 pt &nbsp;→&nbsp; <b>★1 + ★3 = 1 + 1 + 3 bonus = 5 pts</b> &nbsp;|&nbsp; <b>★1 + ★2 + ★3 = 1 + 1 + 1 + 3 bonus = 6 pts</b><br>
       • <b>★4 Good Singing:</b> 1 pt &nbsp;|&nbsp; <b>★5 Better Singing:</b> 2 pts &nbsp;→&nbsp; <b>★4 + ★5 = 1 + 2 + 2 bonus = 5 pts</b><br>
       • <b>Auto-Queue via Zoom Button:</b> Singers tapping <b>Start Zoom</b> in the app are automatically added to the queue with their exact entry timestamp.
     </div>

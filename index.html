@@ -212,7 +212,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-18 b29';
+const VER='2026-11-18 b30';
 const CFG = {
   firebase: {
     apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
@@ -2131,5 +2131,5 @@ window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.on
     }, label);
   }catch(z){showNotice(z=='size'?'One month of songs is too large for a single document.':(z&&z.code?'Restore/Publish failed ('+z.code+'). Check Firebase rules.':'That is not a valid SFH backup or participants file.'))}};r.readAsText(f)};
 
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=29').then(r=>r.update()).catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=30').then(r=>r.update()).catch(()=>{});}
 </script></body></html>
