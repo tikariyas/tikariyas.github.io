@@ -212,7 +212,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-17 b26';
+const VER='2026-11-17 b27';
 const CFG = {
   firebase: {
     apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
@@ -411,12 +411,23 @@ async function load(){
       SONGS.sort(cmpBySongId);
 
       try {
-        const sotmSnap = await getDoc(doc(fs, 'pub', 'sotm'));
+        const [sotmSnap, voteResSnap, voteSessSnap, swSnap] = await Promise.all([
+          getDoc(doc(fs, 'pub', 'sotm')),
+          getDoc(doc(fs, 'vote', 'result')),
+          getDoc(doc(fs, 'vote', 'session')),
+          getDoc(doc(fs, 'vote', 'song_windows'))
+        ]);
         if (sotmSnap.exists()) {
           SOTM_RESULT = sotmSnap.data();
-        } else {
-          const voteSnap = await getDoc(doc(fs, 'vote', 'result'));
-          if (voteSnap.exists()) SOTM_RESULT = voteSnap.data();
+        } else if (voteResSnap.exists()) {
+          SOTM_RESULT = voteResSnap.data();
+        } else if (voteSessSnap.exists() && voteSessSnap.data().winner) {
+          SOTM_RESULT = voteSessSnap.data();
+        } else if (PUB && PUB.sotmResult) {
+          SOTM_RESULT = PUB.sotmResult;
+        }
+        if (swSnap.exists()) {
+          SOTM_SONG_VOTES = swSnap.data();
         }
       } catch(se) {}
 
@@ -596,26 +607,217 @@ window.stepHD=n=>{const ds=sdates(),cur=HDATE||ds[ds.length-1]||'';const c=n<0?d
 
 const sTable=(rows,me)=>rows.length?`<div class="tbl"><table><tr><th class="n">#</th><th>Song ID</th><th>Singer name</th><th>Song name</th></tr>${rows.map((r,i)=>`<tr class="${me&&r[2]==me?'me':''}"><td class="n">${i+1}</td><td><b>${e(r[0])}</b></td><td><b>${e(r[2])}</b></td><td>${e(r[3])}</td></tr>`).join('')}</table></div>`:'';
 
+
+// Per-Song Finalist Voting Windows (3 Songs per Finalist — Song 1, Song 2, Song 3)
+const DEFAULT_SOTM_SONG_VOTES = [
+  {
+    singer: "SANTOSH BHAROTE",
+    songs: [
+      { round: 1, title: "TERE CHEHRE SE", meter: 4, voters: 13, status: "closed" },
+      { round: 2, title: "KYA HUA IS BAAT PE", meter: 4, voters: 13, status: "filled" },
+      { round: 3, title: "FINAL ROUND SONG 3", meter: 0, voters: 0, status: "open" }
+    ]
+  },
+  {
+    singer: "SURESH GHADSING",
+    songs: [
+      { round: 1, title: "E MERI ZOHRA ZABEE", meter: 3, voters: 13, status: "closed" },
+      { round: 2, title: "TUMKO MERE DIL NE", meter: 3, voters: 13, status: "filled" },
+      { round: 3, title: "FINAL ROUND SONG 3", meter: 0, voters: 0, status: "open" }
+    ]
+  },
+  {
+    singer: "VIJAY SUTRAVE",
+    songs: [
+      { round: 1, title: "O MEHBOOBA O MEHBOOBA", meter: 2, voters: 13, status: "closed" },
+      { round: 2, title: "CHANDAN SA BADAN", meter: 2, voters: 13, status: "filled" },
+      { round: 3, title: "FINAL ROUND SONG 3", meter: 0, voters: 0, status: "open" }
+    ]
+  },
+  {
+    singer: "SANDHYA G",
+    songs: [
+      { round: 1, title: "TERE SANG PYAR MAI NAHI TODNA", meter: 2, voters: 13, status: "closed" },
+      { round: 2, title: "MERE NAINA SAWAN BHADON", meter: 2, voters: 13, status: "filled" },
+      { round: 3, title: "FINAL ROUND SONG 3", meter: 0, voters: 0, status: "open" }
+    ]
+  },
+  {
+    singer: "SHEETAL PONALA",
+    songs: [
+      { round: 1, title: "AAYE HO MERI ZINDAGI ME", meter: 2, voters: 13, status: "closed" },
+      { round: 2, title: "TU CHAND HAI POONAM KA", meter: 2, voters: 13, status: "filled" },
+      { round: 3, title: "FINAL ROUND SONG 3", meter: 0, voters: 0, status: "open" }
+    ]
+  }
+];
+
+let SOTM_SONG_VOTES = null;
+let selectedVoteRound = 3;
+let userSongVotesCast = (() => { try { return JSON.parse(localStorage.getItem('sfh_song_votes_cast') || '{}'); } catch(e) { return {}; } })();
+
+function getSongVoteData() {
+  if (SOTM_SONG_VOTES && Array.isArray(SOTM_SONG_VOTES.finalists)) {
+    return SOTM_SONG_VOTES.finalists;
+  }
+  return DEFAULT_SOTM_SONG_VOTES;
+}
+
+window.setVoteRoundTab = (r) => {
+  selectedVoteRound = r;
+  draw();
+};
+
+window.castPerSongVote = async (singerName, roundNum, songTitle, rating) => {
+  const voteKey = `${singerName}_R${roundNum}`;
+  if (userSongVotesCast[voteKey]) {
+    showNotice(`You already voted (${userSongVotesCast[voteKey]}/5) for ${singerName} — "${songTitle}".`);
+    return;
+  }
+  userSongVotesCast[voteKey] = rating;
+  try { localStorage.setItem('sfh_song_votes_cast', JSON.stringify(userSongVotesCast)); } catch (e) {}
+
+  try {
+    const finalists = JSON.parse(JSON.stringify(getSongVoteData()));
+    const fObj = finalists.find(f => f.singer === singerName);
+    if (fObj) {
+      const sObj = fObj.songs.find(s => s.round === roundNum);
+      if (sObj) {
+        const prevTotal = (parseFloat(sObj.meter) || 0) * (sObj.voters || 0);
+        const newVoters = (sObj.voters || 0) + 1;
+        sObj.voters = newVoters;
+        sObj.meter = parseFloat(((prevTotal + rating) / newVoters).toFixed(1));
+      }
+    }
+    SOTM_SONG_VOTES = { finalists, updatedAt: Date.now() };
+    await setDoc(doc(fs, 'vote', 'song_windows'), SOTM_SONG_VOTES);
+    draw();
+    showNotice(`Vote recorded (${rating}/5) for ${singerName} — "${songTitle}"!`, "Vote Submitted");
+  } catch (err) {
+    draw();
+    showNotice(`Vote saved (${rating}/5) for ${singerName} — "${songTitle}".`);
+  }
+};
+
+window.updateFinalistSongWindow = async (fIdx, roundNum) => {
+  if (!IS_SUPER) return;
+  const titleInp = $(`#vw_title_${fIdx}_${roundNum}`);
+  const meterInp = $(`#vw_meter_${fIdx}_${roundNum}`);
+  const statusSel = $(`#vw_status_${fIdx}_${roundNum}`);
+  if (!titleInp || !meterInp || !statusSel) return;
+
+  const finalists = JSON.parse(JSON.stringify(getSongVoteData()));
+  const sObj = finalists[fIdx].songs.find(s => s.round === roundNum);
+  if (sObj) {
+    sObj.title = (titleInp.value || '').trim().toUpperCase();
+    sObj.meter = parseFloat(meterInp.value || '0') || 0;
+    sObj.status = statusSel.value;
+    if (sObj.meter > 0 && !sObj.voters) sObj.voters = 13;
+  }
+  SOTM_SONG_VOTES = { finalists, updatedAt: Date.now() };
+  try {
+    await setDoc(doc(fs, 'vote', 'song_windows'), SOTM_SONG_VOTES);
+    draw();
+    showNotice("Song voting window updated!");
+  } catch (err) {
+    showNotice("Failed to update voting window: " + (err.code || err.message));
+  }
+};
+
+function renderPerSongVotingWindowHTML() {
+  const finalists = getSongVoteData();
+  const activeRound = selectedVoteRound || 3;
+
+  return `
+    <div class="c" style="border-left:4px solid #0284c7">
+      <div class="row" style="justify-content:space-between;margin-bottom:6px">
+        <div>
+          <b>SOTM Per-Song Voting Windows (3 Songs per Finalist)</b>
+          <p class="m" style="margin:1px 0 0;font-size:12px">Song 1 & Song 2 meters pre-filled · Select song window to view or vote</p>
+        </div>
+        <div class="row" style="gap:4px">
+          <button class="${activeRound===1?'on':''}" style="padding:4px 8px;font-size:11.5px" onclick="setVoteRoundTab(1)">Song 1</button>
+          <button class="${activeRound===2?'on':''}" style="padding:4px 8px;font-size:11.5px" onclick="setVoteRoundTab(2)">Song 2</button>
+          <button class="${activeRound===3?'on':''}" style="padding:4px 8px;font-size:11.5px" onclick="setVoteRoundTab(3)">Song 3</button>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:5px">
+        ${finalists.map((f, fIdx) => {
+          const sObj = f.songs.find(s => s.round === activeRound) || { round: activeRound, title: `SONG ${activeRound}`, meter: 0, voters: 0, status: 'open' };
+          const voteKey = `${f.singer}_R${activeRound}`;
+          const myVote = userSongVotesCast[voteKey] || 0;
+          const pct = Math.min(100, Math.round(((parseFloat(sObj.meter) || 0) / 5) * 100));
+
+          return `
+            <div style="padding:6px 8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg)">
+              <div class="row" style="justify-content:space-between;gap:6px">
+                <div style="font-size:12.5px">
+                  Vote for <b>${e(f.singer)}</b> for song: <b style="color:var(--ac)">${e(sObj.title)}</b>
+                </div>
+                <span class="${sObj.status === 'open' ? 'badge-ok' : 'badge-round'}" style="font-size:10.5px">
+                  ${sObj.status === 'open' ? 'Voting Open' : (sObj.status === 'filled' ? 'Meter Filled' : 'Completed')}
+                </span>
+              </div>
+
+              ${IS_SUPER ? `
+                <div class="row" style="margin-top:5px;gap:5px">
+                  <input id="vw_title_${fIdx}_${activeRound}" value="${e(sObj.title)}" placeholder="Song title" style="flex:1;min-width:130px;padding:4px 6px;font-size:12px;text-transform:uppercase">
+                  <input id="vw_meter_${fIdx}_${activeRound}" type="number" step="0.1" min="0" max="5" value="${sObj.meter}" style="width:62px;padding:4px 6px;font-size:12px" title="Vote Meter (0-5)">
+                  <select id="vw_status_${fIdx}_${activeRound}" style="padding:4px 6px;font-size:12px">
+                    <option value="open" ${sObj.status==='open'?'selected':''}>Open</option>
+                    <option value="filled" ${sObj.status==='filled'?'selected':''}>Filled</option>
+                    <option value="closed" ${sObj.status==='closed'?'selected':''}>Closed</option>
+                  </select>
+                  <button class="pri" style="padding:4px 8px;font-size:11.5px" onclick="updateFinalistSongWindow(${fIdx}, ${activeRound})">Save</button>
+                </div>
+              ` : `
+                <div class="row" style="justify-content:space-between;margin-top:4px">
+                  <div style="flex:1;min-width:110px">
+                    <div style="height:5px;background:var(--bd);border-radius:4px;overflow:hidden">
+                      <div style="width:${pct}%;height:100%;background:#0284c7"></div>
+                    </div>
+                  </div>
+                  ${sObj.status === 'open' ? (
+                    myVote
+                      ? `<span class="badge-ok">Voted: ${myVote}★</span>`
+                      : `<div class="row" style="gap:3px">${[1,2,3,4,5].map(n => `<button style="padding:2px 7px;font-size:11px" onclick="castPerSongVote('${e(f.singer)}', ${activeRound}, '${e(sObj.title)}', ${n})">${n}★</button>`).join('')}</div>`
+                  ) : `<span class="m" style="font-size:11px">Meter Recorded</span>`}
+                </div>
+              `}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
 function getSOTMData() {
   if (SOTM_RESULT && (SOTM_RESULT.winner || (SOTM_RESULT.rows && SOTM_RESULT.rows.length) || (SOTM_RESULT.results && SOTM_RESULT.results.length))) {
     const rawRows = SOTM_RESULT.rows || SOTM_RESULT.results || SOTM_RESULT.standings || [];
     const mappedRows = rawRows.map((r, idx) => {
       const sur = r.sur ?? r.SUR ?? r.surScore ?? '-';
       const taal = r.taal ?? r.TAAL ?? r.taalScore ?? '-';
-      const bhav = r.bhav ?? r.BHAV ?? r.expression ?? r.feel ?? '-';
+      const selections = r.selections ?? r.SELECTIONS ?? r.selection ?? r.songSelection ?? r.bhav ?? '-';
+      const performance = r.performance ?? r.PERFORMANCE ?? r.perf ?? r.presentation ?? '-';
       const judgeTotal = r.judgeTotal ?? r.judgeScore ?? r.totalJudge ?? (
-        (parseFloat(sur) || 0) + (parseFloat(taal) || 0) + (bhav !== '-' ? (parseFloat(bhav) || 0) : 0)
+        (parseFloat(sur) || 0) +
+        (parseFloat(taal) || 0) +
+        (selections !== '-' ? (parseFloat(selections) || 0) : 0) +
+        (performance !== '-' ? (parseFloat(performance) || 0) : 0)
       );
-      const votes = r.votes ?? r.audienceVotes ?? r.voteCount ?? r.meter ?? 0;
+      const votes = r.votes ?? r.audienceVotes ?? r.voteCount ?? r.meter ?? r.voteAvg ?? 0;
       const votePct = r.votePct ?? r.votePercent ?? r.meterPct ?? '';
-      const grandTotal = r.grandTotal ?? r.finalScore ?? r.total ?? judgeTotal;
+      const grandTotal = r.grandTotal ?? r.finalScore ?? r.total ?? ((parseFloat(judgeTotal) || 0) + (parseFloat(votes) || 0));
       const remarks = r.remarks ?? r.opinion ?? r.judgeOpinion ?? r.comment ?? '';
       return {
         rank: r.rank || (idx + 1),
         name: r.name || r.singer || '',
         sur,
         taal,
-        bhav,
+        selections,
+        performance,
         judgeTotal,
         votes,
         votePct,
@@ -641,12 +843,12 @@ function getSOTMData() {
     declaredDate: '16/11/2026',
     votersCount: 13,
     rows: [
-      { rank: 1, name: 'SANTOSH BHAROTE', sur: '3.5', taal: '4', bhav: '-', judgeTotal: '7.5', votes: 4, votePct: '30.8%', grandTotal: '11.5', remarks: 'Winner - G-Clef Memento Award' },
-      { rank: 2, name: 'SURESH GHADSING', sur: '3', taal: '3', bhav: '-', judgeTotal: '6.0', votes: 3, votePct: '23.1%', grandTotal: '9.0', remarks: '1st Runner-Up' },
-      { rank: 3, name: 'VIJAY SUTRAVE', sur: '5', taal: '4.5', bhav: '-', judgeTotal: '9.5', votes: 2, votePct: '15.4%', grandTotal: '11.5', remarks: '2nd Runner-Up' },
-      { rank: 4, name: 'SANDHYA G', sur: '3', taal: '3.5', bhav: '-', judgeTotal: '6.5', votes: 2, votePct: '15.4%', grandTotal: '8.5', remarks: 'Finalist' },
-      { rank: 5, name: 'SHEETAL PONALA', sur: '3', taal: '3', bhav: '-', judgeTotal: '6.0', votes: 2, votePct: '15.4%', grandTotal: '8.0', remarks: 'Finalist' },
-      { rank: 6, name: 'VIJAY BHUKHTAR', sur: '0', taal: '0', bhav: '-', judgeTotal: '0', votes: 0, votePct: '0%', grandTotal: '0', remarks: 'Finalist' }
+      { rank: 1, name: 'SANTOSH BHAROTE', sur: '3.5', taal: '4', selections: '4', performance: '4', judgeTotal: '15.5', votes: '4', votePct: '', grandTotal: '19.5', remarks: 'Winner - G-Clef Memento Award' },
+      { rank: 2, name: 'SURESH GHADSING', sur: '3', taal: '3', selections: '3.5', performance: '3.5', judgeTotal: '13.0', votes: '3', votePct: '', grandTotal: '16.0', remarks: '1st Runner-Up' },
+      { rank: 3, name: 'VIJAY SUTRAVE', sur: '5', taal: '4.5', selections: '3', performance: '3.5', judgeTotal: '16.0', votes: '2', votePct: '', grandTotal: '18.0', remarks: '2nd Runner-Up' },
+      { rank: 4, name: 'SANDHYA G', sur: '3', taal: '3.5', selections: '3', performance: '3', judgeTotal: '12.5', votes: '2', votePct: '', grandTotal: '14.5', remarks: 'Finalist' },
+      { rank: 5, name: 'SHEETAL PONALA', sur: '3', taal: '3', selections: '3', performance: '3', judgeTotal: '12.0', votes: '2', votePct: '', grandTotal: '14.0', remarks: 'Finalist' },
+      { rank: 6, name: 'VIJAY BHUKHTAR', sur: '0', taal: '0', selections: '0', performance: '0', judgeTotal: '0', votes: '0', votePct: '', grandTotal: '0', remarks: 'Finalist' }
     ]
   };
 }
@@ -658,30 +860,30 @@ window.downloadSOTMPDF = async () => {
     return;
   }
   const s = getSOTMData();
-  const hasBhav = s.rows.some(r => r.bhav !== '-' && r.bhav !== '' && r.bhav != null);
   const renderSlot = document.getElementById('pdf-render-slot');
   renderSlot.innerHTML = `
-    <div style="text-align:center;border-bottom:2px solid #0f3460;padding-bottom:12px;margin-bottom:14px">
-      <h2 style="margin:0;font-size:22px;color:#0f3460">SING FROM HOME</h2>
-      <p style="margin:4px 0;font-size:13px;color:#475569">A project of B. S. Tikariya Cultural Foundation ® (CIN: U88900MH2025NPL454435)</p>
-      <p style="margin:4px 0;font-size:15px;color:#15803d"><b>OFFICIAL SINGER OF THE MONTH (SOTM) FULL REPORT — ${e(s.monthLabel)}</b></p>
+    <div style="text-align:center;border-bottom:2px solid #0f3460;padding-bottom:10px;margin-bottom:12px">
+      <h2 style="margin:0;font-size:21px;color:#0f3460">SING FROM HOME</h2>
+      <p style="margin:3px 0;font-size:12px;color:#475569">A project of B. S. Tikariya Cultural Foundation ® (CIN: U88900MH2025NPL454435)</p>
+      <p style="margin:3px 0;font-size:14px;color:#15803d"><b>OFFICIAL SINGER OF THE MONTH (SOTM) FULL RESULT — ${e(s.monthLabel)}</b></p>
     </div>
-    <div style="background:#f0fdf4;padding:12px;border-radius:8px;border:1px solid #86efac;margin-bottom:14px">
-      <p style="margin:2px 0;font-size:14px"><b>Winner:</b> ${e(s.winner)} (G-Clef Memento Award)</p>
-      <p style="margin:2px 0;font-size:13px"><b>Assigned Judge:</b> ${e(s.judge)} | <b>Declared Date:</b> ${e(s.declaredDate)} | <b>Participating Audience Voters:</b> ${s.votersCount}</p>
+    <div style="background:#f0fdf4;padding:10px 12px;border-radius:8px;border:1px solid #86efac;margin-bottom:12px">
+      <p style="margin:2px 0;font-size:13.5px"><b>Winner:</b> ${e(s.winner)} (G-Clef Memento Award)</p>
+      <p style="margin:2px 0;font-size:12.5px"><b>Assigned Judge:</b> ${e(s.judge)} | <b>Declared Date:</b> ${e(s.declaredDate)} | <b>Participating Audience Voters:</b> ${s.votersCount}</p>
     </div>
     <table>
       <thead>
         <tr>
-          <th style="width:45px;text-align:center">RANK</th>
+          <th style="width:42px;text-align:center">RANK</th>
           <th>FINALIST</th>
-          <th style="width:65px;text-align:center">SUR (10)</th>
-          <th style="width:65px;text-align:center">TAAL (10)</th>
-          ${hasBhav ? `<th style="width:65px;text-align:center">BHAV (10)</th>` : ''}
-          <th style="width:80px;text-align:center">JUDGE TOTAL</th>
-          <th style="width:90px;text-align:center">VOTE METER</th>
-          <th style="width:80px;text-align:center">FINAL SCORE</th>
-          <th>JUDGE REMARKS / STATUS</th>
+          <th style="width:62px;text-align:center">SUR (10)</th>
+          <th style="width:62px;text-align:center">TAAL (10)</th>
+          <th style="width:82px;text-align:center">SELECTIONS (10)</th>
+          <th style="width:88px;text-align:center">PERFORMANCE (10)</th>
+          <th style="width:72px;text-align:center">JUDGE TOTAL</th>
+          <th style="width:72px;text-align:center">VOTE METER</th>
+          <th style="width:72px;text-align:center">FINAL SCORE</th>
+          <th>REMARKS</th>
         </tr>
       </thead>
       <tbody>
@@ -691,7 +893,8 @@ window.downloadSOTMPDF = async () => {
             <td><b>${e(r.name)}</b></td>
             <td style="text-align:center">${e(r.sur)}</td>
             <td style="text-align:center">${e(r.taal)}</td>
-            ${hasBhav ? `<td style="text-align:center">${e(r.bhav)}</td>` : ''}
+            <td style="text-align:center">${e(r.selections)}</td>
+            <td style="text-align:center">${e(r.performance)}</td>
             <td style="text-align:center"><b>${e(r.judgeTotal)}</b></td>
             <td style="text-align:center">${e(r.votes)}${r.votePct ? ` (${e(r.votePct)})` : ''}</td>
             <td style="text-align:center;color:#15803d"><b>${e(r.grandTotal)}</b></td>
@@ -700,7 +903,7 @@ window.downloadSOTMPDF = async () => {
         `).join('')}
       </tbody>
     </table>
-    <div style="margin-top:20px;font-size:11px;color:#64748b;display:flex;justify-content:space-between">
+    <div style="margin-top:16px;font-size:11px;color:#64748b;display:flex;justify-content:space-between">
       <span>Confidential Superadmin Evaluation Sheet · Tikariya's School of Music</span>
       <span>Director: MANOJ TIKARIYA</span>
     </div>
@@ -710,7 +913,7 @@ window.downloadSOTMPDF = async () => {
     const canvas = await window.html2canvas(renderSlot, { scale: 2, useCORS: true, logging: false });
     const imgData = canvas.toDataURL('image/png');
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('l', 'mm', 'a4'); // Landscape A4 to fit all columns cleanly
+    const pdf = new jsPDF('l', 'mm', 'a4');
     const pdfWidth = 297;
     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
     pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
@@ -724,16 +927,15 @@ window.downloadSOTMPDF = async () => {
 
 function renderSOTMBannerHTML() {
   const s = getSOTMData();
-  const hasBhav = s.rows.some(r => r.bhav !== '-' && r.bhav !== '' && r.bhav != null);
 
   if (IS_SUPER) {
     return `
       <div class="c sotm-card">
         <div class="sotm-title">OFFICIAL SINGER OF THE MONTH (SOTM) RESULT - ${e(s.monthLabel)}</div>
-        <p style="margin:4px 0 8px;font-size:13.5px;line-height:1.5">
+        <p style="margin:3px 0 6px;font-size:13px;line-height:1.4">
           Winner: <b>${e(s.winner)}</b> (G-Clef Memento Award) | Judge: <b>${e(s.judge)}</b>
         </p>
-        <p style="margin:6px 0 10px">
+        <p style="margin:4px 0 8px">
           <button class="pri" onclick="downloadSOTMPDF()">Download Full Official Result (PDF)</button>
         </p>
         ${s.rows && s.rows.length ? `
@@ -743,11 +945,12 @@ function renderSOTMBannerHTML() {
               <th>FINALIST</th>
               <th class="n">SUR (10)</th>
               <th class="n">TAAL (10)</th>
-              ${hasBhav ? `<th class="n">BHAV (10)</th>` : ''}
+              <th class="n">SELECTIONS (10)</th>
+              <th class="n">PERFORMANCE (10)</th>
               <th class="n">JUDGE TOTAL</th>
               <th class="n">VOTE METER</th>
               <th class="n">FINAL SCORE</th>
-              <th>REMARKS / OPINION</th>
+              <th>REMARKS</th>
             </tr>
             ${s.rows.map(r => `
               <tr style="${r.rank === 1 ? 'background:rgba(22,163,74,0.08)' : ''}">
@@ -755,16 +958,17 @@ function renderSOTMBannerHTML() {
                 <td><b>${e(r.name)}</b></td>
                 <td class="n" style="color:#b45309;font-weight:700">${e(r.sur)}</td>
                 <td class="n" style="color:#b45309;font-weight:700">${e(r.taal)}</td>
-                ${hasBhav ? `<td class="n" style="color:#b45309;font-weight:700">${e(r.bhav)}</td>` : ''}
+                <td class="n" style="color:#b45309;font-weight:700">${e(r.selections)}</td>
+                <td class="n" style="color:#b45309;font-weight:700">${e(r.performance)}</td>
                 <td class="n"><b>${e(r.judgeTotal)}</b></td>
-                <td class="n" style="color:#0369a1;font-weight:700">${e(r.votes)}${r.votePct ? ` (${e(r.votePct)})` : ''}</td>
+                <td class="n" style="color:#0369a1;font-weight:700">${e(r.votes)}</td>
                 <td class="n" style="color:#15803d;font-weight:800">${e(r.grandTotal)}</td>
                 <td style="font-size:12px">${e(r.remarks || '-')}</td>
               </tr>
             `).join('')}
           </table></div>
         ` : ''}
-        <p class="m" style="margin:8px 0 0;font-size:12px">
+        <p class="m" style="margin:6px 0 0;font-size:12px">
           Declared on ${e(s.declaredDate)} (Participating Audience Voters: ${s.votersCount}).
         </p>
       </div>
@@ -774,8 +978,8 @@ function renderSOTMBannerHTML() {
   return `
     <div class="c sotm-card">
       <div class="sotm-title">OFFICIAL SINGER OF THE MONTH (SOTM) RESULT - ${e(s.monthLabel)}</div>
-      <p class="big" style="margin:6px 0">${e(s.winner)} <span style="font-size:12.5px;font-weight:600;color:var(--mut)">(G-Clef Memento Award)</span></p>
-      <p style="margin:4px 0 0;font-size:13.5px">
+      <p class="big" style="margin:4px 0">${e(s.winner)} <span style="font-size:12px;font-weight:600;color:var(--mut)">(G-Clef Memento Award)</span></p>
+      <p style="margin:3px 0 0;font-size:13px">
         Judge: <b>${e(s.judge)}</b> · Declared on: <b>${e(s.declaredDate)}</b>
       </p>
     </div>
@@ -1082,6 +1286,7 @@ function vHome(){
   h+=bdCard();
 
   h+=renderSOTMBannerHTML();
+  h+=renderPerSongVotingWindowHTML();
 
   if (LIVE_SESSION && LIVE_SESSION.singers && LIVE_SESSION.singers.length) {
     const ls = LIVE_SESSION;
@@ -1194,29 +1399,96 @@ function vSotd(){
   if(!PUB)return '<div class="c"><p class="m">No data has been published yet.</p></div>';
   const L=PUB.sotd||[],somd=PUB.somd||{},somE=Object.entries(PUB.som||{}).sort().reverse(),lm=somE.length?somE[0][0]:'',ld=somd[lm]||'';
   const cyc=L.filter(x=>ld?x.d>ld:(!lm||x.d.slice(0,7)>lm)).slice().reverse();
-  const allPast=L.slice().sort((a,b)=>b.d.localeCompare(a.d));
   const sk=(P.singer||'').toUpperCase();
-  const stars=Object.entries(PUB.stars||{}).filter(([n,o])=>o.t>0).sort((a,b)=>b[1].t-a[1].t||a[0].localeCompare(b[0]));
+
+  const singerMap = new Map();
+
+  L.slice().sort((a,b) => a.d.localeCompare(b.d)).forEach(entry => {
+    (entry.l || []).forEach(w => {
+      const name = String(w.n || '').trim().toUpperCase();
+      if (!name) return;
+      if (!singerMap.has(name)) {
+        singerMap.set(name, { name, dates: [], scoreDates: [], specialDates: [], genuineStars: 0 });
+      }
+      const rec = singerMap.get(name);
+      if (!rec.dates.some(x => x.d === entry.d)) {
+        rec.dates.push({ d: entry.d, h: w.h || 'Score' });
+      }
+      if (w.h === 'Special') {
+        if (!rec.specialDates.includes(entry.d)) rec.specialDates.push(entry.d);
+      } else {
+        if (!rec.scoreDates.includes(entry.d)) rec.scoreDates.push(entry.d);
+      }
+    });
+  });
+
+  Object.entries(PUB.stars || {}).forEach(([rawName, o]) => {
+    const name = String(rawName || '').trim().toUpperCase();
+    if (!name) return;
+    if (!singerMap.has(name)) {
+      singerMap.set(name, { name, dates: [], scoreDates: [], specialDates: [], genuineStars: 0 });
+    }
+    const rec = singerMap.get(name);
+    rec.genuineStars = Math.max(0, o.t || 0);
+    (o.d || []).forEach(dt => {
+      if (!rec.dates.some(x => x.d === dt)) {
+        rec.dates.push({ d: dt, h: 'Score' });
+      }
+      if (!rec.scoreDates.includes(dt)) rec.scoreDates.push(dt);
+    });
+  });
+
+  const mergedList = Array.from(singerMap.values()).map(rec => {
+    rec.dates.sort((a, b) => a.d.localeCompare(b.d));
+    const totalEarned = Math.max(rec.scoreDates.length, rec.genuineStars);
+    const lostCount = Math.max(0, totalEarned - rec.genuineStars);
+    return {
+      ...rec,
+      totalEarned,
+      lostCount
+    };
+  }).sort((a, b) => b.genuineStars - a.genuineStars || b.totalEarned - a.totalEarned || a.name.localeCompare(b.name));
 
   let h=`<div class="c" style="border-left:4px solid #f59e0b;background:var(--ac-light)">
     <b>Singer of the Month Award Announcement</b>
-    <p class="m" style="margin:4px 0 0;line-height:1.6">Qualify with 4 stars to enter the monthly SOTM competition. Winner receives a custom-crafted stainless steel <b>G-Clef Memento Award</b> by Tikariya’s School of Music.</p>
+    <p class="m" style="margin:3px 0 0;line-height:1.5">Qualify with 4 stars to enter the monthly SOTM competition. Winner receives a custom-crafted stainless steel <b>G-Clef Memento Award</b> by Tikariya’s School of Music.</p>
   </div>`;
 
   h+=`<div class="c"><b>Singer of the Month</b>${somE.length?`<div class="tbl"><table><tr><th style="width:110px">Month</th><th>Singer of the Month</th><th>Declared date</th></tr>${somE.slice(0,6).map(([m,n])=>`<tr><td><b>${e(fm(m))}</b></td><td><b>${e(n)}</b></td><td><span class="m">${somd[m]?fd(somd[m]):'-'}</span></td></tr>`).join('')}</table></div>`:'<p class="m">Not declared yet.</p>'}</div>`;
 
-  h+=`<div class="c"><b>Singers of the Day${lm?' since the Singer of the Month '+e(fm(lm))+(ld?' ('+fd(ld)+')':''):''}</b><p class="m" style="margin:2px 0 8px">Current SOTM qualification cycle.</p>${cyc.length?`<div class="tbl"><table><tr><th style="width:95px;min-width:95px">Date</th><th>Singer name</th></tr>${cyc.map(x=>`<tr><td style="width:95px;min-width:95px"><span class="m">${fd(x.d)}</span></td><td>${nmL(x.l)}</td></tr>`).join('')}</table></div>`:'<p class="m">None yet in this new round.</p>'}</div>`;
+  h+=`<div class="c"><b>Singers of the Day${lm?' since the Singer of the Month '+e(fm(lm))+(ld?' ('+fd(ld)+')':''):''}</b><p class="m" style="margin:2px 0 6px">Current SOTM qualification cycle.</p>${cyc.length?`<div class="tbl"><table><tr><th style="width:95px;min-width:95px">Date</th><th>Singer name</th></tr>${cyc.map(x=>`<tr><td style="width:95px;min-width:95px"><span class="m">${fd(x.d)}</span></td><td>${nmL(x.l)}</td></tr>`).join('')}</table></div>`:'<p class="m">None yet in this new round.</p>'}</div>`;
 
-  h+=`<div class="c"><b>Star singers</b><p class="m" style="margin:2px 0 8px">Join 3+ sessions a week to retain stars. Singers with 4 stars sing in the SOTM session.</p>${stars.length?`<div class="tbl"><table><tr><th>Singer name</th><th style="min-width:140px">Stars</th><th style="width:50px;text-align:center">Total</th><th style="width:90px">Status</th></tr>${stars.map(([n,o])=>`<tr class="${n==sk?'me':''}"><td><b>${e(n)}</b></td><td style="min-width:140px;letter-spacing:2px">${'⭐'.repeat(Math.min(o.t,10))}${o.t>10?'+':''}</td><td class="n"><span class="m">(${o.t})</span></td><td>${o.t>=4?'<span style="color:var(--ac);font-weight:600">Finalist</span>':'<span class="m">-</span>'}</td></tr>`).join('')}</table></div>`:'<p class="m">No stars yet.</p>'}</div>`;
-
-  // Complete Past SOTD History (Never disappears)
+  // Merged Star Singers & All Past SOTD Table (4 Columns)
   h+=`<div class="c">
     <div class="row" style="justify-content:space-between">
-      <b>Past Singers of the Day (All History · ${allPast.length})</b>
-      ${IS_SUPER ? `<button class="pri" style="font-size:11.5px;padding:4px 9px" onclick="syncHistoricalSOTD()">Save History to Cloud</button>` : ''}
+      <b>Star Singers & SOTD History (${mergedList.length})</b>
+      ${IS_SUPER ? `<button class="pri" style="font-size:11px;padding:3px 8px" onclick="syncHistoricalSOTD()">Save History to Cloud</button>` : ''}
     </div>
-    <p class="m" style="margin:2px 0 8px">Complete historical archive of all declared Singers of the Day across all months.</p>
-    ${allPast.length?`<div class="tbl"><table><tr><th style="width:95px;min-width:95px">Date</th><th>Singer of the Day</th></tr>${allPast.map(x=>`<tr><td style="width:95px;min-width:95px"><span class="m">${fd(x.d)}</span></td><td>${nmL(x.l)}</td></tr>`).join('')}</table></div>`:'<p class="m">No historical SOTD records found.</p>'}
+    <p class="m" style="margin:2px 0 6px">
+      <span style="color:#f59e0b;font-weight:700">★</span> Genuine Active Star &nbsp;·&nbsp;
+      <span style="color:#94a3b8;opacity:0.42;font-weight:700">★</span> Lost / Reset Star
+    </p>
+    ${mergedList.length?`<div class="tbl"><table>
+      <tr>
+        <th>Singer's Name</th>
+        <th>Dates Stars Earned</th>
+        <th style="min-width:110px">Stars Count</th>
+        <th class="n" style="width:85px">Genuine Stars</th>
+      </tr>
+      ${mergedList.map(rec => {
+        const activeStarsHTML = '<span style="color:#f59e0b;letter-spacing:1px">' + '★'.repeat(Math.min(rec.genuineStars, 10)) + '</span>';
+        const lostStarsHTML = rec.lostCount > 0 ? '<span style="color:#94a3b8;opacity:0.42;letter-spacing:1px" title="' + rec.lostCount + ' star(s) lost or reset">' + '★'.repeat(Math.min(rec.lostCount, 10)) + '</span>' : '';
+        const datesFormatted = rec.dates.length
+          ? rec.dates.map(x => `<span style="white-space:nowrap">${fd(x.d)}${x.h === 'Special' ? ' <span class="m">(Spl)</span>' : x.h === 'Quiz' ? ' <span class="m">(Quiz)</span>' : ''}</span>`).join(', ')
+          : '<span class="m">-</span>';
+        return `<tr class="${rec.name === sk ? 'me' : ''}">
+          <td><b>${e(rec.name)}</b>${rec.genuineStars >= 4 ? ' <span class="badge-ok">Finalist</span>' : ''}</td>
+          <td style="white-space:normal;min-width:160px;font-size:12px;line-height:1.4">${datesFormatted}</td>
+          <td>${activeStarsHTML}${lostStarsHTML}${(!rec.genuineStars && !rec.lostCount) ? '<span class="m">-</span>' : ''}</td>
+          <td class="n"><b>${rec.genuineStars}</b></td>
+        </tr>`;
+      }).join('')}
+    </table></div>`:'<p class="m">No SOTD or star records yet.</p>'}
   </div>`;
 
   return h;
@@ -1991,5 +2263,5 @@ window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.on
     }, label);
   }catch(z){showNotice(z=='size'?'One month of songs is too large for a single document.':(z&&z.code?'Restore/Publish failed ('+z.code+'). Check Firebase rules.':'That is not a valid SFH backup or participants file.'))}};r.readAsText(f)};
 
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=26').then(r=>r.update()).catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=27').then(r=>r.update()).catch(()=>{});}
 </script></body></html>

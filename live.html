@@ -431,60 +431,6 @@ function loadLocal(){
   }catch(x){}
 }
 
-// Automatic Real-Time Sync of Participants' Declared Songs (NO BUTTON NEEDED)
-let plansUnsub = null;
-function startAutoSyncDeclaredSingers() {
-  if (plansUnsub) { plansUnsub(); plansUnsub = null; }
-  const qPlans = query(collection(fs, 'plans'), where('date', '==', LIVE.date));
-  plansUnsub = onSnapshot(qPlans, snap => {
-    const declaredList = snap.docs.map(d => d.data()).sort((a, b) => (a.ts || 0) - (b.ts || 0));
-    let changed = false;
-
-    declaredList.forEach(plan => {
-      const canonicalName = resolveCanonicalSingerName(plan.singer);
-      if (!canonicalName) return;
-
-      // Add singer to queue automatically in declaration order if not present
-      if (!LIVE.singers.some(s => s.name === canonicalName)) {
-        const joinDate = plan.ts ? new Date(plan.ts) : new Date();
-        LIVE.singers.push({
-          name: canonicalName,
-          joinTime: joinDate.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', hour12:true}),
-          eligible: isBeforeCutoff(joinDate),
-          autoSynced: true
-        });
-        changed = true;
-      }
-
-      // Pre-fill Round 1, Round 2, Round 3 song titles from their declared songs (if slot is empty and not locked)
-      const declaredSongs = Array.isArray(plan.songs) ? plan.songs : [];
-      [1, 2, 3].forEach((rnd, idx) => {
-        const p = getOrCreatePerf(canonicalName, rnd);
-        const dSong = (declaredSongs[idx] || '').trim().toUpperCase();
-        if (dSong && !p.locked && !p.song) {
-          p.song = dSong;
-          p.repeatCount = checkRepeat(dSong);
-          if (!p.songId) {
-            p.songId = getNextSongId();
-          }
-          if (isWithinLiveSchedule()) {
-            p.locked = true;
-            persistLockedSongToPub(p);
-          }
-          changed = true;
-        }
-      });
-    });
-
-    if (changed) {
-      saveLocal();
-      draw();
-    }
-  }, err => {
-    console.warn("Auto-sync plans listener warning:", err);
-  });
-}
-
 async function init(){
   try {
     const cfgSnap = await getDoc(doc(fs, 'config', 'app'));
@@ -566,7 +512,6 @@ async function init(){
     });
   }
 
-  startAutoSyncDeclaredSingers();
   draw();
 }
 
@@ -1547,7 +1492,7 @@ function draw(){
     <div class="row" style="justify-content:space-between">
       <div>
         <h2>${liveNow ? 'Live Session' : 'Practice Console'} · ${fd(LIVE.date)}</h2>
-        <span class="m" style="font-size:12px">Schedule: <b>${e(formatScheduleText())}</b> · Auto-syncing declared songs in real time</span>
+        <span class="m" style="font-size:12px">Schedule: <b>${e(formatScheduleText())}</b></span>
       </div>
       <span class="badge-round">Round ${currentRound}</span>
     </div>
@@ -1593,7 +1538,7 @@ function draw(){
             <td class="col-ord"><b>${idx + 1}</b></td>
             <td>
               <b>${e(s.name)}</b>
-              ${s.autoSynced ? `<span class="badge-auto" style="margin-left:5px" title="Auto-synced from Today's Declared Songs">Auto</span>` : ''}
+              
             </td>
             <td><span class="m">${e(s.joinTime)}</span></td>
             <td>${isEligible ? '<span class="badge-ok">Eligible</span>' : '<span class="badge-late">Ineligible</span>'}</td>
@@ -1622,7 +1567,7 @@ function draw(){
           </tr>`;
         }).join('')}
       </table></div>
-    ` : '<p class="m">Waiting for participants to declare songs in Today tab, or add singers manually above.</p>'}
+    ` : '<p class="m">No singers registered in queue yet. Add singers manually above.</p>'}
     
     <datalist id="dl_allsongs">
       ${[...new Set(ALL_SONGS.map(r => r[3]))].filter(Boolean).map(t => `<option value="${e(t)}">`).join('')}
@@ -1636,7 +1581,6 @@ function draw(){
     <div class="m" style="margin-top:6px;line-height:1.7">
       ⭐1: Starts when announced · ⭐2: Ready on turn · ⭐3: No mic noise · ⭐4: Good singing · ⭐5: Better singing<br>
       • <b>Schedule-Driven Console:</b> Automatically switches between Off-Schedule Practice and Live Production based on your Rules schedule (${e(formatScheduleText())}).<br>
-      • <b>Auto-Sync Declared Songs:</b> Participants declaring songs in their Today tab automatically appear in the live queue in declaration order.<br>
       • <b>Permanent Song ID Lock & Auto-Backup:</b> Locked Song IDs can only be removed individually, and pressing <b>End</b> automatically saves a timestamped offline Master Backup JSON file.
     </div>
   </div>`;
