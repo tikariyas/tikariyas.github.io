@@ -1,0 +1,1628 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f3460">
+<link rel="icon" href="icon-192.png">
+<title>Live Session · Sing From Home</title>
+<style>
+:root{
+  --bg:#f8fafc;--fg:#0f172a;--card:#ffffff;--ac:#0f3460;--ac-light:#e8eef7;
+  --mut:#64748b;--bd:#cbd5e1;--btn-pri-bg:linear-gradient(135deg,#0f3460 0%,#1e4a7a 100%);
+  --shadow:0 4px 18px -2px rgba(15,23,42,0.06),0 2px 6px -1px rgba(15,23,42,0.03);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0a0f1d;--fg:#f8fafc;--card:#141d33;--ac:#60a5fa;--ac-light:#1e293b;
+    --mut:#94a3b8;--bd:#1e293b;--btn-pri-bg:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);
+    --shadow:0 10px 30px -4px rgba(0,0,0,0.5);
+    color-scheme:dark;
+  }
+}
+html,body{margin:0}
+body{
+  background:var(--bg);color:var(--fg);
+  font:15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif;
+  padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);
+}
+
+header{
+  display:flex;flex-direction:column;gap:10px;
+  padding:12px 16px;border-bottom:1px solid var(--bd);background:var(--card);
+  position:sticky;top:0;z-index:40;backdrop-filter:blur(10px);box-shadow:0 1px 3px rgba(0,0,0,0.03);
+}
+.header-top{
+  display:flex;justify-content:space-between;align-items:flex-start;width:100%;
+}
+.header-toolbar{
+  display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;width:100%;
+}
+.header-toolbar button{
+  width:100%;padding:8px 4px;font-size:12.5px;font-weight:700;text-align:center;box-sizing:border-box;
+}
+
+h1{
+  font-size:20px;font-weight:800;line-height:1.2;letter-spacing:-0.3px;margin:0;color:var(--ac);
+}
+.sub-fnd{
+  font-size:11px;color:#000000;font-weight:500;margin-top:2px;letter-spacing:0.1px;line-height:1.3;
+}
+@media (prefers-color-scheme:dark){.sub-fnd{color:#e2e8f0}}
+
+#live-clock{
+  font-size:13px;font-weight:800;color:var(--ac);font-variant-numeric:tabular-nums;
+  background:var(--ac-light);padding:4px 8px;border-radius:8px;border:1px solid var(--bd);white-space:nowrap;
+}
+h2{margin:4px 0 8px;font-size:18px;font-weight:700}
+main{padding:12px;max-width:960px;margin:auto}
+.c{
+  background:var(--card);border:1px solid var(--bd);border-radius:12px;
+  padding:12px 14px;margin-bottom:12px;box-shadow:var(--shadow);
+}
+button,.zm{
+  font:inherit;font-size:13px;font-weight:600;border:1px solid var(--bd);
+  background:var(--card);color:var(--fg);border-radius:8px;padding:6px 10px;
+  cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;
+  transition:all 0.15s ease;
+}
+button:hover{border-color:var(--ac);transform:translateY(-1px)}
+button:active{transform:scale(0.98)}
+button.on,button.pri{
+  background:var(--btn-pri-bg);color:#fff;border-color:transparent;
+  box-shadow:0 3px 12px -2px rgba(15,52,96,0.35);
+}
+button.danger{
+  background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;border-color:transparent;
+  box-shadow:0 3px 12px -2px rgba(220,38,38,0.35);
+}
+input,select,textarea{
+  font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--bd);
+  border-radius:8px;padding:8px 10px;box-sizing:border-box;min-width:0;max-width:100%;
+  transition:border-color 0.15s ease,box-shadow 0.15s ease;outline:none;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,96,0.18)}
+input[readonly]{background:var(--ac-light);font-weight:700;color:var(--ac);cursor:default}
+.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:8px 0}
+.m{color:var(--mut);font-size:13px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+.tbl{
+  overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:6px;border-radius:8px;border:1px solid var(--bd);
+}
+.tbl table{border-collapse:separate;border-spacing:0;min-width:100%}
+.tbl th,.tbl td{
+  white-space:nowrap;padding:6px 8px;border-bottom:1px solid var(--bd);text-align:left;height:38px;box-sizing:border-box;font-size:13px;
+}
+.tbl th{height:32px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--mut);background:var(--bg)}
+.tbl th.col-ord,.tbl td.col-ord{width:32px;min-width:32px;max-width:34px;text-align:center;padding:2px 4px}
+.tbl tr:last-child td{border-bottom:none}
+.tbl .n{text-align:center}
+.badge-ok{color:#15803d;background:#dcfce7;font-weight:700;padding:2px 6px;border-radius:6px;font-size:11px}
+.badge-late{color:#b91c1c;background:#fee2e2;font-weight:700;padding:2px 6px;border-radius:6px;font-size:11px}
+.badge-lock{color:#0f3460;background:#dbeafe;font-weight:700;padding:2px 6px;border-radius:6px;font-size:11px}
+.badge-auto{color:#0369a1;background:#e0f2fe;font-weight:700;padding:2px 6px;border-radius:6px;font-size:11px}
+.badge-round{color:var(--ac);background:var(--ac-light);font-weight:800;padding:2px 8px;border-radius:6px;font-size:12px}
+
+.practice-banner{
+  background:linear-gradient(135deg,#0284c7,#0369a1);color:#fff;padding:10px 14px;border-radius:12px;
+  margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;
+  box-shadow:0 4px 14px rgba(2,132,199,0.25);
+}
+
+.score-box{display:inline-flex;gap:3px}
+.score-star{cursor:pointer;font-size:18px;user-select:none;opacity:0.25;transition:opacity .15s;padding:2px 1px}
+.score-star.active{opacity:1;color:#f59e0b}
+.btn-meta{padding:2px 6px;font-size:11px;border-radius:6px;background:var(--ac-light);color:var(--ac);border:1px solid var(--bd)}
+
+.song-nav{
+  display:grid;grid-template-columns:repeat(5, 1fr);gap:6px;margin:10px 0 12px;
+}
+.song-nav button{
+  width:100%;padding:7px 2px;font-size:12px;font-weight:700;text-align:center;
+}
+
+#custom-modal{
+  position:fixed;inset:0;z-index:90;background:rgba(15,23,42,0.7);backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;padding:16px;
+}
+#custom-modal .box{
+  background:var(--card);color:var(--fg);max-width:460px;width:100%;border-radius:14px;
+  padding:20px 18px;border:1px solid var(--bd);box-shadow:var(--shadow);max-height:90vh;overflow-y:auto;
+}
+#custom-modal .box h3{margin:0 0 12px;font-size:16px;color:var(--ac)}
+.meta-field-group{
+  display:flex;flex-direction:column;gap:10px;margin:12px 0;
+}
+.meta-field-group label{
+  display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:600;color:var(--mut);
+}
+.meta-field-group input{
+  width:100%;font-size:13.5px;padding:7px 9px;
+}
+.sotd-sug-chip{
+  padding:5px 9px;font-size:12px;background:var(--card);border:1px solid var(--bd);border-radius:8px;
+  cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .15s ease;
+}
+.sotd-sug-chip:hover{border-color:var(--ac);background:var(--ac-light)}
+
+#pdf-render-slot{
+  position:absolute;left:-9999px;top:0;width:800px;background:#ffffff;color:#0f172a;padding:24px;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif;
+}
+#pdf-render-slot table{
+  width:100%;border-collapse:collapse;margin-top:12px;font-size:12px;
+}
+#pdf-render-slot th,#pdf-render-slot td{
+  border:1px solid #cbd5e1;padding:6px 8px;text-align:left;
+}
+#pdf-render-slot th{
+  background:#0f3460;color:#ffffff;font-weight:700;
+}
+</style></head><body>
+
+<header>
+  <div class="header-top">
+    <div>
+      <h1>SING FRO<span style="color:#b30000;font-weight:900">M</span> HO<span style="color:#b30000;font-weight:900">M</span>E</h1>
+      <div class="sub-fnd">A project of B. S. Tikariya Cultural Foundation ®<br>(CIN: U88900MH2025NPL454435)</div>
+    </div>
+    <div id="live-clock">--:--:--</div>
+  </div>
+  <div class="header-toolbar" id="hb"></div>
+</header>
+
+<main id="app"><p class="m">Connecting to live console…</p></main>
+
+<div id="custom-modal">
+  <div class="box" id="custom-modal-body"></div>
+</div>
+
+<div id="pdf-render-slot"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script type="module">
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import {getAuth,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import {getFirestore,doc,getDoc,setDoc,addDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const CFG = {
+  firebase: {
+    apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
+    authDomain: "sing-from-home.firebaseapp.com",
+    projectId: "sing-from-home",
+    appId: "1:848212321051:web:bb26a98a842eb16f21e9be"
+  },
+  superadmins: ["musicsnsounds@gmail.com"]
+};
+
+const NOV16_SONGS = [
+  ["S-0198", "2026-11-16", "CHHAYA AGRAWAL", "JAADU HAI NASHA HAI"],
+  ["S-0199", "2026-11-16", "SAMRIDDHI PATHAK", "DIL DIYA HAI JAAN BHI DENGE"],
+  ["S-0200", "2026-11-16", "SANTOSH BHAROTE", "TERE CHEHRE SE"],
+  ["S-0201", "2026-11-16", "SANTOSH BHAROTE", "KYA HUA IS BAAT PE"],
+  ["S-0202", "2026-11-16", "VIJAY SUTRAVE", "O MEHBOOBA O MEHBOOBA"],
+  ["S-0203", "2026-11-16", "VIJAY SUTRAVE", "CHANDAN SA BADAN"],
+  ["S-0204", "2026-11-16", "SHEETAL PONALA", "AAYE HO MERI ZINDAGI ME"],
+  ["S-0205", "2026-11-16", "SHEETAL PONALA", "TU CHAND HAI POONAM KA"],
+  ["S-0206", "2026-11-16", "SANDHYA G", "TERE SANG PYAR MAI NAHI TODNA"],
+  ["S-0207", "2026-11-16", "SANDHYA G", "MERE NAINA SAWAN BHADON"],
+  ["S-0208", "2026-11-16", "SURESH GHADSING", "E MERI ZOHRA ZABEE"],
+  ["S-0209", "2026-11-16", "SURESH GHADSING", "TUMKO MERE DIL NE"]
+];
+
+const app = initializeApp(CFG.firebase), auth = getAuth(app), fs = getFirestore(app);
+const $ = s => document.querySelector(s);
+const e = s => String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fd = k => k.slice(8)+'/'+k.slice(5,7)+'/'+k.slice(0,4);
+const tdy = () => {const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+const curTime = () => new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', hour12:true});
+
+const parseSongNum = id => {
+  if (!id) return 0;
+  const num = parseInt(String(id).replace(/\D/g, ''), 10);
+  return isNaN(num) ? 0 : num;
+};
+
+const cmpBySongId = (a, b) => {
+  const idA = Array.isArray(a) ? a[0] : (a.songId || a[0] || '');
+  const idB = Array.isArray(b) ? b[0] : (b.songId || b[0] || '');
+  return parseSongNum(idA) - parseSongNum(idB);
+};
+
+// Schedule evaluation: Automatically detects Live Production vs Off-Schedule Practice Window
+let SCHEDULE = { days: [1,2,3,4,5], startTime: "20:30", endTime: "23:30", cutoffMins: 15, forceLiveOverride: false };
+let lastScheduleMode = null;
+
+function isWithinLiveSchedule(now = new Date()) {
+  if (SCHEDULE.forceLiveOverride) return true;
+  const day = now.getDay();
+  if (!SCHEDULE.days.includes(day)) return false;
+  const [sh, sm] = (SCHEDULE.startTime || "20:30").split(':').map(Number);
+  const [eh, em] = (SCHEDULE.endTime || "23:30").split(':').map(Number);
+  const curMins = now.getHours() * 60 + now.getMinutes();
+  const startMins = sh * 60 + sm;
+  const endMins = eh * 60 + em;
+  return curMins >= startMins && curMins <= endMins;
+}
+
+function isBeforeCutoff(now = new Date()) {
+  if (SCHEDULE.forceLiveOverride) return true;
+  const [sh, sm] = (SCHEDULE.startTime || "20:30").split(':').map(Number);
+  const curMins = now.getHours() * 60 + now.getMinutes();
+  const cutoffLimit = sh * 60 + sm + (SCHEDULE.cutoffMins ?? 15);
+  return curMins <= cutoffLimit;
+}
+
+function formatScheduleText() {
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const sortedDays = [...SCHEDULE.days].sort();
+  let dayLabel = sortedDays.map(d => dayNames[d]).join(', ');
+  if (JSON.stringify(sortedDays) === JSON.stringify([1,2,3,4,5])) dayLabel = 'Mon–Fri';
+  const [hh, mm] = SCHEDULE.startTime.split(':').map(Number);
+  const ampm = hh >= 12 ? 'PM' : 'AM';
+  const h12 = hh % 12 || 12;
+  return `${dayLabel} ${h12}:${String(mm).padStart(2,'0')} ${ampm} onwards`;
+}
+
+function updateClock(){
+  const d = new Date();
+  const el = $('#live-clock');
+  if(el) el.textContent = d.toLocaleTimeString('en-IN', {hour12:true, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  const liveNow = isWithinLiveSchedule(d);
+  if (lastScheduleMode !== null && lastScheduleMode !== liveNow) {
+    lastScheduleMode = liveNow;
+    init();
+  }
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+window.showNotice = (msg, title="Sing From Home") => {
+  const m = $('#custom-modal');
+  $('#custom-modal-body').innerHTML = `<h3>${e(title)}</h3><p style="margin:12px 0 16px;white-space:pre-line">${e(msg)}</p><p style="text-align:right;margin:0"><button class="pri" onclick="closeModal()">OK</button></p>`;
+  m.style.display = 'flex';
+};
+
+window.showConfirm = (msg, onOk, title="Confirmation") => {
+  const m = $('#custom-modal');
+  $('#custom-modal-body').innerHTML = `<h3>${e(title)}</h3><p style="margin:12px 0 16px;white-space:pre-line">${e(msg)}</p><p style="text-align:right;margin:0;display:flex;gap:8px;justify-content:flex-end"><button onclick="closeModal()">Cancel</button><button class="danger" id="modal-ok-btn">Confirm</button></p>`;
+  $('#modal-ok-btn').onclick = () => { closeModal(); onOk(); };
+  m.style.display = 'flex';
+};
+window.closeModal = () => { $('#custom-modal').style.display = 'none'; };
+
+let U=null, IS_SUPER=false, IS_ADMIN=false, KNOWN_SINGERS=[], ALL_SONGS=[], MAX_ID_NUM=209;
+let CONF_CACHE = {};
+let PUB_CACHE = null;
+let currentRound = 1;
+let SOTD_LIST = [];
+let songListTab = 'today';
+let songArchivesExpanded = false;
+let selectedSingerFilter = '';
+let searchSongKeyword = '';
+let PRACTICE_COUNTER = 0;
+let backupDirHandle = null; // Optional Desktop File System Access folder handle
+
+let LIVE = {
+  date: tdy(),
+  singers: [],
+  performances: []
+};
+
+// Fuzzy singer name resolver (e.g., "SHEETAL" -> "SHEETAL PONALA" if unique match in KNOWN_SINGERS)
+function resolveCanonicalSingerName(rawName) {
+  const clean = (rawName || '').trim().toUpperCase();
+  if (!clean) return '';
+  if (KNOWN_SINGERS.includes(clean)) return clean;
+  const prefixMatches = KNOWN_SINGERS.filter(k => k.startsWith(clean + ' '));
+  if (prefixMatches.length === 1) return prefixMatches[0];
+  return clean;
+}
+
+let syncTimer = null;
+function syncToFirestore() {
+  if (!isWithinLiveSchedule()) return; // Off-schedule practice never touches live cloud state
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(async () => {
+    try {
+      await setDoc(doc(fs, 'live', 'session'), {
+        date: LIVE.date,
+        currentRound: currentRound,
+        singers: LIVE.singers,
+        performances: LIVE.performances,
+        sotdList: SOTD_LIST,
+        updatedAt: Date.now(),
+        active: true
+      });
+    } catch (err) {
+      console.warn('Live cloud sync warning:', err);
+    }
+  }, 120);
+}
+
+let permSyncTimer = null;
+function persistLockedSongToPub(perf) {
+  if (!isWithinLiveSchedule() || !perf || !perf.song || !perf.songId || !perf.locked) return;
+
+  const idx = ALL_SONGS.findIndex(r => r[0] === perf.songId);
+  const tuple = [perf.songId, LIVE.date, perf.singer, perf.song];
+  if (idx >= 0) ALL_SONGS[idx] = tuple;
+  else ALL_SONGS.push(tuple);
+  ALL_SONGS.sort(cmpBySongId);
+
+  clearTimeout(permSyncTimer);
+  permSyncTimer = setTimeout(async () => {
+    try {
+      const mo = LIVE.date.slice(0, 7);
+      const mDocRef = doc(fs, 'pub', 'songs_' + mo);
+      const mDoc = await getDoc(mDocRef);
+      let mSongs = mDoc.exists() ? JSON.parse(mDoc.data().json || '[]') : [];
+
+      const lockedToday = LIVE.performances.filter(p => p.song && p.songId && p.locked);
+      lockedToday.forEach(lp => {
+        const existingIdx = mSongs.findIndex(r => r[0] === lp.songId);
+        const row = [lp.songId, LIVE.date, lp.singer, lp.song];
+        if (existingIdx >= 0) mSongs[existingIdx] = row;
+        else mSongs.push(row);
+      });
+      mSongs.sort(cmpBySongId);
+
+      await setDoc(mDocRef, {
+        json: JSON.stringify(mSongs),
+        n: mSongs.length,
+        ts: LIVE.date
+      });
+    } catch (err) {
+      console.warn('Permanent Song Lock sync warning:', err);
+    }
+  }, 300);
+}
+
+function saveLocal(){
+  if (!isWithinLiveSchedule()) {
+    try{ sessionStorage.setItem('sfh_practice_session', JSON.stringify({LIVE, currentRound, SOTD_LIST, PRACTICE_COUNTER})); }catch(x){}
+    return;
+  }
+  try{ localStorage.setItem('sfh_live_session_'+LIVE.date, JSON.stringify({LIVE, currentRound, SOTD_LIST})); }catch(x){}
+  syncToFirestore();
+}
+
+function loadLocal(){
+  if (!isWithinLiveSchedule()) {
+    try{
+      const d = sessionStorage.getItem('sfh_practice_session');
+      if(d){
+        const parsed = JSON.parse(d);
+        if(parsed.LIVE) LIVE = parsed.LIVE;
+        if(parsed.currentRound) currentRound = parsed.currentRound;
+        if(parsed.SOTD_LIST) SOTD_LIST = parsed.SOTD_LIST;
+        if(parsed.PRACTICE_COUNTER) PRACTICE_COUNTER = parsed.PRACTICE_COUNTER;
+      }
+    }catch(x){}
+    return;
+  }
+  try{
+    const d = localStorage.getItem('sfh_live_session_'+LIVE.date);
+    if(d){
+      const parsed = JSON.parse(d);
+      if(parsed.LIVE) LIVE = parsed.LIVE;
+      if(parsed.currentRound) currentRound = parsed.currentRound;
+      if(parsed.SOTD_LIST) SOTD_LIST = parsed.SOTD_LIST;
+    }
+  }catch(x){}
+}
+
+// Automatic Real-Time Sync of Participants' Declared Songs (NO BUTTON NEEDED)
+let plansUnsub = null;
+function startAutoSyncDeclaredSingers() {
+  if (plansUnsub) { plansUnsub(); plansUnsub = null; }
+  const qPlans = query(collection(fs, 'plans'), where('date', '==', LIVE.date));
+  plansUnsub = onSnapshot(qPlans, snap => {
+    const declaredList = snap.docs.map(d => d.data()).sort((a, b) => (a.ts || 0) - (b.ts || 0));
+    let changed = false;
+
+    declaredList.forEach(plan => {
+      const canonicalName = resolveCanonicalSingerName(plan.singer);
+      if (!canonicalName) return;
+
+      // Add singer to queue automatically in declaration order if not present
+      if (!LIVE.singers.some(s => s.name === canonicalName)) {
+        const joinDate = plan.ts ? new Date(plan.ts) : new Date();
+        LIVE.singers.push({
+          name: canonicalName,
+          joinTime: joinDate.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', hour12:true}),
+          eligible: isBeforeCutoff(joinDate),
+          autoSynced: true
+        });
+        changed = true;
+      }
+
+      // Pre-fill Round 1, Round 2, Round 3 song titles from their declared songs (if slot is empty and not locked)
+      const declaredSongs = Array.isArray(plan.songs) ? plan.songs : [];
+      [1, 2, 3].forEach((rnd, idx) => {
+        const p = getOrCreatePerf(canonicalName, rnd);
+        const dSong = (declaredSongs[idx] || '').trim().toUpperCase();
+        if (dSong && !p.locked && !p.song) {
+          p.song = dSong;
+          p.repeatCount = checkRepeat(dSong);
+          if (!p.songId) {
+            p.songId = getNextSongId();
+          }
+          if (isWithinLiveSchedule()) {
+            p.locked = true;
+            persistLockedSongToPub(p);
+          }
+          changed = true;
+        }
+      });
+    });
+
+    if (changed) {
+      saveLocal();
+      draw();
+    }
+  }, err => {
+    console.warn("Auto-sync plans listener warning:", err);
+  });
+}
+
+async function init(){
+  try {
+    const cfgSnap = await getDoc(doc(fs, 'config', 'app'));
+    if (cfgSnap.exists()) {
+      CONF_CACHE = cfgSnap.data();
+      if (CONF_CACHE.schedule) {
+        SCHEDULE = { ...SCHEDULE, ...CONF_CACHE.schedule };
+      }
+    }
+  } catch (ce) {}
+
+  lastScheduleMode = isWithinLiveSchedule();
+  LIVE = { date: tdy(), singers: [], performances: [] };
+  SOTD_LIST = [];
+  currentRound = 1;
+  loadLocal();
+
+  try {
+    const pubData = await getDoc(doc(fs, 'pub', 'data'));
+    if(pubData.exists()){
+      PUB_CACHE = pubData.data();
+      KNOWN_SINGERS = PUB_CACHE.singers || [];
+    }
+  } catch(e) {
+    console.warn("Singer directory fetch bypassed:", e);
+  }
+
+  try {
+    const ix = await getDoc(doc(fs, 'pub', 'idx'));
+    if(ix.exists()){
+      const ms = Object.keys(ix.data().months || {}).sort();
+      const ds = await Promise.all(ms.map(m => getDoc(doc(fs, 'pub', 'songs_' + m))));
+      ALL_SONGS = [].concat(...ds.map(d => d.exists() ? JSON.parse(d.data().json || '[]') : []));
+    } else {
+      const b = await getDoc(doc(fs, 'pub', 'songs'));
+      if(b.exists()){
+        ALL_SONGS = b.data().json ? JSON.parse(b.data().json) : (b.data().list || []);
+      }
+    }
+    const existingIds = new Set(ALL_SONGS.map(r => r[0]));
+    NOV16_SONGS.forEach(row => {
+      if (!existingIds.has(row[0])) ALL_SONGS.push(row);
+    });
+    ALL_SONGS.sort(cmpBySongId);
+
+    MAX_ID_NUM = 0;
+    ALL_SONGS.forEach(r => {
+      let num = parseSongNum(r[0]);
+      if(num > 143 && String(r[0]).includes('0144')) num = 143;
+      if(num > MAX_ID_NUM) MAX_ID_NUM = num;
+    });
+  } catch(x) {
+    console.warn("Songs catalog fetch bypassed:", x);
+  }
+
+  // In Live Production Mode, load any already-locked songs for today so they stay locked across reloads
+  if (isWithinLiveSchedule()) {
+    const todayPubSongs = ALL_SONGS.filter(r => r[1] === LIVE.date);
+    todayPubSongs.forEach(r => {
+      const [sId, dt, sName, sTitle] = r;
+      if (!LIVE.singers.some(s => s.name === sName)) {
+        LIVE.singers.push({ name: sName, joinTime: 'Locked', eligible: true });
+      }
+      let existing = LIVE.performances.find(p => p.songId === sId);
+      if (!existing) {
+        LIVE.performances.push({
+          round: 1,
+          singer: sName,
+          song: sTitle,
+          songId: sId,
+          locked: true,
+          stars: [false, false, false, false, false],
+          repeatCount: Math.max(0, checkRepeat(sTitle) - 1),
+          meta: {}
+        });
+      } else {
+        existing.locked = true;
+      }
+    });
+  }
+
+  startAutoSyncDeclaredSingers();
+  draw();
+}
+
+onAuthStateChanged(auth, async u => {
+  U = u;
+  if(!u){
+    $('#app').innerHTML = `<div class="c"><h2>Access Restricted</h2><p>Please sign in from the main app first.</p><p><button class="pri" onclick="location.href='index.html'">Back to Main App</button></p></div>`;
+    return;
+  }
+  
+  const em = (u.email || '').toLowerCase();
+  const verified = u.emailVerified === true;
+  IS_SUPER = (CFG.superadmins || []).map(x => x.toLowerCase()).includes(em) && verified;
+
+  try {
+    const udoc = await getDoc(doc(fs, 'users', u.uid));
+    const p = udoc.exists() ? udoc.data() : {};
+    IS_ADMIN = IS_SUPER || (p.status === 'approved' && p.role === 'admin');
+  } catch(err) {
+    IS_ADMIN = IS_SUPER;
+  }
+
+  if(!IS_ADMIN){
+    $('#app').innerHTML = `<div class="c"><h2>Access Restricted</h2><p>The Live Session Console is reserved for Superadmins and Admins.</p><button class="pri" onclick="location.href='index.html'">Back to Main App</button></div>`;
+    return;
+  }
+
+  await init();
+});
+
+function getNextSongId(){
+  if (!isWithinLiveSchedule()) {
+    PRACTICE_COUNTER++;
+    return 'P-' + String(PRACTICE_COUNTER).padStart(4, '0');
+  }
+  let highest = MAX_ID_NUM;
+  ALL_SONGS.forEach(r => {
+    const num = parseSongNum(r[0]);
+    if(num > highest) highest = num;
+  });
+  LIVE.performances.forEach(p => {
+    const num = parseSongNum(p.songId);
+    if(num > highest) highest = num;
+  });
+  return 'S-' + String(highest + 1).padStart(4, '0');
+}
+
+function checkRepeat(songTitle){
+  if(!songTitle) return 0;
+  const t = songTitle.trim().toUpperCase();
+  let cnt = 0;
+  ALL_SONGS.forEach(r => { if(String(r[3]||'').trim().toUpperCase() === t) cnt++; });
+  if (!isWithinLiveSchedule()) {
+    LIVE.performances.forEach(r => { if(String(r.song||'').trim().toUpperCase() === t) cnt++; });
+  }
+  return cnt;
+}
+
+function getOrCreatePerf(singerName, round) {
+  let p = LIVE.performances.find(x => x.singer === singerName && x.round === round);
+  if (!p) {
+    p = {
+      round,
+      singer: singerName,
+      song: '',
+      songId: '',
+      locked: false,
+      stars: [false, false, false, false, false],
+      repeatCount: 0,
+      meta: {}
+    };
+    LIVE.performances.push(p);
+  }
+  return p;
+}
+
+window.addSinger = () => {
+  if(LIVE.singers.length >= 59){
+    showNotice('Session capacity reached.');
+    return;
+  }
+  const inp = $('#in_singer');
+  const name = resolveCanonicalSingerName(inp.value);
+  if(!name){ showNotice('Please enter or select singer name.'); return; }
+  if(LIVE.singers.some(s => s.name === name)){ showNotice('Singer already in session.'); return; }
+
+  LIVE.singers.push({
+    name,
+    joinTime: curTime(),
+    eligible: isBeforeCutoff(new Date())
+  });
+
+  getOrCreatePerf(name, 1);
+  getOrCreatePerf(name, 2);
+  getOrCreatePerf(name, 3);
+
+  inp.value = '';
+  saveLocal();
+  draw();
+};
+
+window.removeSinger = (idx) => {
+  const s = LIVE.singers[idx];
+  if (!s) return;
+  const hasLockedSong = LIVE.performances.some(p => p.singer === s.name && p.locked && p.songId);
+  if (hasLockedSong && isWithinLiveSchedule()) {
+    showNotice(`Cannot remove ${s.name} because they have a permanently locked Song ID.\n\nYou must individually delete their locked song(s) one by one first.`, "Locked Song Protection");
+    return;
+  }
+
+  showConfirm('Remove ' + s.name + ' from today\'s singing order?', () => {
+    const name = s.name;
+    LIVE.singers.splice(idx, 1);
+    LIVE.performances = LIVE.performances.filter(p => p.singer !== name);
+    saveLocal();
+    draw();
+  });
+};
+
+window.onSongInput = (singerName, round) => {
+  const sIdSanitized = round + '_' + singerName.replace(/[^a-zA-Z0-9]/g, '_');
+  const songInp = $('#sg_' + sIdSanitized);
+  const p = getOrCreatePerf(singerName, round);
+
+  if (p.locked && isWithinLiveSchedule()) {
+    songInp.value = p.song;
+    return;
+  }
+
+  const song = (songInp.value || '').trim().toUpperCase();
+  const repEl = $('#rep_' + sIdSanitized);
+  const idEl = $('#id_' + sIdSanitized);
+
+  if(!song){
+    p.song = '';
+    p.repeatCount = 0;
+    if(repEl) repEl.innerHTML = '';
+    if(idEl) idEl.innerHTML = '<span class="m">-</span>';
+    saveLocal();
+    drawSOTDSection();
+    renderSongListSection();
+    return;
+  }
+
+  const rep = checkRepeat(song);
+  p.song = song;
+  p.repeatCount = rep;
+  if (!p.songId) {
+    p.songId = getNextSongId();
+  }
+
+  if(repEl){
+    repEl.innerHTML = rep > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${rep})</span>` : '';
+  }
+  if(idEl){
+    idEl.innerHTML = `<b>${p.songId}</b>`;
+  }
+
+  saveLocal();
+  drawSOTDSection();
+  renderSongListSection();
+};
+
+window.lockSongEntry = (singerName, round) => {
+  const p = getOrCreatePerf(singerName, round);
+  if (p && p.song && p.songId && !p.locked && isWithinLiveSchedule()) {
+    p.locked = true;
+    saveLocal();
+    persistLockedSongToPub(p);
+    draw();
+  }
+};
+
+window.deleteSingleLockedSong = (songId) => {
+  const p = LIVE.performances.find(x => x.songId === songId);
+  const label = p ? `${p.songId} — ${p.song} (${p.singer})` : songId;
+
+  showConfirm(`Permanently delete this single song entry?\n\n${label}\n\n(Only this individual song will be removed.)`, async () => {
+    LIVE.performances = LIVE.performances.filter(x => x.songId !== songId);
+
+    if (isWithinLiveSchedule()) {
+      ALL_SONGS = ALL_SONGS.filter(r => r[0] !== songId);
+      try {
+        const mo = LIVE.date.slice(0, 7);
+        const mDocRef = doc(fs, 'pub', 'songs_' + mo);
+        const mDoc = await getDoc(mDocRef);
+        if (mDoc.exists()) {
+          let mSongs = JSON.parse(mDoc.data().json || '[]');
+          mSongs = mSongs.filter(r => r[0] !== songId);
+          await setDoc(mDocRef, {
+            json: JSON.stringify(mSongs),
+            n: mSongs.length,
+            ts: LIVE.date
+          });
+        }
+      } catch (err) {
+        console.warn("Single delete Firestore sync:", err);
+      }
+    }
+
+    saveLocal();
+    draw();
+    showNotice(`Deleted ${songId}.`, "Song Removed");
+  }, "Delete Individual Song");
+};
+
+window.openMeta = (singerName, round) => {
+  const p = getOrCreatePerf(singerName, round);
+  const songTitle = p.song ? p.song : 'New Song';
+  const meta = p.meta || {};
+
+  const m = $('#custom-modal');
+  $('#custom-modal-body').innerHTML = `
+    <h3>Song Details: ${e(songTitle)}</h3>
+    <div class="meta-field-group">
+      <label>Original Singer
+        <input id="meta_orig" value="${e(meta.orig||'')}" placeholder="e.g. Kishore Kumar, Lata Mangeshkar">
+      </label>
+      <label>Music Composer
+        <input id="meta_comp" value="${e(meta.comp||'')}" placeholder="e.g. R. D. Burman, Shankar Jaikishan">
+      </label>
+      <label>Lyricist
+        <input id="meta_lyr" value="${e(meta.lyr||'')}" placeholder="e.g. Anand Bakshi, Majrooh Sultanpuri">
+      </label>
+      <label>Movie / Album Name
+        <input id="meta_mov" value="${e(meta.mov||'')}" placeholder="e.g. Anari, Sholay">
+      </label>
+      <label>Releasing Year
+        <input id="meta_yr" type="number" placeholder="YYYY" value="${e(meta.yr||'')}">
+      </label>
+      <label>Lead Actor / Star
+        <input id="meta_act" value="${e(meta.act||'')}" placeholder="e.g. Raj Kapoor, Amitabh Bachchan">
+      </label>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+      <button onclick="closeModal()">Cancel</button>
+      <button class="pri" onclick="saveMeta('${e(singerName)}', ${round})">Save Details</button>
+    </div>
+  `;
+  m.style.display = 'flex';
+};
+
+window.saveMeta = (singerName, round) => {
+  const p = getOrCreatePerf(singerName, round);
+  p.meta = {
+    orig: ($('#meta_orig').value||'').trim(),
+    comp: ($('#meta_comp').value||'').trim(),
+    lyr: ($('#meta_lyr').value||'').trim(),
+    mov: ($('#meta_mov').value||'').trim(),
+    yr: ($('#meta_yr').value||'').trim(),
+    act: ($('#meta_act').value||'').trim()
+  };
+  saveLocal();
+  closeModal();
+};
+
+window.toggleStar = (singerName, round, starIdx) => {
+  const p = getOrCreatePerf(singerName, round);
+  p.stars[starIdx] = !p.stars[starIdx];
+  saveLocal();
+
+  const sKey = round + '_' + singerName.replace(/[^a-zA-Z0-9]/g, '_');
+  const starSpan = document.getElementById(`star_${sKey}_${starIdx}`);
+  const scoreText = document.getElementById(`score_txt_${sKey}`);
+
+  if (starSpan) {
+    if (p.stars[starIdx]) starSpan.classList.add('active');
+    else starSpan.classList.remove('active');
+  }
+  if (scoreText) {
+    const starCount = p.stars.filter(Boolean).length;
+    scoreText.textContent = `(${starCount}/5)`;
+  }
+
+  drawSOTDSection();
+};
+
+window.setRound = (r) => {
+  currentRound = r;
+  saveLocal();
+  draw();
+};
+
+window.selectSuggestedSOTD = (name) => {
+  const sel = $('#sotd_winner');
+  if (sel) sel.value = name;
+  const mode = $('#sotd_mode');
+  if (mode) mode.value = 'score';
+};
+
+window.addSOTD = () => {
+  const winner = $('#sotd_winner').value;
+  const mode = $('#sotd_mode').value;
+  const reason = $('#sotd_reason').value.trim();
+  if(!winner){ showNotice('Please choose an SOTD singer.'); return; }
+  if(SOTD_LIST.some(x => x.n === winner)){ showNotice(winner + ' is already declared as SOTD.'); return; }
+
+  SOTD_LIST.push({
+    n: winner,
+    h: mode === 'special' ? 'Special' : mode === 'quiz' ? 'Quiz' : 'Score',
+    reason
+  });
+  $('#sotd_reason').value = '';
+  saveLocal();
+  draw();
+};
+
+window.removeSOTD = (idx) => {
+  SOTD_LIST.splice(idx, 1);
+  saveLocal();
+  draw();
+};
+
+// Optional Desktop Chrome/Edge Folder Picker for silent offline backup saves
+window.linkOfflineBackupFolder = async () => {
+  if (!window.showDirectoryPicker) {
+    showNotice("Your mobile browser automatically saves backups into your Downloads folder whenever you press End.\n\n(Direct folder linking is only available on Desktop Chrome/Edge.)", "Offline Backup Info");
+    return;
+  }
+  try {
+    backupDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    showNotice(`Linked offline folder "${backupDirHandle.name}"! Every End Session will save the timestamped JSON backup directly inside it.`, "Folder Linked");
+  } catch (err) {
+    if (err.name !== 'AbortError') showNotice("Folder link cancelled.");
+  }
+};
+
+// Generates complete timestamped Master Backup JSON (SFH_Master_Backup_YYYY-MM-DD_HH-MM.json)
+async function buildAndSaveMasterBackup(songsSnapshot, pDataSnapshot, sotmSnapshot) {
+  const now = new Date();
+  const stamp = LIVE.date + '_' + String(now.getHours()).padStart(2,'0') + '-' + String(now.getMinutes()).padStart(2,'0');
+  const fileName = `SFH_Master_Backup_${stamp}.json`;
+
+  const masterObj = {
+    kind: 'sfh-master-backup',
+    version: 'v25',
+    generatedAt: now.toISOString(),
+    ts: LIVE.date + ' ' + curTime(),
+    songs: songsSnapshot.slice().sort(cmpBySongId),
+    singers: pDataSnapshot.singers || KNOWN_SINGERS,
+    sotd: pDataSnapshot.sotd || [],
+    som: pDataSnapshot.som || {},
+    somd: pDataSnapshot.somd || {},
+    stars: pDataSnapshot.stars || {},
+    holidays: CONF_CACHE.holidays || [],
+    schedule: SCHEDULE,
+    sotmResult: sotmSnapshot || null
+  };
+
+  const jsonStr = JSON.stringify(masterObj, null, 2);
+
+  // If user linked a desktop directory handle, write directly to that folder
+  if (backupDirHandle) {
+    try {
+      const fileHandle = await backupDirHandle.getFileHandle(fileName, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(jsonStr);
+      await writable.close();
+      return fileName;
+    } catch (e) {
+      console.warn("Directory write fallback to standard download:", e);
+    }
+  }
+
+  // Standard cross-platform offline download (Android Chrome + Desktop)
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
+  return fileName;
+}
+
+window.downloadBackupJSON = async () => {
+  const performed = LIVE.performances.filter(p => p.song);
+  const outSongs = ALL_SONGS.filter(r => r[1] !== LIVE.date);
+  performed.forEach(p => {
+    outSongs.push([p.songId, LIVE.date, p.singer, p.song]);
+  });
+  outSongs.sort(cmpBySongId);
+
+  const pDataSnap = PUB_CACHE || { singers: KNOWN_SINGERS, sotd: [], som: {}, somd: {}, stars: {} };
+  const fname = await buildAndSaveMasterBackup(outSongs, pDataSnap, null);
+  showNotice(`Master Backup saved offline as:\n${fname}\n\nKeep this file safe—you can restore 100% of your data from Admin even if cloud records are flushed.`, "Offline Master Backup Saved");
+};
+
+// Automatic End-of-Week Attendance Evaluation (runs on last scheduled day of week, e.g. Friday)
+async function runAutomaticWeeklyAttendanceIfEndOfWeek(allSongsList, pData) {
+  const todayObj = new Date(LIVE.date + 'T00:00:00');
+  const todayDay = todayObj.getDay();
+  const maxSchedDay = Math.max(...SCHEDULE.days);
+  if (todayDay !== maxSchedDay) return 0; // Only evaluate at the end of the scheduled week
+
+  // Compute Monday of current week
+  const diff = todayObj.getDate() - todayDay + (todayDay === 0 ? -6 : 1);
+  const monDate = new Date(new Date(todayObj).setDate(diff));
+  const weekDates = [];
+  for (let i = 0; i < 5; i++) {
+    const dt = new Date(monDate.getFullYear(), monDate.getMonth(), monDate.getDate() + i);
+    weekDates.push(dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0'));
+  }
+
+  const holidays = Array.isArray(CONF_CACHE.holidays) ? CONF_CACHE.holidays : [];
+  const weekHolidays = weekDates.filter(d => holidays.includes(d));
+  const requiredDays = Math.max(1, 3 - weekHolidays.length);
+
+  // Detect first ever appearance date for new-joiner mid-week exemption
+  const firstDateMap = {};
+  allSongsList.forEach(r => {
+    const sg = String(r[2]||'').trim().toUpperCase();
+    const dt = String(r[1]||'');
+    if (sg && dt && (!firstDateMap[sg] || dt < firstDateMap[sg])) firstDateMap[sg] = dt;
+  });
+
+  // Load approved users to deliver automated inbox messages
+  let usersList = [];
+  try {
+    const uSnap = await getDocs(collection(fs, 'users'));
+    usersList = uSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {}
+
+  const starsObj = pData.stars || {};
+  let deductedCount = 0;
+
+  for (const [singerName, starObj] of Object.entries(starsObj)) {
+    const curStars = starObj.t || 0;
+    if (curStars <= 0) continue;
+
+    const attended = new Set();
+    allSongsList.forEach(r => {
+      if (String(r[2]||'').trim().toUpperCase() === singerName && weekDates.includes(r[1])) {
+        attended.add(r[1]);
+      }
+    });
+
+    const firstDate = firstDateMap[singerName] || '';
+    const isNewJoiner = firstDate && weekDates.includes(firstDate) && firstDate > weekDates[0];
+
+    if (attended.size < requiredDays && !isNewJoiner) {
+      const nextStars = Math.max(0, curStars - 1);
+      starsObj[singerName].t = nextStars;
+      deductedCount++;
+
+      const userRec = usersList.find(u => String(u.singer||'').trim().toUpperCase() === singerName);
+      if (userRec) {
+        try {
+          await addDoc(collection(fs, 'msgs'), {
+            title: 'Weekly Attendance & Star Update',
+            body: `Hello ${singerName},\n\nPer the SING FROM HOME attendance rule (minimum ${requiredDays} session(s) required this week), you attended ${attended.size} session(s).\n\n1 star has been deducted (${curStars} ★ → ${nextStars} ★). Attend at least 3 sessions next week to keep your stars safe!`,
+            to: userRec.id,
+            toName: singerName,
+            ts: Date.now()
+          });
+        } catch (me) {}
+      }
+    }
+  }
+
+  pData.stars = starsObj;
+  return deductedCount;
+}
+
+window.copyWhatsAppSummary = () => {
+  const ta = $('#wa_summary_box');
+  if (!ta) return;
+  ta.select();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(ta.value).then(() => showNotice('WhatsApp summary copied!'));
+  } else {
+    document.execCommand('copy');
+    showNotice('WhatsApp summary copied!');
+  }
+};
+
+window.endSession = async () => {
+  if (!isWithinLiveSchedule()) {
+    showConfirm("Finish Off-Schedule Practice Session?\n\nAll practice entries will be cleared cleanly without affecting your live database.", () => {
+      try { sessionStorage.removeItem('sfh_practice_session'); } catch(x){}
+      PRACTICE_COUNTER = 0;
+      LIVE = { date: tdy(), singers: [], performances: [] };
+      SOTD_LIST = [];
+      currentRound = 1;
+      draw();
+      showNotice("Practice session cleared.");
+    }, "Finish Practice Session");
+    return;
+  }
+
+  showConfirm("End & Publish today's live session?\n\n• Permanently publishes all songs, stars & SOTDs\n• Automatically generates a timestamped offline Master Backup JSON file\n• Runs weekly attendance check if today is the final session of the week", async () => {
+    try {
+      const performed = LIVE.performances.filter(p => p.song).slice().sort(cmpBySongId);
+      performed.forEach(p => { p.locked = true; });
+      const mo = LIVE.date.slice(0, 7);
+
+      const mDocRef = doc(fs, 'pub', 'songs_' + mo);
+      const mDoc = await getDoc(mDocRef);
+      let mSongs = mDoc.exists() ? JSON.parse(mDoc.data().json || '[]') : [];
+
+      mSongs = mSongs.filter(r => r[1] !== LIVE.date);
+      performed.forEach(p => {
+        mSongs.push([p.songId, LIVE.date, p.singer, p.song]);
+      });
+      mSongs.sort(cmpBySongId);
+
+      await setDoc(mDocRef, {
+        json: JSON.stringify(mSongs),
+        n: mSongs.length,
+        ts: LIVE.date
+      });
+
+      const dataDocRef = doc(fs, 'pub', 'data');
+      const dataDoc = await getDoc(dataDocRef);
+      let pData = dataDoc.exists() ? dataDoc.data() : {singers:[], sotd:[], stars:{}};
+
+      let sotdArr = pData.sotd || [];
+      sotdArr = sotdArr.filter(x => x.d !== LIVE.date);
+      if(SOTD_LIST.length){
+        sotdArr.push({
+          d: LIVE.date,
+          l: SOTD_LIST.map(x => ({n: x.n, h: x.h}))
+        });
+      }
+
+      let starsObj = pData.stars || {};
+      SOTD_LIST.forEach(sWinner => {
+        const sk = sWinner.n.toUpperCase();
+        starsObj[sk] = starsObj[sk] || {t: 0, d: [], m: {}};
+        if(!starsObj[sk].d.includes(LIVE.date)){
+          starsObj[sk].d.push(LIVE.date);
+          starsObj[sk].t = (starsObj[sk].t || 0) + 1;
+        }
+      });
+
+      LIVE.singers.forEach(s => {
+        if(!pData.singers.includes(s.name)) pData.singers.push(s.name);
+      });
+      pData.singers.sort();
+      pData.sotd = sotdArr;
+      pData.stars = starsObj;
+      pData.ts = LIVE.date;
+
+      // Merge updated month songs into ALL_SONGS
+      const fullSongs = ALL_SONGS.filter(r => r[1] !== LIVE.date);
+      performed.forEach(p => fullSongs.push([p.songId, LIVE.date, p.singer, p.song]));
+      fullSongs.sort(cmpBySongId);
+
+      // Run automatic weekly attendance check if today is the last scheduled day of the week
+      const autoDeducted = await runAutomaticWeeklyAttendanceIfEndOfWeek(fullSongs, pData);
+
+      await setDoc(dataDocRef, pData);
+
+      await setDoc(doc(fs, 'live', 'session'), {
+        date: LIVE.date,
+        active: false,
+        updatedAt: Date.now()
+      });
+
+      try { localStorage.removeItem('sfh_live_session_' + LIVE.date); } catch(x){}
+
+      // Fetch SOTM snapshot if present & automatically save timestamped offline Master Backup JSON
+      let sotmSnapData = null;
+      try {
+        const ss = await getDoc(doc(fs, 'pub', 'sotm'));
+        if (ss.exists()) sotmSnapData = ss.data();
+      } catch (e) {}
+
+      const backupFileName = await buildAndSaveMasterBackup(fullSongs, pData, sotmSnapData);
+
+      // Generate ready-to-copy WhatsApp Daily Summary
+      const finalists = Object.entries(pData.stars || {}).filter(([n, o]) => (o.t || 0) >= 4).map(([n]) => n);
+      const waText =
+        `🎶 *SING FROM HOME — ${fd(LIVE.date)}* 🎶\n` +
+        `_A project of B. S. Tikariya Cultural Foundation ®_\n\n` +
+        (SOTD_LIST.length ? `🏆 *Singer(s) of the Day:* ${SOTD_LIST.map(w => `*${w.n}*${w.h !== 'Score' ? ' ('+w.h+')' : ''}`).join(', ')}\n\n` : '') +
+        `🎤 *Songs Performed (${performed.length}):*\n` +
+        performed.map((p, i) => `${i+1}. *${p.singer}* — ${p.song} (${p.songId})`).join('\n') +
+        (finalists.length ? `\n\n⭐ *4-Star SOTM Finalists:* ${finalists.join(', ')}` : '') +
+        `\n\n_Conducted by Tikariya's School of Music_`;
+
+      const m = $('#custom-modal');
+      $('#custom-modal-body').innerHTML = `
+        <h3>✅ Session Published & Backed Up</h3>
+        <p class="m" style="margin:6px 0">Offline Master Backup saved as:<br><b>${e(backupFileName)}</b></p>
+        ${autoDeducted > 0 ? `<p class="m" style="color:#b45309">Weekly Attendance Check: ${autoDeducted} star deduction(s) applied & notified.</p>` : ''}
+        <label style="display:block;font-size:12px;font-weight:700;margin-top:8px">WhatsApp Group Summary (Ready to Share):</label>
+        <textarea id="wa_summary_box" rows="7" style="width:100%;margin-top:4px;font-size:12.5px">${e(waText)}</textarea>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+          <button class="pri" onclick="copyWhatsAppSummary()">Copy for WhatsApp</button>
+          <button onclick="location.href='index.html'">Done → Home</button>
+        </div>
+      `;
+      m.style.display = 'flex';
+    } catch(err) {
+      showNotice("Error saving session: " + (err.code || err.message), "Error");
+    }
+  }, "End & Publish Session");
+};
+
+function getRankedSOTDCandidates() {
+  const eligibleSingers = LIVE.singers.filter(s => s.eligible);
+  return eligibleSingers.map(s => {
+    const perfs = LIVE.performances.filter(p => p.singer === s.name && p.song);
+    const count = perfs.length;
+    const totalStars = perfs.reduce((sum, p) => sum + (p.stars || []).filter(Boolean).length, 0);
+    const avg = count > 0 ? (totalStars / count) : 0;
+    return {
+      name: s.name,
+      songsSung: count,
+      totalStars,
+      avgStars: parseFloat(avg.toFixed(1))
+    };
+  }).sort((a, b) => b.totalStars - a.totalStars || b.avgStars - a.avgStars || b.songsSung - a.songsSung);
+}
+
+function renderSOTDHTML() {
+  const ranked = getRankedSOTDCandidates();
+  const topSuggestions = ranked.filter(r => r.totalStars > 0);
+
+  return `
+    <b>Declare Singer(s) of the Day (SOTD)</b>
+
+    ${topSuggestions.length ? `
+      <div style="margin:8px 0 10px;padding:8px 10px;background:var(--ac-light);border-radius:8px;border:1px solid var(--bd)">
+        <span style="font-size:12px;font-weight:700;color:var(--ac)">⭐ Top Suggestions (Highest Score & Average):</span>
+        <div class="row" style="margin-top:6px;gap:6px">
+          ${topSuggestions.slice(0, 4).map(c => `
+            <button type="button" class="sotd-sug-chip" onclick="selectSuggestedSOTD('${e(c.name)}')">
+              <b>${e(c.name)}</b>: ${c.totalStars}★ <span class="m">(Avg: ${c.avgStars}★)</span>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    ` : ''}
+
+    <div class="f">
+      <select id="sotd_winner">
+        <option value="">Choose SOTD Singer…</option>
+        ${ranked.map(c => `<option value="${e(c.name)}">${e(c.name)}${c.totalStars > 0 ? ` — ${c.totalStars}★ (Avg: ${c.avgStars})` : ''}</option>`).join('')}
+      </select>
+      <select id="sotd_mode">
+        <option value="score">By Score</option>
+        <option value="quiz">By Quiz</option>
+        <option value="special">Special Moments (Encouragement)</option>
+      </select>
+      <input id="sotd_reason" placeholder="Optional notes / Quiz song">
+    </div>
+    <p style="margin:8px 0"><button class="pri" onclick="addSOTD()">+ Add SOTD Winner</button></p>
+
+    ${SOTD_LIST.length ? `
+      <div class="tbl" style="margin-top:8px"><table>
+        <tr><th>#</th><th>Winner Singer</th><th>Selection Mode</th><th>Notes</th><th style="text-align:center">Action</th></tr>
+        ${SOTD_LIST.map((w, wIdx) => `<tr>
+          <td>${wIdx+1}</td>
+          <td><b>${e(w.n)}</b></td>
+          <td><span class="badge-ok">${e(w.h)}</span></td>
+          <td>${e(w.reason||'-')}</td>
+          <td style="text-align:center"><button onclick="removeSOTD(${wIdx})">Remove</button></td>
+        </tr>`).join('')}
+      </table></div>
+    ` : '<p class="m">No SOTD declared yet for today.</p>'}
+  `;
+}
+
+function drawSOTDSection() {
+  const container = document.getElementById('sotd_section_card');
+  if (container) {
+    const curVal = $('#sotd_winner') ? $('#sotd_winner').value : '';
+    const curMode = $('#sotd_mode') ? $('#sotd_mode').value : 'score';
+    const curReason = $('#sotd_reason') ? $('#sotd_reason').value : '';
+    container.innerHTML = renderSOTDHTML();
+    if (curVal && $('#sotd_winner')) $('#sotd_winner').value = curVal;
+    if (curMode && $('#sotd_mode')) $('#sotd_mode').value = curMode;
+    if (curReason && $('#sotd_reason')) $('#sotd_reason').value = curReason;
+  }
+}
+
+function getAllArchiveSongs() {
+  const t = LIVE.date;
+  const hist = ALL_SONGS.filter(r => r[1] !== t);
+  const todayLive = isWithinLiveSchedule()
+    ? LIVE.performances.filter(p => p.song).map(p => [p.songId, t, p.singer, p.song])
+    : ALL_SONGS.filter(r => r[1] === t);
+  return [...hist, ...todayLive].sort(cmpBySongId);
+}
+
+window.toggleSongArchives = () => {
+  songArchivesExpanded = !songArchivesExpanded;
+  renderSongListSection();
+};
+
+window.setSongTab = (t) => {
+  songListTab = t;
+  renderSongListSection();
+};
+
+window.setSongSingerFilter = (name) => {
+  selectedSingerFilter = name;
+  renderSongListSection();
+};
+
+window.setSongSearchKeyword = (kw) => {
+  searchSongKeyword = (kw || '').trim().toUpperCase();
+  renderSongListSection();
+};
+
+window.downloadSongListPDF = async () => {
+  if(!window.html2canvas || !window.jspdf){
+    showNotice('PDF engine loading, please wait a moment.');
+    return;
+  }
+
+  const renderSlot = document.getElementById('pdf-render-slot');
+  const tableContent = document.getElementById('song_list_table_wrap');
+  if(!tableContent){ return; }
+
+  let title = "Song List";
+  if(songListTab === 'today') title = `Songs Performed Today (${fd(LIVE.date)})`;
+  if(songListTab === 'month') title = `Songs Performed in Month (${LIVE.date.slice(0,7)})`;
+  if(songListTab === 'singer') title = `Song Record: ${selectedSingerFilter || 'All'}`;
+  if(songListTab === 'unique') title = `Unique Song List (No Repetition)`;
+  if(songListTab === 'all') title = `Full Master Song Directory`;
+
+  renderSlot.innerHTML = `
+    <div style="text-align:center;border-bottom:2px solid #0f3460;padding-bottom:10px;margin-bottom:12px">
+      <h2 style="margin:0;font-size:20px;color:#0f3460">SING FROM HOME</h2>
+      <p style="margin:3px 0;font-size:12px;color:#475569">A project of B. S. Tikariya Cultural Foundation ® (CIN: U88900MH2025NPL454435)</p>
+      <p style="margin:2px 0;font-size:13px"><b>${e(title)}</b> | Sorted by Song ID | Generated: ${curTime()}</p>
+    </div>
+    ${tableContent.innerHTML}
+  `;
+
+  try {
+    const canvas = await window.html2canvas(renderSlot, { scale: 2, useCORS: true, logging: false });
+    const imgData = canvas.toDataURL('image/png');
+    const {jsPDF} = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = 210;
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`SFH_${songListTab.toUpperCase()}_Songs_${LIVE.date}.pdf`);
+  } catch(err) {
+    showNotice('PDF export failed: ' + err.message);
+  } finally {
+    renderSlot.innerHTML = '';
+  }
+};
+
+function renderSongListSection() {
+  const container = document.getElementById('song_archives_card');
+  if(!container) return;
+
+  if(!songArchivesExpanded) {
+    container.innerHTML = `
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <b>Song Archives & Performance Lists</b>
+          <p class="m" style="margin:2px 0 0">Cataloged strictly by Song ID.</p>
+        </div>
+        <button class="pri" onclick="toggleSongArchives()">Show Archives ▼</button>
+      </div>
+    `;
+    return;
+  }
+
+  const allArchive = getAllArchiveSongs();
+  const curMo = LIVE.date.slice(0, 7);
+  let tableHTML = '';
+  let subControls = '';
+
+  if (songListTab === 'today') {
+    const todayRows = LIVE.performances.filter(p => p.song).slice().sort(cmpBySongId);
+    tableHTML = todayRows.length ? `
+      <div class="tbl" id="song_list_table_wrap"><table>
+        <tr>
+          <th class="col-ord">#</th>
+          <th>Song ID</th>
+          <th>Round</th>
+          <th>Singer Name</th>
+          <th>Song Title</th>
+          <th style="text-align:center">Action</th>
+        </tr>
+        ${todayRows.map((p, i) => `
+          <tr>
+            <td class="col-ord"><b>${i + 1}</b></td>
+            <td><b>${p.songId || '-'}</b></td>
+            <td>Round ${p.round}</td>
+            <td><b>${e(p.singer)}</b></td>
+            <td><b>${e(p.song)}</b></td>
+            <td style="text-align:center"><button class="danger" style="padding:2px 7px;font-size:11px" onclick="deleteSingleLockedSong('${e(p.songId)}')">Del</button></td>
+          </tr>
+        `).join('')}
+      </table></div>
+    ` : '<p class="m">No songs entered for today yet.</p>';
+  }
+  else if (songListTab === 'month') {
+    const monthRows = allArchive.filter(r => String(r[1]||'').slice(0, 7) === curMo).slice().sort(cmpBySongId);
+    tableHTML = monthRows.length ? `
+      <div class="tbl" id="song_list_table_wrap"><table>
+        <tr>
+          <th class="col-ord">#</th>
+          <th>Song ID</th>
+          <th>Date</th>
+          <th>Singer Name</th>
+          <th>Song Title</th>
+        </tr>
+        ${monthRows.map((r, i) => `
+          <tr>
+            <td class="col-ord"><b>${i + 1}</b></td>
+            <td><b>${e(r[0])}</b></td>
+            <td><span class="m">${fd(r[1])}</span></td>
+            <td><b>${e(r[2])}</b></td>
+            <td><b>${e(r[3])}</b></td>
+          </tr>
+        `).join('')}
+      </table></div>
+    ` : '<p class="m">No songs recorded for this month yet.</p>';
+  }
+  else if (songListTab === 'singer') {
+    const allSingers = [...new Set(allArchive.map(r => r[2]))].filter(Boolean).sort();
+    if(!selectedSingerFilter && allSingers.length) selectedSingerFilter = allSingers[0];
+
+    subControls = `
+      <div class="row" style="margin-bottom:8px">
+        <select onchange="setSongSingerFilter(this.value)" style="min-width:200px">
+          ${allSingers.map(s => `<option value="${e(s)}" ${s===selectedSingerFilter?'selected':''}>${e(s)}</option>`).join('')}
+        </select>
+        <span class="m">Total performed: <b>${allArchive.filter(r => r[2] === selectedSingerFilter).length}</b></span>
+      </div>
+    `;
+
+    const singerRows = allArchive.filter(r => r[2] === selectedSingerFilter).slice().sort(cmpBySongId);
+    tableHTML = singerRows.length ? `
+      <div class="tbl" id="song_list_table_wrap"><table>
+        <tr>
+          <th class="col-ord">#</th>
+          <th>Song ID</th>
+          <th>Date</th>
+          <th>Song Title</th>
+        </tr>
+        ${singerRows.map((r, i) => `
+          <tr>
+            <td class="col-ord"><b>${i + 1}</b></td>
+            <td><b>${e(r[0])}</b></td>
+            <td><span class="m">${fd(r[1])}</span></td>
+            <td><b>${e(r[3])}</b></td>
+          </tr>
+        `).join('')}
+      </table></div>
+    ` : '<p class="m">No songs found for this singer.</p>';
+  }
+  else if (songListTab === 'unique') {
+    const uniqueMap = new Map();
+    allArchive.forEach(r => {
+      const title = (r[3] || '').trim().toUpperCase();
+      if(!title) return;
+      if(!uniqueMap.has(title)) {
+        uniqueMap.set(title, { title: r[3], count: 0, firstId: r[0], singers: [] });
+      }
+      const item = uniqueMap.get(title);
+      item.count++;
+      item.singers.push({ singer: r[2], id: r[0], date: r[1] });
+    });
+
+    const uniqueList = Array.from(uniqueMap.values()).sort((a,b) => parseSongNum(a.firstId) - parseSongNum(b.firstId));
+
+    tableHTML = uniqueList.length ? `
+      <p class="m" style="margin:2px 0 6px">Showing <b>${uniqueList.length}</b> distinct songs (sorted by Song ID).</p>
+      <div class="tbl" id="song_list_table_wrap"><table>
+        <tr>
+          <th class="col-ord">#</th>
+          <th>Song ID</th>
+          <th>Song Title (No Repetition)</th>
+          <th style="width:65px;text-align:center">Sung</th>
+          <th>Performers with Song ID</th>
+        </tr>
+        ${uniqueList.map((u, i) => `
+          <tr>
+            <td class="col-ord"><b>${i + 1}</b></td>
+            <td><b>${e(u.firstId)}</b></td>
+            <td><b>${e(u.title)}</b></td>
+            <td style="text-align:center"><b>${u.count}x</b></td>
+            <td style="font-size:12px">
+              ${u.singers.map(s => `<span><b>${e(s.singer)}</b> (${e(s.id)})</span>`).join(', ')}
+            </td>
+          </tr>
+        `).join('')}
+      </table></div>
+    ` : '<p class="m">No songs cataloged yet.</p>';
+  }
+  else if (songListTab === 'all') {
+    subControls = `
+      <div class="row" style="margin-bottom:8px;justify-content:space-between">
+        <input placeholder="Search title or singer..." value="${e(searchSongKeyword)}" oninput="setSongSearchKeyword(this.value)" style="max-width:240px">
+        <button class="pri" onclick="downloadSongListPDF()">Download PDF</button>
+      </div>
+    `;
+
+    let filtered = allArchive.slice().sort(cmpBySongId);
+    if(searchSongKeyword){
+      filtered = filtered.filter(r => String(r[3]||'').toUpperCase().includes(searchSongKeyword) || String(r[2]||'').toUpperCase().includes(searchSongKeyword) || String(r[0]||'').toUpperCase().includes(searchSongKeyword));
+    }
+
+    tableHTML = filtered.length ? `
+      <p class="m" style="margin:2px 0 6px">Showing <b>${filtered.length}</b> songs sorted by Song ID.</p>
+      <div class="tbl" id="song_list_table_wrap"><table>
+        <tr>
+          <th class="col-ord">#</th>
+          <th>Song ID</th>
+          <th>Date</th>
+          <th>Singer Name</th>
+          <th>Song Title</th>
+        </tr>
+        ${filtered.map((r, i) => `
+          <tr>
+            <td class="col-ord"><b>${i + 1}</b></td>
+            <td><b>${e(r[0])}</b></td>
+            <td><span class="m">${fd(r[1])}</span></td>
+            <td><b>${e(r[2])}</b></td>
+            <td><b>${e(r[3])}</b></td>
+          </tr>
+        `).join('')}
+      </table></div>
+    ` : '<p class="m">No matching songs found.</p>';
+  }
+
+  container.innerHTML = `
+    <div class="row" style="justify-content:space-between">
+      <b>Song Archives & Performance Lists</b>
+      <div class="row">
+        ${songListTab !== 'all' ? `<button onclick="downloadSongListPDF()" style="font-size:11.5px;padding:4px 8px">Export PDF</button>` : ''}
+        <button onclick="toggleSongArchives()" style="font-size:11.5px;padding:4px 8px">Hide ▲</button>
+      </div>
+    </div>
+
+    <div class="song-nav">
+      <button class="${songListTab==='today'?'on':''}" onclick="setSongTab('today')">Today</button>
+      <button class="${songListTab==='month'?'on':''}" onclick="setSongTab('month')">Month</button>
+      <button class="${songListTab==='singer'?'on':''}" onclick="setSongTab('singer')">Singer</button>
+      <button class="${songListTab==='unique'?'on':''}" onclick="setSongTab('unique')">Unique</button>
+      <button class="${songListTab==='all'?'on':''}" onclick="setSongTab('all')">All</button>
+    </div>
+
+    ${subControls}
+    ${tableHTML}
+  `;
+}
+
+function draw(){
+  const liveNow = isWithinLiveSchedule();
+
+  $('#hb').innerHTML = `
+    <button onclick="downloadLivePDF()">PDF</button>
+    <button onclick="downloadBackupJSON()">Backup</button>
+    <button class="danger" onclick="endSession()">${liveNow ? 'End' : 'Clear'}</button>
+    <button class="pri" onclick="location.href='index.html'">Home</button>
+  `;
+
+  let h = '';
+
+  if (!liveNow) {
+    h += `<div class="practice-banner">
+      <div>
+        <b>🕒 OFF-SCHEDULE PRACTICE MODE</b>
+        <div style="font-size:12px;opacity:0.95">Scheduled Live Window: <b>${e(formatScheduleText())}</b>. Entries right now stay isolated and never affect real Song IDs or stars.</div>
+      </div>
+      <button style="background:#fff;color:#0369a1;border:0;font-weight:800;white-space:nowrap" onclick="endSession()">Reset Practice</button>
+    </div>`;
+  }
+
+  h += `<div class="c">
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <h2>${liveNow ? 'Live Session' : 'Practice Console'} · ${fd(LIVE.date)}</h2>
+        <span class="m" style="font-size:12px">Schedule: <b>${e(formatScheduleText())}</b> · Auto-syncing declared songs in real time</span>
+      </div>
+      <div class="row">
+        ${window.showDirectoryPicker ? `<button style="font-size:11.5px;padding:5px 9px" onclick="linkOfflineBackupFolder()">📁 ${backupDirHandle ? 'Folder: '+e(backupDirHandle.name) : 'Link Backup Folder'}</button>` : ''}
+        <span class="badge-round">Round ${currentRound}</span>
+      </div>
+    </div>
+    <div class="f" style="margin-top:10px">
+      <input id="in_singer" list="dl_known" placeholder="Enter Singer Name" style="text-transform:uppercase">
+      <datalist id="dl_known">
+        ${KNOWN_SINGERS.map(s => `<option value="${e(s)}">`).join('')}
+      </datalist>
+      <button class="pri" onclick="addSinger()">Add to Singing Queue</button>
+    </div>
+  </div>`;
+
+  h += `<div class="c">
+    <div class="row" style="justify-content:space-between;margin-bottom:8px">
+      <b>Singing Order & Performance Sheet</b>
+      <div class="row">
+        <button class="${currentRound===1?'on':''}" onclick="setRound(1)">Round 1</button>
+        <button class="${currentRound===2?'on':''}" onclick="setRound(2)">Round 2</button>
+        <button class="${currentRound===3?'on':''}" onclick="setRound(3)">Round 3</button>
+      </div>
+    </div>
+
+    ${LIVE.singers.length ? `
+      <div class="tbl"><table>
+        <tr>
+          <th class="col-ord">#</th>
+          <th>Singer Name</th>
+          <th>Arrival</th>
+          <th>SOTD Status</th>
+          <th>Song Title (Round ${currentRound})</th>
+          <th>Song ID</th>
+          <th style="min-width:145px">Scoring (1 to 5 Stars)</th>
+          <th style="text-align:center">Action</th>
+        </tr>
+        ${LIVE.singers.map((s, idx) => {
+          const p = getOrCreatePerf(s.name, currentRound);
+          const sKey = currentRound + '_' + s.name.replace(/[^a-zA-Z0-9]/g, '_');
+          const isEligible = s.eligible;
+          const starCount = (p.stars || []).filter(Boolean).length;
+          const isLocked = p.locked && p.song && liveNow;
+
+          return `<tr>
+            <td class="col-ord"><b>${idx + 1}</b></td>
+            <td>
+              <b>${e(s.name)}</b>
+              ${s.autoSynced ? `<span class="badge-auto" style="margin-left:5px" title="Auto-synced from Today's Declared Songs">Auto</span>` : ''}
+            </td>
+            <td><span class="m">${e(s.joinTime)}</span></td>
+            <td>${isEligible ? '<span class="badge-ok">Eligible</span>' : '<span class="badge-late">Ineligible</span>'}</td>
+            <td>
+              <div style="display:flex;align-items:center;white-space:nowrap">
+                <input id="sg_${sKey}" list="dl_allsongs" value="${e(p.song || '')}" placeholder="Type song..." style="width:200px;text-transform:uppercase" ${isLocked ? 'readonly' : ''} oninput="onSongInput('${e(s.name)}', ${currentRound})" onblur="lockSongEntry('${e(s.name)}', ${currentRound})">
+                <span id="rep_${sKey}">${p.repeatCount > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${p.repeatCount})</span>` : ''}</span>
+                ${isLocked ? `<span class="badge-lock" style="margin-left:6px" title="Permanently locked Song ID">🔒 Locked</span>` : ''}
+                <button class="btn-meta" style="margin-left:6px" onclick="openMeta('${e(s.name)}', ${currentRound})" title="Metadata (Original singer, composer, lyricist, movie)">ℹ Details</button>
+              </div>
+            </td>
+            <td id="id_${sKey}">
+              ${p.song ? `<b>${p.songId}</b>` : '<span class="m">-</span>'}
+            </td>
+            <td>
+              <div class="score-box" title="1: Announced | 2: Turn ready | 3: No mic noise | 4: Good singing | 5: Better singing">
+                ${[0,1,2,3,4].map(sIdx => `<span id="star_${sKey}_${sIdx}" class="score-star ${p.stars[sIdx]?'active':''}" onclick="toggleStar('${e(s.name)}', ${currentRound}, ${sIdx})">★</span>`).join('')}
+              </div>
+              <span id="score_txt_${sKey}" class="m" style="font-size:11px;margin-left:4px">(${starCount}/5)</span>
+            </td>
+            <td style="text-align:center">
+              ${isLocked
+                ? `<button class="danger" style="padding:3px 8px;font-size:11.5px" onclick="deleteSingleLockedSong('${e(p.songId)}')">Del Song</button>`
+                : `<button onclick="removeSinger(${idx})">Remove</button>`}
+            </td>
+          </tr>`;
+        }).join('')}
+      </table></div>
+    ` : '<p class="m">Waiting for participants to declare songs in Today tab, or add singers manually above.</p>'}
+    
+    <datalist id="dl_allsongs">
+      ${[...new Set(ALL_SONGS.map(r => r[3]))].filter(Boolean).map(t => `<option value="${e(t)}">`).join('')}
+    </datalist>
+  </div>`;
+
+  h += `<div class="c" id="sotd_section_card">${renderSOTDHTML()}</div>`;
+
+  h += `<div class="c">
+    <b>Rules & Automation Overview</b>
+    <div class="m" style="margin-top:6px;line-height:1.7">
+      ⭐1: Starts when announced · ⭐2: Ready on turn · ⭐3: No mic noise · ⭐4: Good singing · ⭐5: Better singing<br>
+      • <b>Schedule-Driven Console:</b> Automatically switches between Off-Schedule Practice and Live Production based on your Rules schedule (${e(formatScheduleText())}).<br>
+      • <b>Auto-Sync Declared Songs:</b> Participants declaring songs in their Today tab automatically appear in the live queue in declaration order.<br>
+      • <b>Permanent Song ID Lock & Auto-Backup:</b> Locked Song IDs can only be removed individually, and pressing <b>End</b> automatically saves a timestamped offline Master Backup JSON file.
+    </div>
+  </div>`;
+
+  h += `<div class="c" id="song_archives_card"></div>`;
+
+  $('#app').innerHTML = h;
+  renderSongListSection();
+}
+</script></body></html>
