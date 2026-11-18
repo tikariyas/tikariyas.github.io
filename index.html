@@ -174,19 +174,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 }
 #custom-modal .box h3{margin:0 0 10px;font-size:17px;color:var(--ac)}
 
-#pdf-render-slot{
-  position:absolute;left:-9999px;top:0;width:800px;background:#ffffff;color:#0f172a;padding:24px;
-  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif;
-}
-#pdf-render-slot table{
-  width:100%;border-collapse:collapse;margin-top:12px;font-size:12px;
-}
-#pdf-render-slot th,#pdf-render-slot td{
-  border:1px solid #cbd5e1;padding:6px 8px;text-align:left;
-}
-#pdf-render-slot th{
-  background:#0f3460;color:#ffffff;font-weight:700;
-}
 </style></head><body>
 <header>
   <div>
@@ -202,17 +189,15 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
   <div class="box" id="custom-modal-body"></div>
 </div>
 
-<div id="pdf-render-slot"></div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script type="module">
 
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-18 b34';
+const VER='2026-11-19 b36';
 const CFG = {
   firebase: {
     apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
@@ -714,76 +699,93 @@ function getSOTMData() {
   };
 }
 
-window.downloadSOTMPDF = async () => {
+window.downloadSOTMPDF = () => {
   if (!IS_SUPER) return;
-  if (!window.html2canvas || !window.jspdf) {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
     showNotice('PDF engine loading, please wait a moment.');
     return;
   }
   const s = getSOTMData();
-  const renderSlot = document.getElementById('pdf-render-slot');
-  renderSlot.innerHTML = `
-    <div style="text-align:center;border-bottom:2px solid #0f3460;padding-bottom:10px;margin-bottom:12px">
-      <h2 style="margin:0;font-size:21px;color:#0f3460">SING FROM HOME</h2>
-      <p style="margin:3px 0;font-size:12px;color:#475569">A project of B. S. Tikariya Cultural Foundation ® (CIN: U88900MH2025NPL454435)</p>
-      <p style="margin:3px 0;font-size:14px;color:#15803d"><b>OFFICIAL SINGER OF THE MONTH (SOTM) FULL RESULT — ${e(s.monthLabel)}</b></p>
-    </div>
-    <div style="background:#f0fdf4;padding:10px 12px;border-radius:8px;border:1px solid #86efac;margin-bottom:12px">
-      <p style="margin:2px 0;font-size:13.5px"><b>Winner:</b> ${e(s.winner)} (G-Clef Memento Award)</p>
-      <p style="margin:2px 0;font-size:12.5px"><b>Assigned Judge:</b> ${e(s.judge)} | <b>Declared Date:</b> ${e(s.declaredDate)} | <b>Participating Audience Voters:</b> ${s.votersCount}</p>
-    </div>
-    <table>
-      <thead>
-        <tr>
-          <th style="width:42px;text-align:center">RANK</th>
-          <th>FINALIST</th>
-          <th style="width:62px;text-align:center">SUR (10)</th>
-          <th style="width:62px;text-align:center">TAAL (10)</th>
-          <th style="width:82px;text-align:center">SELECTIONS (10)</th>
-          <th style="width:88px;text-align:center">PERFORMANCE (10)</th>
-          <th style="width:72px;text-align:center">JUDGE TOTAL</th>
-          <th style="width:72px;text-align:center">VOTE METER</th>
-          <th style="width:72px;text-align:center">FINAL SCORE</th>
-          <th>REMARKS</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${s.rows.map(r => `
-          <tr style="${r.rank === 1 ? 'background:#f0fdf4;font-weight:700' : ''}">
-            <td style="text-align:center"><b>${r.rank}</b></td>
-            <td><b>${e(r.name)}</b></td>
-            <td style="text-align:center">${e(r.sur)}</td>
-            <td style="text-align:center">${e(r.taal)}</td>
-            <td style="text-align:center">${e(r.selections)}</td>
-            <td style="text-align:center">${e(r.performance)}</td>
-            <td style="text-align:center"><b>${e(r.judgeTotal)}</b></td>
-            <td style="text-align:center">${e(r.votes)}${r.votePct ? ` (${e(r.votePct)})` : ''}</td>
-            <td style="text-align:center;color:#15803d"><b>${e(r.grandTotal)}</b></td>
-            <td style="font-size:11px">${e(r.remarks || '-')}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-    <div style="margin-top:16px;font-size:11px;color:#64748b;display:flex;justify-content:space-between">
-      <span>Confidential Superadmin Evaluation Sheet · Tikariya's School of Music</span>
-      <span>Director: MANOJ TIKARIYA</span>
-    </div>
-  `;
+  const { jsPDF } = window.jspdf;
+  const docPdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const asc = v => String(v == null ? '' : v).replace(/[^\x20-\xff]/g, '');
 
-  try {
-    const canvas = await window.html2canvas(renderSlot, { scale: 2, useCORS: true, logging: false });
-    const imgData = canvas.toDataURL('image/png');
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('l', 'mm', 'a4');
-    const pdfWidth = 297;
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`SFH_SOTM_Full_Result_${s.monthLabel.replace(/\s+/g, '_')}.pdf`);
-  } catch (err) {
-    showNotice('PDF generation failed: ' + err.message);
-  } finally {
-    renderSlot.innerHTML = '';
-  }
+  // Vector Header
+  docPdf.setFillColor(15, 52, 96);
+  docPdf.rect(14, 10, 269, 18, 'F');
+  docPdf.setTextColor(255, 255, 255);
+  docPdf.setFont('helvetica', 'bold');
+  docPdf.setFontSize(16);
+  docPdf.text('SING FROM HOME', 148.5, 18, { align: 'center' });
+  docPdf.setFont('helvetica', 'normal');
+  docPdf.setFontSize(9.5);
+  docPdf.text('A Project of B. S. Tikariya Cultural Foundation (R) - CIN: U88900MH2025NPL454435', 148.5, 24, { align: 'center' });
+
+  docPdf.setTextColor(21, 128, 61);
+  docPdf.setFont('helvetica', 'bold');
+  docPdf.setFontSize(12);
+  docPdf.text(`OFFICIAL SINGER OF THE MONTH (SOTM) FULL RESULT - ${asc(s.monthLabel)}`, 148.5, 35, { align: 'center' });
+
+  // Summary Info Box
+  docPdf.setDrawColor(134, 239, 172);
+  docPdf.setFillColor(240, 253, 244);
+  docPdf.roundedRect(14, 39, 269, 14, 2, 2, 'FD');
+  docPdf.setTextColor(15, 23, 42);
+  docPdf.setFontSize(10);
+  docPdf.setFont('helvetica', 'bold');
+  docPdf.text(`Winner: ${asc(s.winner)} (G-Clef Memento Award)`, 18, 45);
+  docPdf.setFont('helvetica', 'normal');
+  docPdf.setFontSize(9.5);
+  docPdf.text(`Assigned Judge: ${asc(s.judge)}   |   Declared Date: ${asc(s.declaredDate)}   |   Participating Audience Voters: ${s.votersCount}`, 18, 50.5);
+
+  const head = [['RANK', 'FINALIST', 'SUR (10)', 'TAAL (10)', 'SELECTIONS (10)', 'PERFORMANCE (10)', 'JUDGE TOTAL', 'VOTE METER', 'FINAL SCORE', 'REMARKS']];
+  const body = (s.rows || []).map(r => [
+    String(r.rank),
+    asc(r.name),
+    asc(r.sur),
+    asc(r.taal),
+    asc(r.selections),
+    asc(r.performance),
+    asc(r.judgeTotal),
+    asc(r.votes) + (r.votePct ? ` (${asc(r.votePct)})` : ''),
+    asc(r.grandTotal),
+    asc(r.remarks || '-')
+  ]);
+
+  docPdf.autoTable({
+    startY: 57,
+    head,
+    body,
+    theme: 'grid',
+    styles: { font: 'helvetica', fontSize: 9, cellPadding: 2.5, textColor: [15, 23, 42], lineColor: [203, 213, 225], lineWidth: 0.2 },
+    headStyles: { fillColor: [15, 52, 96], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+    columnStyles: {
+      0: { halign: 'center', fontStyle: 'bold', cellWidth: 14 },
+      1: { fontStyle: 'bold', cellWidth: 46 },
+      2: { halign: 'center' },
+      3: { halign: 'center' },
+      4: { halign: 'center' },
+      5: { halign: 'center' },
+      6: { halign: 'center', fontStyle: 'bold' },
+      7: { halign: 'center', textColor: [3, 105, 161], fontStyle: 'bold' },
+      8: { halign: 'center', textColor: [21, 128, 61], fontStyle: 'bold' },
+      9: { cellWidth: 48 }
+    },
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.row.index === 0) {
+        data.cell.styles.fillColor = [240, 253, 244];
+      }
+    },
+    didDrawPage: (data) => {
+      const pageCount = docPdf.internal.getNumberOfPages();
+      docPdf.setFontSize(8.5);
+      docPdf.setTextColor(100, 116, 139);
+      docPdf.text("Confidential Superadmin Evaluation Sheet - Tikariya's School of Music | Director: MANOJ TIKARIYA", 14, 202);
+      docPdf.text(`Page ${data.pageNumber} of ${pageCount}`, 283, 202, { align: 'right' });
+    }
+  });
+
+  docPdf.save(`SFH_SOTM_Full_Result_${asc(s.monthLabel).replace(/\s+/g, '_')}.pdf`);
 };
 
 function renderSOTMBannerHTML() {
@@ -869,56 +871,125 @@ window.setSongSearchKeyword = (kw) => {
   draw();
 };
 
-window.downloadSongListPDF = async () => {
-  if(!window.html2canvas || !window.jspdf){
+window.downloadSongListPDF = () => {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
     showNotice('PDF engine loading, please wait a moment.');
     return;
   }
 
-  const renderSlot = document.getElementById('pdf-render-slot');
-  const tableContent = document.getElementById('participant_song_table_wrap');
-  if(!tableContent){ return; }
+  const allArchive = getAllArchiveSongs();
+  const curMo = nowM();
+  const t = tdy();
+  const asc = v => String(v == null ? '' : v).replace(/[^\x20-\xff]/g, '');
 
-  let title = "Song List";
-  if(songListTab === 'today') title = `Songs Performed Today (${fd(tdy())})`;
-  if(songListTab === 'month') title = `Songs Performed in Month (${nowM()})`;
-  if(songListTab === 'singer') title = `Song Record: ${selectedSingerFilter || 'All'}`;
-  if(songListTab === 'unique') title = `Unique Song List (No Repetition)`;
-  if(songListTab === 'all') title = `Full Master Song Directory`;
+  let title = 'Song List';
+  let head = [['#', 'Song ID', 'Date', 'Singer Name', 'Song Title']];
+  let body = [];
 
-  renderSlot.innerHTML = `
-    <div style="text-align:center;border-bottom:2px solid #0f3460;padding-bottom:10px;margin-bottom:12px">
-      <h2 style="margin:0;font-size:20px;color:#0f3460">SING FROM HOME</h2>
-      <p style="margin:3px 0;font-size:12px;color:#475569">A project of B. S. Tikariya Cultural Foundation ® (CIN: U88900MH2025NPL454435)</p>
-      <p style="margin:2px 0;font-size:13px"><b>${e(title)}</b> | Sorted by Song ID | Generated: ${new Date().toLocaleTimeString('en-IN')}</p>
-    </div>
-    ${tableContent.innerHTML}
-  `;
-
-  try {
-    const canvas = await window.html2canvas(renderSlot, { scale: 2, useCORS: true, logging: false });
-    const imgData = canvas.toDataURL('image/png');
-    const {jsPDF} = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = 210;
-    const pageHeight = 297;
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    let heightLeft = pdfHeight;
-    let position = 0;
-    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-    heightLeft -= pageHeight;
-    while (heightLeft > 2) {
-      position = heightLeft - pdfHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-      heightLeft -= pageHeight;
+  if (songListTab === 'today') {
+    title = `Songs Performed Today (${fd(t)})`;
+    head = [['#', 'Song ID', 'Round', 'Singer Name', 'Song Title']];
+    let todayRows = [];
+    if (LIVE_SESSION && LIVE_SESSION.date === t && LIVE_SESSION.performances) {
+      todayRows = LIVE_SESSION.performances.filter(p => p.song).map(p => ({
+        round: p.round ? 'Round ' + p.round : '-',
+        singer: p.singer,
+        song: p.song,
+        id: p.songId || '-'
+      }));
+    } else {
+      todayRows = allArchive.filter(r => r[1] === t).map(r => ({
+        round: '-',
+        singer: r[2],
+        song: r[3],
+        id: r[0]
+      }));
     }
-    pdf.save(`SFH_${songListTab.toUpperCase()}_Songs_${tdy()}.pdf`);
-  } catch(err) {
-    showNotice('PDF export failed: ' + err.message);
-  } finally {
-    renderSlot.innerHTML = '';
+    todayRows.sort((a, b) => cmpBySongId([a.id], [b.id]));
+    body = todayRows.map((r, i) => [String(i + 1), asc(r.id), asc(r.round), asc(r.singer), asc(r.song)]);
+  } else if (songListTab === 'month') {
+    title = `Songs Performed in Month (${curMo})`;
+    const rows = allArchive.filter(r => r[1] && r[1].startsWith(curMo));
+    body = rows.map((r, i) => [String(i + 1), asc(r[0]), fd(r[1]), asc(r[2]), asc(r[3])]);
+  } else if (songListTab === 'singer') {
+    const singersList = [...new Set(allArchive.map(r => r[2]))].filter(Boolean).sort();
+    const activeSinger = selectedSingerFilter || singersList[0] || '';
+    title = `Song Record: ${activeSinger || 'All'}`;
+    const rows = activeSinger ? allArchive.filter(r => r[2] === activeSinger) : [];
+    body = rows.map((r, i) => [String(i + 1), asc(r[0]), fd(r[1]), asc(r[2]), asc(r[3])]);
+  } else if (songListTab === 'unique') {
+    title = 'Unique Song List (No Repetition)';
+    head = [['#', 'First Song ID', 'Song Title', 'Sung By', 'Times Sung']];
+    const songMap = new Map();
+    allArchive.forEach(r => {
+      const k = (r[3] || '').trim().toUpperCase();
+      if (!k) return;
+      if (!songMap.has(k)) {
+        songMap.set(k, { firstId: r[0], title: k, count: 1, singers: new Set([r[2]]) });
+      } else {
+        const entry = songMap.get(k);
+        entry.count++;
+        entry.singers.add(r[2]);
+      }
+    });
+    const uniqueRows = [...songMap.values()].sort((a, b) => a.title.localeCompare(b.title));
+    body = uniqueRows.map((u, i) => [String(i + 1), asc(u.firstId), asc(u.title), asc([...u.singers].join(', ')), `${u.count}x`]);
+  } else {
+    title = 'Full Master Song Directory';
+    const kw = (typeof searchSongKeyword !== 'undefined' && searchSongKeyword) ? searchSongKeyword : '';
+    const rows = kw ? allArchive.filter(r => (r[0]||'').includes(kw) || (r[2]||'').includes(kw) || (r[3]||'').includes(kw)) : allArchive;
+    body = rows.map((r, i) => [String(i + 1), asc(r[0]), fd(r[1]), asc(r[2]), asc(r[3])]);
   }
+
+  if (!body.length) {
+    showNotice('No songs in this view to export.');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const docPdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  docPdf.setFillColor(15, 52, 96);
+  docPdf.rect(14, 10, 182, 16, 'F');
+  docPdf.setTextColor(255, 255, 255);
+  docPdf.setFont('helvetica', 'bold');
+  docPdf.setFontSize(15);
+  docPdf.text('SING FROM HOME', 105, 17, { align: 'center' });
+  docPdf.setFont('helvetica', 'normal');
+  docPdf.setFontSize(8.5);
+  docPdf.text('A Project of B. S. Tikariya Cultural Foundation (R) - CIN: U88900MH2025NPL454435', 105, 22.5, { align: 'center' });
+
+  docPdf.setTextColor(15, 23, 42);
+  docPdf.setFont('helvetica', 'bold');
+  docPdf.setFontSize(11);
+  docPdf.text(`${asc(title)} (${body.length} songs)`, 14, 32);
+  docPdf.setFont('helvetica', 'normal');
+  docPdf.setFontSize(8.5);
+  docPdf.setTextColor(100, 116, 139);
+  docPdf.text(`Sorted by Song ID  |  Generated: ${fd(t)} ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}`, 14, 36.5);
+
+  docPdf.autoTable({
+    startY: 40,
+    head,
+    body,
+    theme: 'striped',
+    styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 2.2, textColor: [15, 23, 42], lineColor: [203, 213, 225], lineWidth: 0.15 },
+    headStyles: { fillColor: [15, 52, 96], textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 11 },
+      1: { fontStyle: 'bold', cellWidth: 22 }
+    },
+    didDrawPage: (data) => {
+      const pageCount = docPdf.internal.getNumberOfPages();
+      docPdf.setFontSize(8);
+      docPdf.setTextColor(100, 116, 139);
+      docPdf.text("Conducted by Tikariya's School of Music - Director: Manoj Tikariya", 14, 290);
+      docPdf.text(`Page ${data.pageNumber} of ${pageCount}`, 196, 290, { align: 'right' });
+    }
+  });
+
+  docPdf.save(`SFH_${songListTab.toUpperCase()}_Songs_${t}.pdf`);
 };
 
 window.setSongTab = (t) => {
@@ -2287,5 +2358,5 @@ window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.on
     }, label);
   }catch(z){showNotice(z=='size'?'One month of songs is too large for a single document.':(z&&z.code?'Restore/Publish failed ('+z.code+'). Check Firebase rules.':'That is not a valid SFH backup or participants file.'))}};r.readAsText(f)};
 
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=34').then(r=>r.update()).catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=36').then(r=>r.update()).catch(()=>{});}
 </script></body></html>

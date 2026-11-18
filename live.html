@@ -135,13 +135,18 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
 .meta-field-group{display:flex;flex-direction:column;gap:8px;margin:10px 0}
 .meta-field-group label{display:flex;flex-direction:column;gap:2px;font-size:12px;font-weight:600;color:var(--mut)}
 
-#pdf-render-slot{
-  position:absolute;left:-9999px;top:0;width:850px;background:#ffffff;color:#0f172a;padding:24px;
-  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif;
+.song-ac-wrap{position:relative;display:inline-block}
+.song-ac-list{
+  position:absolute;left:0;top:100%;margin-top:2px;min-width:240px;max-width:320px;max-height:175px;overflow-y:auto;
+  background:var(--card);border:1.5px solid var(--ac);border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,0.18);
+  z-index:1200;display:none;
 }
-#pdf-render-slot table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px}
-#pdf-render-slot th,#pdf-render-slot td{border:1px solid #cbd5e1;padding:6px 8px;text-align:left}
-#pdf-render-slot th{background:#0f3460;color:#ffffff;font-weight:700}
+.song-ac-item{
+  padding:6px 9px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:1px solid var(--bd);
+  display:flex;justify-content:space-between;align-items:center;gap:6px;white-space:normal;
+}
+.song-ac-item:last-child{border-bottom:0}
+.song-ac-item:hover{background:var(--ac-light);color:var(--ac)}
 </style></head><body>
 
 <header>
@@ -161,10 +166,8 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
   <div class="box" id="custom-modal-body"></div>
 </div>
 
-<div id="pdf-render-slot"></div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {getAuth,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
@@ -848,10 +851,45 @@ window.removeSinger = (idx) => {
   });
 };
 
-// No Song ID locking: song titles can be freely edited or cleared anytime!
-window.onSongInput = (singerName, round) => {
+let UNIQUE_SONG_CATALOG = [];
+function getUniqueSongCatalog() {
+  if (UNIQUE_SONG_CATALOG.length !== ALL_SONGS.length) {
+    const map = new Map();
+    ALL_SONGS.forEach(r => {
+      const t = (r[3] || '').trim().toUpperCase();
+      if (!t) return;
+      map.set(t, (map.get(t) || 0) + 1);
+    });
+    UNIQUE_SONG_CATALOG = [...map.entries()]
+      .map(([title, count]) => ({ title, count }))
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }
+  return UNIQUE_SONG_CATALOG;
+}
+
+window.closeAllSongDropdowns = () => {
+  document.querySelectorAll('.song-ac-list').forEach(el => { el.style.display = 'none'; });
+};
+
+document.addEventListener('click', (ev) => {
+  if (!ev.target.closest || !ev.target.closest('.song-ac-wrap')) {
+    window.closeAllSongDropdowns();
+  }
+});
+
+window.pickSongSuggestion = (singerName, round, title) => {
   const sIdSanitized = round + '_' + singerName.replace(/[^a-zA-Z0-9]/g, '_');
   const songInp = $('#sg_' + sIdSanitized);
+  if (songInp) songInp.value = title;
+  window.closeAllSongDropdowns();
+  window.onSongInput(singerName, round, false);
+};
+
+// No Song ID locking: song titles can be freely edited or cleared anytime!
+window.onSongInput = (singerName, round, showDrop = true) => {
+  const sIdSanitized = round + '_' + singerName.replace(/[^a-zA-Z0-9]/g, '_');
+  const songInp = $('#sg_' + sIdSanitized);
+  const dropEl = $('#ac_' + sIdSanitized);
   const p = getOrCreatePerf(singerName, round);
 
   const song = (songInp.value || '').trim().toUpperCase();
@@ -864,9 +902,28 @@ window.onSongInput = (singerName, round) => {
     p.repeatCount = 0;
     if(repEl) repEl.innerHTML = '';
     if(idEl) idEl.innerHTML = '<span class="m">-</span>';
+    if(dropEl) dropEl.style.display = 'none';
     saveLocal();
     drawSOTDSection();
     return;
+  }
+
+  // Render lightweight non-blocking song suggestions when typing
+  if (dropEl && showDrop) {
+    const matches = getUniqueSongCatalog()
+      .filter(item => item.title.includes(song) && item.title !== song)
+      .slice(0, 8);
+    if (matches.length) {
+      dropEl.innerHTML = matches.map(m =>
+        `<div class="song-ac-item" onmousedown="event.preventDefault();pickSongSuggestion('${e(singerName)}', ${round}, '${e(m.title).replace(/'/g, "\\'")}')">` +
+          `<span>${e(m.title)}</span>` +
+          `<span class="m" style="font-size:10.5px;white-space:nowrap">${m.count}x</span>` +
+        `</div>`
+      ).join('');
+      dropEl.style.display = 'block';
+    } else {
+      dropEl.style.display = 'none';
+    }
   }
 
   const rep = checkRepeat(song);
@@ -1326,66 +1383,76 @@ window.declareAndPublishSOTM = () => {
   }, "Declare & Publish SOTM");
 };
 
-window.downloadOfficialSOTMPDF = async () => {
-  if (!window.html2canvas || !window.jspdf) {
+window.downloadOfficialSOTMPDF = () => {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
     showNotice('PDF engine loading, please wait.');
     return;
   }
   const standings = getSOTMComputedStandings();
   const judgeName = (SOTM_PANEL.judges && SOTM_PANEL.judges[0]) || 'SOHAN KUMAR';
-  const renderSlot = document.getElementById('pdf-render-slot');
-  renderSlot.innerHTML = `
-    <div style="text-align:center;border-bottom:2px solid #0f3460;padding-bottom:10px;margin-bottom:12px">
-      <h2 style="margin:0;font-size:21px;color:#0f3460">SING FROM HOME</h2>
-      <p style="margin:3px 0;font-size:12px;color:#475569">A project of B. S. Tikariya Cultural Foundation ® (CIN: U88900MH2025NPL454435)</p>
-      <p style="margin:3px 0;font-size:14px;color:#15803d"><b>OFFICIAL SINGER OF THE MONTH (SOTM) — ${e(SOTM_PANEL.monthLabel)}</b></p>
-      <p style="margin:2px 0;font-size:12px"><b>Appointed Judge:</b> ${e(judgeName)} | <b>Audience Voters:</b> ${SOTM_PANEL.votersCount}</p>
-    </div>
-    <table>
-      <thead>
-        <tr>
-          <th style="text-align:center">#</th>
-          <th>FINALIST</th>
-          <th style="text-align:center">SUR (10)</th>
-          <th style="text-align:center">TAAL (10)</th>
-          <th style="text-align:center">SEL (10)</th>
-          <th style="text-align:center">PERF (10)</th>
-          <th style="text-align:center">JUDGE TOTAL</th>
-          <th style="text-align:center">AUDIENCE</th>
-          <th style="text-align:center">GRAND TOTAL</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${standings.map((s, idx) => `
-          <tr style="${idx===0?'background:#f0fdf4;font-weight:700':''}">
-            <td style="text-align:center"><b>${idx+1}</b></td>
-            <td><b>${e(s.name)}</b></td>
-            <td style="text-align:center">${s.sur}</td>
-            <td style="text-align:center">${s.taal}</td>
-            <td style="text-align:center">${s.sel}</td>
-            <td style="text-align:center">${s.perf}</td>
-            <td style="text-align:center"><b>${s.judgeTotal}</b></td>
-            <td style="text-align:center">${s.audience}</td>
-            <td style="text-align:center;color:#15803d"><b>${s.grandTotal}</b></td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `;
-  try {
-    const canvas = await window.html2canvas(renderSlot, { scale: 2, useCORS: true, logging: false });
-    const imgData = canvas.toDataURL('image/png');
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('l', 'mm', 'a4');
-    const pdfWidth = 297;
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`SFH_SOTM_Judge_Panel_${SOTM_PANEL.monthLabel.replace(/\s+/g, '_')}.pdf`);
-  } catch (err) {
-    showNotice('PDF error: ' + err.message);
-  } finally {
-    renderSlot.innerHTML = '';
-  }
+  const { jsPDF } = window.jspdf;
+  const docPdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const asc = v => String(v == null ? '' : v).replace(/[^\x20-\xff]/g, '');
+
+  docPdf.setFillColor(15, 52, 96);
+  docPdf.rect(14, 10, 269, 17, 'F');
+  docPdf.setTextColor(255, 255, 255);
+  docPdf.setFont('helvetica', 'bold');
+  docPdf.setFontSize(16);
+  docPdf.text('SING FROM HOME', 148.5, 17.5, { align: 'center' });
+  docPdf.setFont('helvetica', 'normal');
+  docPdf.setFontSize(9);
+  docPdf.text('A Project of B. S. Tikariya Cultural Foundation (R) - CIN: U88900MH2025NPL454435', 148.5, 23.5, { align: 'center' });
+
+  docPdf.setTextColor(21, 128, 61);
+  docPdf.setFont('helvetica', 'bold');
+  docPdf.setFontSize(12);
+  docPdf.text(`OFFICIAL SINGER OF THE MONTH (SOTM) EVALUATION - ${asc(SOTM_PANEL.monthLabel)}`, 148.5, 34, { align: 'center' });
+
+  docPdf.setTextColor(15, 23, 42);
+  docPdf.setFont('helvetica', 'normal');
+  docPdf.setFontSize(9.5);
+  docPdf.text(`Appointed Judge: ${asc(judgeName)}   |   Participating Audience Voters: ${SOTM_PANEL.votersCount}   |   Date: ${fd(LIVE.date)}`, 148.5, 40, { align: 'center' });
+
+  const head = [['#', 'FINALIST', 'SUR (10)', 'TAAL (10)', 'SEL (10)', 'PERF (10)', 'JUDGE TOTAL', 'AUDIENCE', 'GRAND TOTAL']];
+  const body = standings.map((s, idx) => [
+    String(idx + 1),
+    asc(s.name),
+    String(s.sur),
+    String(s.taal),
+    String(s.sel),
+    String(s.perf),
+    String(s.judgeTotal),
+    String(s.audience),
+    String(s.grandTotal)
+  ]);
+
+  docPdf.autoTable({
+    startY: 45,
+    head,
+    body,
+    theme: 'grid',
+    styles: { font: 'helvetica', fontSize: 9.5, cellPadding: 2.8, textColor: [15, 23, 42], lineColor: [203, 213, 225], lineWidth: 0.2 },
+    headStyles: { fillColor: [15, 52, 96], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+    columnStyles: {
+      0: { halign: 'center', fontStyle: 'bold', cellWidth: 14 },
+      1: { fontStyle: 'bold', cellWidth: 65 },
+      2: { halign: 'center' },
+      3: { halign: 'center' },
+      4: { halign: 'center' },
+      5: { halign: 'center' },
+      6: { halign: 'center', fontStyle: 'bold' },
+      7: { halign: 'center', textColor: [3, 105, 161], fontStyle: 'bold' },
+      8: { halign: 'center', textColor: [21, 128, 61], fontStyle: 'bold' }
+    },
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.row.index === 0) {
+        data.cell.styles.fillColor = [240, 253, 244];
+      }
+    }
+  });
+
+  docPdf.save(`SFH_SOTM_Judge_Panel_${asc(SOTM_PANEL.monthLabel).replace(/\s+/g, '_')}.pdf`);
 };
 
 function renderSOTMPanelHTML() {
@@ -1556,84 +1623,88 @@ window.downloadBackupJSON = async () => {
   showNotice(`Master Backup saved offline as:\n${fname}`, "Offline Master Backup Saved");
 };
 
-window.downloadLivePDF = async () => {
-  if(!window.html2canvas || !window.jspdf){
+window.downloadLivePDF = () => {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
     showNotice('PDF engine loading, please wait a moment.');
     return;
   }
 
-  const renderSlot = document.getElementById('pdf-render-slot');
   const rows = LIVE.performances.filter(p => p.song).slice().sort(cmpBySongId);
+  const { jsPDF } = window.jspdf;
+  const docPdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const asc = v => String(v == null ? '' : v).replace(/[^\x20-\xff]/g, '');
 
-  renderSlot.innerHTML = `
-    <div style="text-align:center;border-bottom:2px solid #0f3460;padding-bottom:10px;margin-bottom:12px">
-      <h2 style="margin:0;font-size:21px;color:#0f3460">SING FROM HOME</h2>
-      <p style="margin:3px 0;font-size:12px;color:#475569">A project of B. S. Tikariya Cultural Foundation ® (CIN: U88900MH2025NPL454435)</p>
-      <p style="margin:2px 0;font-size:12px"><b>Live Session Record · ${fd(LIVE.date)}</b> | Sorted by Song ID | Exported: ${curTime()}</p>
-    </div>
+  docPdf.setFillColor(15, 52, 96);
+  docPdf.rect(14, 10, 182, 16, 'F');
+  docPdf.setTextColor(255, 255, 255);
+  docPdf.setFont('helvetica', 'bold');
+  docPdf.setFontSize(15);
+  docPdf.text('SING FROM HOME', 105, 17, { align: 'center' });
+  docPdf.setFont('helvetica', 'normal');
+  docPdf.setFontSize(8.5);
+  docPdf.text('A Project of B. S. Tikariya Cultural Foundation (R) - CIN: U88900MH2025NPL454435', 105, 22.5, { align: 'center' });
 
-    ${SOTD_LIST.length ? `
-      <div style="background:#e8eef7;padding:8px 10px;border-radius:8px;margin-bottom:12px;border:1px solid #cbd5e1">
-        <b style="color:#0f3460">Singers of the Day (SOTD):</b>
-        <p style="margin:3px 0 0;font-size:12.5px">${SOTD_LIST.map(x => `<b>${e(x.n)}</b> (${e(x.h)}${x.reason ? ' - ' + e(x.reason) : ''})`).join(' · ')}</p>
-      </div>
-    ` : ''}
+  docPdf.setTextColor(15, 23, 42);
+  docPdf.setFont('helvetica', 'bold');
+  docPdf.setFontSize(11);
+  docPdf.text(`Live Session Record - ${fd(LIVE.date)}`, 14, 32);
+  docPdf.setFont('helvetica', 'normal');
+  docPdf.setFontSize(8.5);
+  docPdf.setTextColor(100, 116, 139);
+  docPdf.text(`Sorted by Song ID  |  Total Songs: ${rows.length}  |  Exported: ${curTime()}`, 14, 36.5);
 
-    <table>
-      <thead>
-        <tr>
-          <th style="width:28px;text-align:center">#</th>
-          <th style="width:68px">Song ID</th>
-          <th style="width:52px">Round</th>
-          <th style="width:125px">Singer Name</th>
-          <th>Song Title</th>
-          <th style="width:75px;text-align:center">Points (Max ${getMaxStarPoints()})</th>
-          <th style="width:60px">Repeat</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows.map((p, i) => {
-          const pts = calcStarPoints(p.stars);
-          return `
-            <tr>
-              <td style="text-align:center"><b>${i + 1}</b></td>
-              <td><b>${p.songId || '-'}</b></td>
-              <td>Round ${p.round}</td>
-              <td><b>${e(p.singer)}</b></td>
-              <td><b>${e(p.song)}</b></td>
-              <td style="text-align:center"><b>${pts} pts</b></td>
-              <td>${p.repeatCount > 0 ? `(${p.repeatCount})` : '1st Time'}</td>
-            </tr>
-          `;
-        }).join('')}
-      </tbody>
-    </table>
-  `;
-
-  try {
-    const canvas = await window.html2canvas(renderSlot, { scale: 2, useCORS: true, logging: false });
-    const imgData = canvas.toDataURL('image/png');
-    const {jsPDF} = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = 210;
-    const pageHeight = 297;
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    let heightLeft = pdfHeight;
-    let position = 0;
-    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-    heightLeft -= pageHeight;
-    while (heightLeft > 2) {
-      position = heightLeft - pdfHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-      heightLeft -= pageHeight;
-    }
-    pdf.save(`SFH_Live_${LIVE.date}.pdf`);
-  } catch (err) {
-    showNotice('PDF generation failed: ' + err.message);
-  } finally {
-    renderSlot.innerHTML = '';
+  let startY = 41;
+  if (SOTD_LIST.length) {
+    const sotdText = 'Singers of the Day (SOTD): ' + SOTD_LIST.map(x => `${asc(x.n)} (${asc(x.h)}${x.reason ? ' - ' + asc(x.reason) : ''})`).join('  |  ');
+    const wrapped = docPdf.splitTextToSize(sotdText, 176);
+    const boxH = wrapped.length * 4.5 + 5;
+    docPdf.setDrawColor(147, 197, 253);
+    docPdf.setFillColor(232, 238, 247);
+    docPdf.roundedRect(14, startY, 182, boxH, 1.5, 1.5, 'FD');
+    docPdf.setTextColor(15, 52, 96);
+    docPdf.setFont('helvetica', 'bold');
+    docPdf.setFontSize(9);
+    docPdf.text(wrapped, 17, startY + 5);
+    startY += boxH + 4;
   }
+
+  const head = [['#', 'Song ID', 'Round', 'Singer Name', 'Song Title', `Points (/${getMaxStarPoints()})`, 'Repeat']];
+  const body = rows.map((p, i) => [
+    String(i + 1),
+    asc(p.songId || '-'),
+    `Round ${p.round}`,
+    asc(p.singer),
+    asc(p.song),
+    `${calcStarPoints(p.stars)} pts`,
+    p.repeatCount > 0 ? `(${p.repeatCount})` : '1st Time'
+  ]);
+
+  docPdf.autoTable({
+    startY,
+    head,
+    body,
+    theme: 'striped',
+    styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 2.3, textColor: [15, 23, 42], lineColor: [203, 213, 225], lineWidth: 0.15 },
+    headStyles: { fillColor: [15, 52, 96], textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 10 },
+      1: { fontStyle: 'bold', cellWidth: 20 },
+      2: { halign: 'center', cellWidth: 18 },
+      3: { fontStyle: 'bold', cellWidth: 40 },
+      5: { halign: 'center', fontStyle: 'bold', cellWidth: 22 },
+      6: { halign: 'center', cellWidth: 18 }
+    },
+    didDrawPage: (data) => {
+      const pageCount = docPdf.internal.getNumberOfPages();
+      docPdf.setFontSize(8);
+      docPdf.setTextColor(100, 116, 139);
+      docPdf.text("Conducted by Tikariya's School of Music - Director: Manoj Tikariya", 14, 290);
+      docPdf.text(`Page ${data.pageNumber} of ${pageCount}`, 196, 290, { align: 'right' });
+    }
+  });
+
+  docPdf.save(`SFH_Live_${LIVE.date}.pdf`);
 };
 
 window.copyWhatsAppSummary = () => {
@@ -1718,7 +1789,7 @@ window.manualPublishSession = () => {
   }, "Publish Now");
 };
 
-endSession = async () => {
+window.endSession = async () => {
   const hasLiveEntries = LIVE.singers.length > 0 || SOTD_LIST.length > 0;
   if (!isWithinLiveSchedule() && !hasLiveEntries) {
     SESSION_ENDED = true;
@@ -1873,7 +1944,10 @@ function draw(){
             <td>${isEligible ? '<span class="badge-ok">Eligible</span>' : `<span class="badge-late">Ineligible (&gt;${formatCutoffTime()})</span>`}</td>
             <td>
               <div style="display:flex;align-items:center;white-space:nowrap">
-                <input id="sg_${sKey}" autocomplete="off" value="${e(p.song || '')}" placeholder="Type song..." style="width:195px;text-transform:uppercase" oninput="onSongInput('${e(s.name)}', ${currentRound})">
+                <div class="song-ac-wrap">
+                  <input id="sg_${sKey}" autocomplete="off" value="${e(p.song || '')}" placeholder="Type song..." style="width:195px;text-transform:uppercase" oninput="onSongInput('${e(s.name)}', ${currentRound}, true)" onfocus="onSongInput('${e(s.name)}', ${currentRound}, true)" onkeydown="if(event.key==='Escape')closeAllSongDropdowns()">
+                  <div id="ac_${sKey}" class="song-ac-list"></div>
+                </div>
                 <span id="rep_${sKey}">${p.repeatCount > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${p.repeatCount})</span>` : ''}</span>
                 <button class="btn-meta" style="margin-left:6px" onclick="openMeta('${e(s.name)}', ${currentRound})" title="Metadata (Original singer, composer, lyricist, movie)">ℹ Details</button>
               </div>
