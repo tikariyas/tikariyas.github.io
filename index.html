@@ -197,7 +197,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-19 b36';
+const VER='2026-11-19 b38';
 const CFG = {
   firebase: {
     apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
@@ -442,7 +442,7 @@ onAuthStateChanged(auth, async u => {
   onSnapshot(doc(fs, 'live', 'session'), snap => {
     if (snap.exists()) {
       const data = snap.data();
-      if (data.date === tdy() && data.active) {
+      if (data.active === true) {
         LIVE_SESSION = data;
       } else {
         LIVE_SESSION = null;
@@ -471,15 +471,62 @@ window.login=async()=>{
 window.out=()=>showConfirm('Are you sure you want to sign out of Sing From Home?', ()=>signOut(auth), 'Confirm Sign Out');
 window.refresh=async()=>{await load();if(P&&P.status=='approved'&&P.role=='admin'){IS_ADMIN=ADM=true;}if(tab=='adm'||tab=='rules')await loadAdm();draw()};
 
+window.submitLiveBallot = async (kind, targetSinger, score) => {
+  if (!U || !P || (P.status !== 'approved' && !ADM)) return;
+  const todayStr = (LIVE_SESSION && LIVE_SESSION.date) ? LIVE_SESSION.date : tdy();
+  const voterName = ((P && P.singer) || (P && P.name) || (U && U.displayName) || '').trim().toUpperCase();
+  try {
+    const planRef = doc(fs, 'plans', `${todayStr}_${U.uid}`);
+    if (kind === 'sotd_pick') {
+      await setDoc(planRef, {
+        uid: U.uid,
+        date: todayStr,
+        singer: voterName,
+        sotdPick: targetSinger,
+        sotdPickTs: Date.now(),
+        upd: Date.now()
+      }, { merge: true });
+      if (!PLAN) PLAN = { uid: U.uid, date: todayStr, singer: voterName, songs: [] };
+      PLAN.sotdPick = targetSinger;
+      draw();
+      showNotice(`Your SOTD vote for ${targetSinger} has been recorded!`);
+    } else {
+      const ballotObj = {
+        target: targetSinger,
+        score: Number(score),
+        voter: voterName,
+        uid: U.uid,
+        ts: Date.now()
+      };
+      await setDoc(planRef, {
+        uid: U.uid,
+        date: todayStr,
+        singer: voterName,
+        sotmBallots: { [targetSinger]: ballotObj },
+        upd: Date.now()
+      }, { merge: true });
+      if (!PLAN) PLAN = { uid: U.uid, date: todayStr, singer: voterName, songs: [] };
+      PLAN.sotmBallots = { ...(PLAN.sotmBallots || {}), [targetSinger]: ballotObj };
+      draw();
+      showNotice(`Blind vote (${score}/10) recorded for ${targetSinger}!`);
+    }
+  } catch (err) {
+    showNotice('Could not submit vote: ' + (err.code || err.message));
+  }
+};
+
 window.joinZoom = async () => {
   if (!CONF.zoom) return;
   const singerName = ((P && P.singer) || (P && P.name) || (U && U.displayName) || '').trim().toUpperCase();
   const todayStr = tdy();
   const now = new Date();
   const sc = getSchedule();
-  const [sh, sm] = (sc.startTime || '20:30').split(':').map(Number);
+  const [sh, sm] = (sc.startTime || '20:20').split(':').map(Number);
   const schedStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), sh, sm, 0, 0);
-  const cutoffMs = schedStart.getTime() + ((sc.cutoffMins ?? 15) * 60000);
+  if (now.getHours() < 6 && sh >= 12) {
+    schedStart.setDate(schedStart.getDate() - 1);
+  }
+  const cutoffMs = schedStart.getTime() + ((sc.cutoffMins ?? 26) * 60000);
 
   // Record entry time if singer enters after session's scheduled start time (first time only)
   if (singerName && now.getTime() >= schedStart.getTime()) {
@@ -1231,35 +1278,41 @@ function vHome(){
   h+=renderSOTMBannerHTML();
 
 
-  if (LIVE_SESSION && LIVE_SESSION.sotdVote && LIVE_SESSION.sotdVote.active && (!LIVE_SESSION.sotdVote.endsAt || Date.now() <= LIVE_SESSION.sotdVote.endsAt + 3000)) {
+  if (LIVE_SESSION && LIVE_SESSION.sotdVote && LIVE_SESSION.sotdVote.active) {
     const sv = LIVE_SESSION.sotdVote;
-    const myBallot = PLAN && PLAN.sotdBallots && PLAN.sotdBallots[sv.singer];
-    const secsLeft = sv.endsAt ? Math.max(0, Math.ceil((sv.endsAt - Date.now()) / 1000)) : 30;
+    const cands = Array.isArray(sv.candidates) ? sv.candidates : [];
+    const myPick = PLAN && PLAN.sotdPick;
+    const secsLeft = sv.endsAt ? Math.max(1, Math.min(30, Math.ceil((sv.endsAt - Date.now()) / 1000))) : (sv.remaining || 30);
     h += `<div class="c" style="border:2px solid #d97706;background:#fffbeb">
       <div class="row" style="justify-content:space-between">
-        <b style="color:#b45309">⏱️ LIVE 30s SOTD VOTE — ${e(sv.singer)}</b>
+        <b style="color:#b45309">⏱️ LIVE 30s SOTD VOTE — Select 1 of 4 Suggested Singers</b>
         <span class="badge-round" style="background:#d97706;color:#fff">${secsLeft}s</span>
       </div>
-      <p class="m" style="margin:4px 0 8px">Song: <b>${e(sv.song || 'Performance')}</b> · Tap your blind score (out of 10):</p>
-      <div class="row" style="gap:6px;flex-wrap:wrap">
-        ${[6,7,8,9,10].map(pt => `<button class="${myBallot && myBallot.score === pt ? 'pri' : ''}" style="min-width:44px;font-weight:800" onclick="submitLiveBallot('sotd','${e(sv.singer)}',${pt})">${pt}</button>`).join('')}
+      <p class="m" style="margin:4px 0 8px">Tap your choice for today's Singer of the Day:</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px">
+        ${cands.map((c, idx) => `
+          <button class="${myPick === c.name ? 'pri' : ''}" style="padding:8px 10px;text-align:left;display:flex;flex-direction:column;align-items:flex-start;gap:2px" onclick="submitLiveBallot('sotd_pick','${e(c.name).replace(/'/g, "\\'")}',1)">
+            <b>${idx + 1}. ${e(c.name)}</b>
+            <span style="font-size:11px;opacity:0.85">${c.totalPts} pts (Avg: ${c.avgPts})</span>
+          </button>
+        `).join('')}
       </div>
-      ${myBallot ? `<p class="m" style="margin:6px 0 0;color:#15803d;font-weight:700">✓ Your vote (${myBallot.score}/10) is locked in.</p>` : ''}
+      ${myPick ? `<p class="m" style="margin:6px 0 0;color:#15803d;font-weight:700">✓ Your vote for <b>${e(myPick)}</b> is locked in.</p>` : ''}
     </div>`;
   }
 
-  if (LIVE_SESSION && LIVE_SESSION.sotmVote && LIVE_SESSION.sotmVote.active && (!LIVE_SESSION.sotmVote.endsAt || Date.now() <= LIVE_SESSION.sotmVote.endsAt + 3000)) {
+  if (LIVE_SESSION && LIVE_SESSION.sotmVote && LIVE_SESSION.sotmVote.active) {
     const mv = LIVE_SESSION.sotmVote;
     const myBallot = PLAN && PLAN.sotmBallots && PLAN.sotmBallots[mv.singer];
-    const secsLeft = mv.endsAt ? Math.max(0, Math.ceil((mv.endsAt - Date.now()) / 1000)) : 30;
+    const secsLeft = mv.endsAt ? Math.max(1, Math.min(30, Math.ceil((mv.endsAt - Date.now()) / 1000))) : (mv.remaining || 30);
     h += `<div class="c" style="border:2px solid #7c3aed;background:#f5f3ff">
       <div class="row" style="justify-content:space-between">
         <b style="color:#6d28d9">🏆 LIVE 30s SOTM BLIND VOTE — ${e(mv.singer)}</b>
         <span class="badge-round" style="background:#7c3aed;color:#fff">${secsLeft}s</span>
       </div>
-      <p class="m" style="margin:4px 0 8px">Tap your blind audience score (1 to 10):</p>
+      <p class="m" style="margin:4px 0 8px">Tap your blind audience score (5 to 10):</p>
       <div class="row" style="gap:5px;flex-wrap:wrap">
-        ${[5,6,7,8,9,10].map(pt => `<button class="${myBallot && myBallot.score === pt ? 'pri' : ''}" style="min-width:42px;font-weight:800" onclick="submitLiveBallot('sotm','${e(mv.singer)}',${pt})">${pt}</button>`).join('')}
+        ${[5,6,7,8,9,10].map(pt => `<button class="${myBallot && myBallot.score === pt ? 'pri' : ''}" style="min-width:42px;font-weight:800" onclick="submitLiveBallot('sotm','${e(mv.singer).replace(/'/g, "\\'")}',${pt})">${pt}</button>`).join('')}
       </div>
       ${myBallot ? `<p class="m" style="margin:6px 0 0;color:#15803d;font-weight:700">✓ Your blind vote (${myBallot.score}/10) is locked in.</p>` : ''}
     </div>`;
@@ -2358,5 +2411,5 @@ window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.on
     }, label);
   }catch(z){showNotice(z=='size'?'One month of songs is too large for a single document.':(z&&z.code?'Restore/Publish failed ('+z.code+'). Check Firebase rules.':'That is not a valid SFH backup or participants file.'))}};r.readAsText(f)};
 
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=36').then(r=>r.update()).catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=38').then(r=>r.update()).catch(()=>{});}
 </script></body></html>

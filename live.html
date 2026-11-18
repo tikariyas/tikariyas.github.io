@@ -136,10 +136,10 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
 .meta-field-group label{display:flex;flex-direction:column;gap:2px;font-size:12px;font-weight:600;color:var(--mut)}
 
 .song-ac-wrap{position:relative;display:inline-block}
-.song-ac-list{
-  position:absolute;left:0;top:100%;margin-top:2px;min-width:240px;max-width:320px;max-height:175px;overflow-y:auto;
-  background:var(--card);border:1.5px solid var(--ac);border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,0.18);
-  z-index:1200;display:none;
+#floating-song-ac{
+  position:fixed;min-width:240px;max-width:340px;max-height:190px;overflow-y:auto;
+  background:var(--card);border:2px solid var(--ac);border-radius:8px;box-shadow:0 10px 26px rgba(0,0,0,0.24);
+  z-index:9999;display:none;
 }
 .song-ac-item{
   padding:6px 9px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:1px solid var(--bd);
@@ -160,6 +160,7 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
   <div class="header-toolbar" id="hb"></div>
 </header>
 
+<div id="floating-song-ac"></div>
 <main id="app"><p class="m">Connecting to live console…</p></main>
 
 <div id="custom-modal">
@@ -278,21 +279,32 @@ let lastScheduleMode = null;
 function isWithinLiveSchedule(now = new Date()) {
   if (SCHEDULE.forceLiveOverride) return true;
   const day = now.getDay();
-  if (!SCHEDULE.days.includes(day)) return false;
-  const [sh, sm] = (SCHEDULE.startTime || "20:30").split(':').map(Number);
+  const prevDay = (day + 6) % 7;
+  const [sh, sm] = (SCHEDULE.startTime || "20:20").split(':').map(Number);
   const [eh, em] = (SCHEDULE.endTime || "23:30").split(':').map(Number);
   const curMins = now.getHours() * 60 + now.getMinutes();
   const startMins = sh * 60 + sm;
-  const endMins = eh * 60 + em;
-  return curMins >= startMins && curMins <= endMins;
+  let endMins = eh * 60 + em;
+  // If endTime is earlier than or equal to startTime (e.g., 23:50 to 00:30 or 23:30), allow at least 2 hours past start across midnight
+  if (endMins <= startMins) {
+    endMins = Math.max(endMins + 1440, startMins + 120);
+  }
+  if (SCHEDULE.days.includes(day) && curMins >= startMins && curMins <= endMins) {
+    return true;
+  }
+  if (SCHEDULE.days.includes(prevDay) && (curMins + 1440) >= startMins && (curMins + 1440) <= endMins) {
+    return true;
+  }
+  return false;
 }
 
 function isBeforeCutoff(now = new Date()) {
   if (SCHEDULE.forceLiveOverride) return true;
-  const [sh, sm] = (SCHEDULE.startTime || "20:30").split(':').map(Number);
+  const [sh, sm] = (SCHEDULE.startTime || "20:20").split(':').map(Number);
   const curMins = now.getHours() * 60 + now.getMinutes();
-  const cutoffLimit = sh * 60 + sm + (SCHEDULE.cutoffMins ?? 15);
-  return curMins <= cutoffLimit;
+  const startMins = sh * 60 + sm;
+  const elapsedMins = curMins >= startMins ? (curMins - startMins) : (curMins + 1440 - startMins);
+  return elapsedMins >= 0 && elapsedMins <= (SCHEDULE.cutoffMins ?? 26);
 }
 
 function formatCutoffTime() {
@@ -427,37 +439,40 @@ function resolveCanonicalSingerName(rawName) {
 
 let syncTimer = null;
 let SESSION_ENDED = false;
+async function pushLiveSessionNow() {
+  if (SESSION_ENDED) return;
+  try {
+    await setDoc(doc(fs, 'live', 'session'), {
+      date: LIVE.date,
+      currentRound: currentRound,
+      singers: LIVE.singers,
+      performances: LIVE.performances,
+      sotdList: SOTD_LIST,
+      sotdVote: SOTD_30S_VOTE && SOTD_30S_VOTE.active ? {
+        active: true,
+        candidates: SOTD_30S_VOTE.candidates || [],
+        remaining: SOTD_30S_VOTE.remaining || 30,
+        endsAt: SOTD_30S_VOTE.endsAt || (Date.now() + 30000)
+      } : null,
+      sotmVote: SOTM_PANEL && SOTM_PANEL.activeBlindVote ? {
+        active: true,
+        singer: SOTM_PANEL.activeBlindVote.singer,
+        remaining: SOTM_PANEL.activeBlindVote.remaining || 30,
+        endsAt: SOTM_PANEL.activeBlindVote.endsAt || (Date.now() + 30000)
+      } : null,
+      updatedAt: Date.now(),
+      active: true
+    });
+  } catch (err) {
+    console.warn('Live cloud sync warning:', err);
+  }
+}
+
 function syncToFirestore() {
   if (SESSION_ENDED) return;
-  if (!isWithinLiveSchedule() && LIVE.singers.length === 0) return;
+  if (!isWithinLiveSchedule() && LIVE.singers.length === 0 && !(SOTD_30S_VOTE && SOTD_30S_VOTE.active) && !(SOTM_PANEL && SOTM_PANEL.activeBlindVote)) return;
   clearTimeout(syncTimer);
-  syncTimer = setTimeout(async () => {
-    if (SESSION_ENDED) return;
-    try {
-      await setDoc(doc(fs, 'live', 'session'), {
-        date: LIVE.date,
-        currentRound: currentRound,
-        singers: LIVE.singers,
-        performances: LIVE.performances,
-        sotdList: SOTD_LIST,
-        sotdVote: SOTD_30S_VOTE && SOTD_30S_VOTE.active ? {
-          active: true,
-          singer: SOTD_30S_VOTE.singer,
-          song: SOTD_30S_VOTE.song,
-          endsAt: SOTD_30S_VOTE.endsAt || (Date.now() + SOTD_30S_VOTE.remaining * 1000)
-        } : null,
-        sotmVote: SOTM_PANEL && SOTM_PANEL.activeBlindVote ? {
-          active: true,
-          singer: SOTM_PANEL.activeBlindVote.singer,
-          endsAt: SOTM_PANEL.activeBlindVote.endsAt || (Date.now() + SOTM_PANEL.activeBlindVote.remaining * 1000)
-        } : null,
-        updatedAt: Date.now(),
-        active: true
-      });
-    } catch (err) {
-      console.warn('Live cloud sync warning:', err);
-    }
-  }, 120);
+  syncTimer = setTimeout(() => { pushLiveSessionNow(); }, 100);
 }
 
 function saveLocal(){
@@ -518,17 +533,20 @@ function mergeZoomEntryIntoQueue(singerRaw, entryTime, eligible, tsVal) {
 }
 
 function tallyLivePlanBallots(planDocs) {
-  // Tally 30s SOTD ballots from participants/judges
-  if (SOTD_30S_VOTE && SOTD_30S_VOTE.singer) {
-    const remoteScores = [];
+  if (SOTD_30S_VOTE && Array.isArray(SOTD_30S_VOTE.candidates) && SOTD_30S_VOTE.candidates.length) {
+    const counts = {};
+    SOTD_30S_VOTE.candidates.forEach(c => { counts[c.name] = 0; });
+    let totalBallots = 0;
     planDocs.forEach(d => {
-      const b = d.sotdBallots && d.sotdBallots[SOTD_30S_VOTE.singer];
-      if (b && typeof b.score === 'number') remoteScores.push(b.score);
+      if (d.sotdPick && counts[d.sotdPick] !== undefined) {
+        counts[d.sotdPick]++;
+        totalBallots++;
+      }
     });
-    SOTD_30S_VOTE.remoteVotes = remoteScores;
+    SOTD_30S_VOTE.remoteCounts = counts;
+    SOTD_30S_VOTE.totalRemoteBallots = totalBallots;
     drawSOTDSection();
   }
-  // Tally 30s SOTM blind ballots if active or configured
   if (SOTM_PANEL && Array.isArray(SOTM_PANEL.finalists)) {
     const voterSet = new Set();
     const sumBySinger = {};
@@ -853,29 +871,34 @@ window.removeSinger = (idx) => {
 
 let UNIQUE_SONG_CATALOG = [];
 function getUniqueSongCatalog() {
-  if (UNIQUE_SONG_CATALOG.length !== ALL_SONGS.length) {
-    const map = new Map();
-    ALL_SONGS.forEach(r => {
-      const t = (r[3] || '').trim().toUpperCase();
-      if (!t) return;
-      map.set(t, (map.get(t) || 0) + 1);
-    });
-    UNIQUE_SONG_CATALOG = [...map.entries()]
-      .map(([title, count]) => ({ title, count }))
-      .sort((a, b) => a.title.localeCompare(b.title));
-  }
+  const map = new Map();
+  ALL_SONGS.forEach(r => {
+    const t = (r[3] || '').trim().toUpperCase();
+    if (!t) return;
+    map.set(t, (map.get(t) || 0) + 1);
+  });
+  (LIVE.performances || []).forEach(p => {
+    const t = (p.song || '').trim().toUpperCase();
+    if (t && !map.has(t)) map.set(t, 1);
+  });
+  UNIQUE_SONG_CATALOG = [...map.entries()]
+    .map(([title, count]) => ({ title, count }))
+    .sort((a, b) => a.title.localeCompare(b.title));
   return UNIQUE_SONG_CATALOG;
 }
 
 window.closeAllSongDropdowns = () => {
-  document.querySelectorAll('.song-ac-list').forEach(el => { el.style.display = 'none'; });
+  const fl = document.getElementById('floating-song-ac');
+  if (fl) fl.style.display = 'none';
 };
 
 document.addEventListener('click', (ev) => {
-  if (!ev.target.closest || !ev.target.closest('.song-ac-wrap')) {
+  if (!ev.target.closest || (!ev.target.closest('.song-ac-wrap') && !ev.target.closest('#floating-song-ac'))) {
     window.closeAllSongDropdowns();
   }
 });
+
+window.addEventListener('scroll', () => window.closeAllSongDropdowns(), true);
 
 window.pickSongSuggestion = (singerName, round, title) => {
   const sIdSanitized = round + '_' + singerName.replace(/[^a-zA-Z0-9]/g, '_');
@@ -889,7 +912,7 @@ window.pickSongSuggestion = (singerName, round, title) => {
 window.onSongInput = (singerName, round, showDrop = true) => {
   const sIdSanitized = round + '_' + singerName.replace(/[^a-zA-Z0-9]/g, '_');
   const songInp = $('#sg_' + sIdSanitized);
-  const dropEl = $('#ac_' + sIdSanitized);
+  const fl = document.getElementById('floating-song-ac');
   const p = getOrCreatePerf(singerName, round);
 
   const song = (songInp.value || '').trim().toUpperCase();
@@ -902,27 +925,32 @@ window.onSongInput = (singerName, round, showDrop = true) => {
     p.repeatCount = 0;
     if(repEl) repEl.innerHTML = '';
     if(idEl) idEl.innerHTML = '<span class="m">-</span>';
-    if(dropEl) dropEl.style.display = 'none';
+    if(fl) fl.style.display = 'none';
     saveLocal();
     drawSOTDSection();
     return;
   }
 
-  // Render lightweight non-blocking song suggestions when typing
-  if (dropEl && showDrop) {
-    const matches = getUniqueSongCatalog()
-      .filter(item => item.title.includes(song) && item.title !== song)
-      .slice(0, 8);
+  // Render floating fixed-position song suggestions (never clipped by table scroll!)
+  if (fl && showDrop && songInp) {
+    const catalog = getUniqueSongCatalog();
+    const starts = catalog.filter(item => item.title.startsWith(song) && item.title !== song);
+    const contains = catalog.filter(item => !item.title.startsWith(song) && item.title.includes(song) && item.title !== song);
+    const matches = [...starts, ...contains].slice(0, 10);
     if (matches.length) {
-      dropEl.innerHTML = matches.map(m =>
-        `<div class="song-ac-item" onmousedown="event.preventDefault();pickSongSuggestion('${e(singerName)}', ${round}, '${e(m.title).replace(/'/g, "\\'")}')">` +
+      const rect = songInp.getBoundingClientRect();
+      fl.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - 280)) + 'px';
+      fl.style.top = (rect.bottom + 2) + 'px';
+      fl.style.width = Math.max(240, rect.width + 45) + 'px';
+      fl.innerHTML = matches.map(m =>
+        `<div class="song-ac-item" onmousedown="event.preventDefault();pickSongSuggestion('${e(singerName).replace(/'/g, "\\'")}', ${round}, '${e(m.title).replace(/'/g, "\\'")}')">` +
           `<span>${e(m.title)}</span>` +
           `<span class="m" style="font-size:10.5px;white-space:nowrap">${m.count}x</span>` +
         `</div>`
       ).join('');
-      dropEl.style.display = 'block';
+      fl.style.display = 'block';
     } else {
-      dropEl.style.display = 'none';
+      fl.style.display = 'none';
     }
   }
 
@@ -1010,45 +1038,57 @@ window.setRound = (r) => {
 };
 
 // ==============================================================================
-// 30-SECOND JUDGING & BLIND VOTING PANEL FOR SOTD
+// 30-SECOND 4-CANDIDATE SOTD VOTING PANEL
 // ==============================================================================
-window.startSOTD30sVote = (singerName, songTitle) => {
+function getTop4SOTDCandidates() {
+  const ranked = getRankedSOTDCandidates();
+  return ranked.slice(0, 4);
+}
+
+window.startSOTD30sVote = async () => {
+  const top4 = getTop4SOTDCandidates();
+  if (!top4.length) {
+    showNotice('Add singers to the queue first so Top 4 SOTD candidates can be voted on.');
+    return;
+  }
   if (sotdTimerInterval) clearInterval(sotdTimerInterval);
+  const initCounts = {};
+  top4.forEach(c => { initCounts[c.name] = 0; });
   SOTD_30S_VOTE = {
     active: true,
-    singer: singerName,
-    song: songTitle || 'Current Song',
+    candidates: top4.map(c => ({ name: c.name, totalPts: c.totalPts, avgPts: c.avgPts })),
     remaining: 30,
     endsAt: Date.now() + 30000,
-    votes: [],
-    remoteVotes: []
+    localCounts: { ...initCounts },
+    remoteCounts: { ...initCounts },
+    totalRemoteBallots: 0
   };
-  syncToFirestore();
   drawSOTDSection();
-  sotdTimerInterval = setInterval(() => {
+  await pushLiveSessionNow();
+  sotdTimerInterval = setInterval(async () => {
     SOTD_30S_VOTE.remaining--;
     if (SOTD_30S_VOTE.remaining <= 0) {
       clearInterval(sotdTimerInterval);
       sotdTimerInterval = null;
       SOTD_30S_VOTE.active = false;
       SOTD_30S_VOTE.remaining = 0;
-      syncToFirestore();
+      await pushLiveSessionNow();
     }
     drawSOTDSection();
   }, 1000);
 };
 
-window.stopSOTD30sVote = () => {
+window.stopSOTD30sVote = async () => {
   if (sotdTimerInterval) clearInterval(sotdTimerInterval);
   sotdTimerInterval = null;
   SOTD_30S_VOTE.active = false;
-  syncToFirestore();
   drawSOTDSection();
+  await pushLiveSessionNow();
 };
 
-window.recordSOTD30sJudgeScore = (pts) => {
-  if (!SOTD_30S_VOTE.singer) return;
-  SOTD_30S_VOTE.votes.push(pts);
+window.recordSOTD30sJudgePick = (singerName) => {
+  if (!SOTD_30S_VOTE.localCounts) SOTD_30S_VOTE.localCounts = {};
+  SOTD_30S_VOTE.localCounts[singerName] = (SOTD_30S_VOTE.localCounts[singerName] || 0) + 1;
   drawSOTDSection();
 };
 
@@ -1062,32 +1102,28 @@ window.selectSuggestedSOTD = (name) => {
 window.addSOTD = () => {
   const selVal = $('#sotd_winner').value;
   const overrideInp = $('#sotd_override_singer') ? ($('#sotd_override_singer').value || '').trim().toUpperCase() : '';
-  // Superadmin can break the rule to select SOTD out of the way!
   const winner = (IS_SUPER && overrideInp) ? resolveCanonicalSingerName(overrideInp) : selVal;
   const mode = $('#sotd_mode').value;
   const reason = $('#sotd_reason').value.trim();
   if(!winner){ showNotice('Please choose or enter an SOTD singer.'); return; }
-  if(SOTD_LIST.some(x => x.n === winner)){ showNotice(winner + ' is already declared as SOTD.'); return; }
+  if(SOTD_LIST.some(x => x.n === winner)){ showNotice('This singer is already declared SOTD today.'); return; }
 
-  SOTD_LIST.push({
-    n: winner,
-    h: mode === 'special' ? 'Special' : mode === 'quiz' ? 'Quiz' : 'Score',
-    reason: (IS_SUPER && overrideInp) ? (reason ? reason + ' (Superadmin Override)' : 'Superadmin Override') : reason
-  });
-  $('#sotd_reason').value = '';
+  const modeLabel = mode === 'score' ? 'Score' : (mode === 'special' ? 'Special' : 'Quiz');
+  SOTD_LIST.push({ n: winner, h: modeLabel, reason });
+
+  if ($('#sotd_reason')) $('#sotd_reason').value = '';
   if ($('#sotd_override_singer')) $('#sotd_override_singer').value = '';
   saveLocal();
-  draw();
+  drawSOTDSection();
 };
 
 window.removeSOTD = (idx) => {
   SOTD_LIST.splice(idx, 1);
   saveLocal();
-  draw();
+  drawSOTDSection();
 };
 
 function getRankedSOTDCandidates() {
-  // Superadmin sees ALL singers in queue (even ineligible/late after cutoff); standard Admin sees eligible singers
   const pool = IS_SUPER ? LIVE.singers : LIVE.singers.filter(s => s.eligible);
   return pool.map(s => {
     const perfs = LIVE.performances.filter(p => p.singer === s.name && p.song);
@@ -1106,82 +1142,72 @@ function getRankedSOTDCandidates() {
 
 function renderSOTDHTML() {
   const ranked = getRankedSOTDCandidates();
-  const topSuggestions = ranked.filter(r => r.totalPts > 0);
-  const performedToday = LIVE.performances.filter(p => p.song);
+  const top4 = ranked.slice(0, 4);
+  const voteCands = (SOTD_30S_VOTE && SOTD_30S_VOTE.candidates && SOTD_30S_VOTE.candidates.length) ? SOTD_30S_VOTE.candidates : top4;
 
   return `
-    <b>Declare Singer(s) of the Day (SOTD) & 30s Judging Panel</b>
+    <b>Declare Singer(s) of the Day (SOTD) & 4-Candidate 30s Vote</b>
 
-    <!-- 30s Judging & Blind Voting Bar for SOTD -->
     <div style="margin:6px 0 8px;padding:8px 10px;background:var(--bg);border:1px solid var(--bd);border-radius:8px">
       <div class="row" style="justify-content:space-between">
-        <span style="font-size:12px;font-weight:700;color:var(--ac)">⏱️ SOTD 30s Judging & Blind Vote Panel</span>
+        <span style="font-size:12px;font-weight:700;color:var(--ac)">⏱️ SOTD 30s Poll (Top 4 Suggested Candidates)</span>
         ${SOTD_30S_VOTE.active ? `
           <div class="row">
-            <span class="badge-late" style="font-size:12px">⏳ ${SOTD_30S_VOTE.remaining}s left · ${e(SOTD_30S_VOTE.singer)}</span>
-            <button onclick="stopSOTD30sVote()" style="padding:2px 7px;font-size:11px">Stop</button>
+            <span class="badge-late" style="font-size:12px">⏳ ${SOTD_30S_VOTE.remaining}s left</span>
+            <button onclick="stopSOTD30sVote()" style="padding:2px 7px;font-size:11px">Stop Vote</button>
           </div>
         ` : `
-          <div class="row">
-            <select id="sotd_30s_target" style="padding:3px 6px;font-size:12px">
-              ${performedToday.length
-                ? performedToday.map(p => `<option value="${e(p.singer)}||${e(p.song)}">${e(p.singer)} — ${e(p.song)}</option>`).join('')
-                : LIVE.singers.map(s => `<option value="${e(s.name)}||Session Performance">${e(s.name)}</option>`).join('')}
-            </select>
-            <button class="pri" style="padding:3px 9px;font-size:11.5px" onclick="const v=$('#sotd_30s_target').value.split('||'); if(v[0]) startSOTD30sVote(v[0], v[1]);">Start 30s Judge Vote</button>
-          </div>
+          <button class="pri" style="padding:4px 10px;font-size:11.5px" onclick="startSOTD30sVote()">Start 30s SOTD Vote (4 Candidates)</button>
         `}
       </div>
-      ${SOTD_30S_VOTE.singer ? `
-        <div class="row" style="justify-content:space-between;margin-top:6px;padding-top:6px;border-top:1px dashed var(--bd)">
-          ${(() => { const allV = [...(SOTD_30S_VOTE.votes || []), ...(SOTD_30S_VOTE.remoteVotes || [])]; return `<span class="m" style="font-size:12px">Target: <b>${e(SOTD_30S_VOTE.singer)}</b> (${e(SOTD_30S_VOTE.song)}) · Total Ballots: <b>${allV.length}</b> ${allV.length ? `(Avg: ${(allV.reduce((a,b)=>a+b,0)/allV.length).toFixed(1)}/10)` : ''}</span>`; })()}
-          <div class="row" style="gap:3px">
-            ${[6,7,8,9,10].map(pt => `<button style="padding:2px 7px;font-size:11px" onclick="recordSOTD30sJudgeScore(${pt})">+${pt}</button>`).join('')}
-          </div>
-        </div>
-      ` : ''}
-    </div>
 
-    ${topSuggestions.length ? `
-      <div style="margin:6px 0 8px;padding:7px 9px;background:var(--ac-light);border-radius:8px;border:1px solid var(--bd)">
-        <span style="font-size:11.5px;font-weight:700;color:var(--ac)">⭐ Top Suggestions (Highest Points & Average):</span>
-        <div class="row" style="margin-top:4px;gap:5px">
-          ${topSuggestions.slice(0, 4).map(c => `
-            <button type="button" class="sotd-sug-chip" onclick="selectSuggestedSOTD('${e(c.name)}')">
-              <b>${e(c.name)}</b>: ${c.totalPts} pts <span class="m">(Avg: ${c.avgPts})</span>
-            </button>
-          `).join('')}
+      ${voteCands.length ? `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:6px;margin-top:8px">
+          ${voteCands.map((c, i) => {
+            const remVotes = (SOTD_30S_VOTE.remoteCounts && SOTD_30S_VOTE.remoteCounts[c.name]) || 0;
+            const locVotes = (SOTD_30S_VOTE.localCounts && SOTD_30S_VOTE.localCounts[c.name]) || 0;
+            const totVotes = remVotes + locVotes;
+            return `<div style="padding:6px 8px;border:1px solid var(--bd);border-radius:8px;background:var(--card);display:flex;flex-direction:column;gap:4px">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:4px">
+                <b style="font-size:12px">${i+1}. ${e(c.name)}</b>
+                <span class="badge-ok" style="font-size:11px">${totVotes} vote${totVotes===1?'':'s'}</span>
+              </div>
+              <span class="m" style="font-size:11px">${c.totalPts} pts (Avg: ${c.avgPts})</span>
+              <div class="row" style="gap:4px;margin-top:2px">
+                <button style="padding:2px 6px;font-size:11px" onclick="recordSOTD30sJudgePick('${e(c.name).replace(/'/g, "\\'")}')">+1 Vote</button>
+                <button class="pri" style="padding:2px 6px;font-size:11px" onclick="selectSuggestedSOTD('${e(c.name).replace(/'/g, "\\'")}')">Select SOTD</button>
+              </div>
+            </div>`;
+          }).join('')}
         </div>
-      </div>
-    ` : ''}
+      ` : '<p class="m" style="margin:6px 0 0">Add singers to the queue to generate Top 4 SOTD candidates.</p>'}
+    </div>
 
     <div class="f">
       <select id="sotd_winner">
-        <option value="">Choose SOTD Singer…</option>
-        ${ranked.map(c => `<option value="${e(c.name)}">${e(c.name)}${!c.eligible ? ' [Late]' : ''}${c.totalPts > 0 ? ` — ${c.totalPts} pts (Avg: ${c.avgPts})` : ''}</option>`).join('')}
+        <option value="">Choose SOTD Singer (Top 4 Suggested First)…</option>
+        ${ranked.map((c, idx) => `<option value="${e(c.name)}">${idx < 4 ? '★ ' : ''}${e(c.name)}${!c.eligible ? ' [Late]' : ''}${c.totalPts > 0 ? ` — ${c.totalPts} pts (Avg: ${c.avgPts})` : ''}</option>`).join('')}
       </select>
       ${IS_SUPER ? `<input id="sotd_override_singer" list="dl_known" placeholder="Superadmin Rule Override (Any Singer)" style="text-transform:uppercase;border-color:#d97706">` : ''}
       <select id="sotd_mode">
-        <option value="score">By Score</option>
-        <option value="quiz">By Quiz</option>
-        <option value="special">Special Moments (Encouragement)</option>
+        <option value="score">By Star Points</option>
+        <option value="special">Special Appreciation</option>
+        <option value="quiz">Musical Quiz Winner</option>
       </select>
-      <input id="sotd_reason" placeholder="Optional notes / Quiz song">
+      <input id="sotd_reason" placeholder="Reason / Note (Optional)">
+      <button class="pri" onclick="addSOTD()">Declare SOTD</button>
     </div>
-    <p style="margin:6px 0"><button class="pri" onclick="addSOTD()">+ Add SOTD Winner</button></p>
 
     ${SOTD_LIST.length ? `
-      <div class="tbl" style="margin-top:6px"><table>
-        <tr><th>#</th><th>Winner Singer</th><th>Selection Mode</th><th>Notes</th><th style="text-align:center">Action</th></tr>
-        ${SOTD_LIST.map((w, wIdx) => `<tr>
-          <td>${wIdx+1}</td>
-          <td><b>${e(w.n)}</b></td>
-          <td><span class="badge-ok">${e(w.h)}</span></td>
-          <td>${e(w.reason||'-')}</td>
-          <td style="text-align:center"><button onclick="removeSOTD(${wIdx})">Remove</button></td>
-        </tr>`).join('')}
-      </table></div>
-    ` : '<p class="m">No SOTD declared yet for today.</p>'}
+      <div style="margin-top:8px">
+        ${SOTD_LIST.map((w, i) => `
+          <div class="row" style="justify-content:space-between;padding:5px 8px;background:var(--ac-light);border-radius:8px;margin-bottom:4px">
+            <span>🏆 <b>${e(w.n)}</b> <span class="badge-ok">${e(w.h)}</span> ${w.reason ? `<span class="m">(${e(w.reason)})</span>` : ''}</span>
+            <button style="padding:2px 8px;font-size:11px" onclick="removeSOTD(${i})">Remove</button>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
   `;
 }
 
@@ -1222,19 +1248,19 @@ async function saveSOTMPanelState() {
   } catch (e) {}
 }
 
-window.triggerSOTM30sVote = (singerName) => {
+window.triggerSOTM30sVote = async (singerName) => {
   if (sotmBlindInterval) clearInterval(sotmBlindInterval);
   SOTM_PANEL.activeBlindVote = { singer: singerName, remaining: 30, endsAt: Date.now() + 30000 };
-  syncToFirestore();
   drawSOTMPanel();
-  sotmBlindInterval = setInterval(() => {
+  await pushLiveSessionNow();
+  sotmBlindInterval = setInterval(async () => {
     if (!SOTM_PANEL.activeBlindVote) return;
     SOTM_PANEL.activeBlindVote.remaining--;
     if (SOTM_PANEL.activeBlindVote.remaining <= 0) {
       clearInterval(sotmBlindInterval);
       sotmBlindInterval = null;
       SOTM_PANEL.activeBlindVote = null;
-      syncToFirestore();
+      await pushLiveSessionNow();
     }
     drawSOTMPanel();
   }, 1000);
@@ -1568,15 +1594,15 @@ async function buildAndSaveMasterBackup(songsSnapshot, pDataSnapshot, sotmSnapsh
 
   const masterObj = {
     kind: 'sfh-master-backup',
-    version: 'v29',
+    version: 'v38',
     generatedAt: now.toISOString(),
     ts: LIVE.date + ' ' + curTime(),
-    songs: songsSnapshot.slice().sort(cmpBySongId),
-    singers: pDataSnapshot.singers || KNOWN_SINGERS,
-    sotd: pDataSnapshot.sotd || [],
-    som: pDataSnapshot.som || {},
-    somd: pDataSnapshot.somd || {},
-    stars: pDataSnapshot.stars || {},
+    songs: (songsSnapshot || []).slice().sort(cmpBySongId),
+    singers: (pDataSnapshot && pDataSnapshot.singers) || KNOWN_SINGERS,
+    sotd: (pDataSnapshot && pDataSnapshot.sotd) || [],
+    som: (pDataSnapshot && pDataSnapshot.som) || {},
+    somd: (pDataSnapshot && pDataSnapshot.somd) || {},
+    stars: (pDataSnapshot && pDataSnapshot.stars) || {},
     holidays: CONF_CACHE.holidays || [],
     schedule: SCHEDULE,
     starScoring: STAR_SCORING,
@@ -1585,28 +1611,22 @@ async function buildAndSaveMasterBackup(songsSnapshot, pDataSnapshot, sotmSnapsh
 
   const jsonStr = JSON.stringify(masterObj, null, 2);
 
-  if (!backupDirHandle) backupDirHandle = await getBackupDirHandleFromIDB();
-  if (backupDirHandle) {
-    try {
-      let perm = await backupDirHandle.queryPermission({ mode: 'readwrite' });
-      if (perm !== 'granted') perm = await backupDirHandle.requestPermission({ mode: 'readwrite' });
-      if (perm === 'granted') {
-        const fileHandle = await backupDirHandle.getFileHandle(fileName, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(jsonStr);
-        await writable.close();
-        return `${backupDirHandle.name}/${fileName}`;
-      }
-    } catch (e) {}
+  try {
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      try { document.body.removeChild(a); URL.revokeObjectURL(url); } catch (_e) {}
+    }, 1500);
+  } catch (dlErr) {
+    console.warn('Download fallback warning:', dlErr);
   }
 
-  const blob = new Blob([jsonStr], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  a.click();
-  URL.revokeObjectURL(url);
   return fileName;
 }
 
@@ -1620,7 +1640,7 @@ window.downloadBackupJSON = async () => {
 
   const pDataSnap = PUB_CACHE || { singers: KNOWN_SINGERS, sotd: [], som: {}, somd: {}, stars: {} };
   const fname = await buildAndSaveMasterBackup(outSongs, pDataSnap, null);
-  showNotice(`Master Backup saved offline as:\n${fname}`, "Offline Master Backup Saved");
+  showNotice(`Master Backup downloaded as:\n${fname}`, "Offline Master Backup Saved");
 };
 
 window.downloadLivePDF = () => {
@@ -1790,26 +1810,28 @@ window.manualPublishSession = () => {
 };
 
 window.endSession = async () => {
-  const hasLiveEntries = LIVE.singers.length > 0 || SOTD_LIST.length > 0;
-  if (!isWithinLiveSchedule() && !hasLiveEntries) {
+  showConfirm("End & Publish today's live session?\n\n• Publishes all songs, stars & SOTDs\n• Downloads Master Backup JSON automatically\n• Closes Live Session & returns to Home", async () => {
     SESSION_ENDED = true;
     clearTimeout(syncTimer);
-    try { sessionStorage.removeItem('sfh_practice_session'); } catch(x){}
-    try { localStorage.removeItem('sfh_live_session_' + LIVE.date); } catch(x){}
-    try { await setDoc(doc(fs, 'live', 'session'), { date: LIVE.date, active: false, endedAt: Date.now(), updatedAt: Date.now() }); } catch(e){}
-    window.location.href = 'index.html';
-    return;
-  }
+    if (sotdTimerInterval) { clearInterval(sotdTimerInterval); sotdTimerInterval = null; }
+    if (sotmBlindInterval) { clearInterval(sotmBlindInterval); sotmBlindInterval = null; }
 
-  showConfirm("End & Publish today's live session?\n\n• Permanently publishes all songs, stars & SOTDs\n• Closes the live banner on Home & saves Master Backup JSON\n• Returns you to Home screen", async () => {
+    let performed = LIVE.performances.filter(p => p.song).slice().sort(cmpBySongId);
+    let pData = PUB_CACHE || { singers: KNOWN_SINGERS, sotd: [], som: {}, somd: {}, stars: {} };
+    let fullSongs = ALL_SONGS.filter(r => r[1] !== LIVE.date);
+    performed.forEach(p => fullSongs.push([p.songId, LIVE.date, p.singer, p.song]));
+    fullSongs.sort(cmpBySongId);
+
     try {
-      SESSION_ENDED = true;
-      clearTimeout(syncTimer);
-      if (sotdTimerInterval) { clearInterval(sotdTimerInterval); sotdTimerInterval = null; }
-      if (sotmBlindInterval) { clearInterval(sotmBlindInterval); sotmBlindInterval = null; }
+      const res = await commitSessionDataToFirestore();
+      performed = res.performed;
+      pData = res.pData;
+      fullSongs = res.fullSongs;
+    } catch (pubErr) {
+      console.warn('Firestore publish warning during endSession:', pubErr);
+    }
 
-      const { performed, pData, fullSongs } = await commitSessionDataToFirestore();
-
+    try {
       await setDoc(doc(fs, 'live', 'session'), {
         date: LIVE.date,
         active: false,
@@ -1821,47 +1843,46 @@ window.endSession = async () => {
         endedAt: Date.now(),
         updatedAt: Date.now()
       });
-
-      try { localStorage.removeItem('sfh_live_session_' + LIVE.date); } catch(x){}
-      try { sessionStorage.removeItem('sfh_practice_session'); } catch(x){}
-
-      let sotmSnapData = null;
-      try {
-        const ss = await getDoc(doc(fs, 'pub', 'sotm'));
-        if (ss.exists()) sotmSnapData = ss.data();
-      } catch (e) {}
-
-      const backupFileName = await buildAndSaveMasterBackup(fullSongs, pData, sotmSnapData);
-
-      const finalists = Object.entries(pData.stars || {}).filter(([n, o]) => (o.t || 0) >= 4).map(([n]) => n);
-      const waText =
-        `🎶 *SING FROM HOME — ${fd(LIVE.date)}* 🎶\n` +
-        `_A project of B. S. Tikariya Cultural Foundation ®_\n\n` +
-        (SOTD_LIST.length ? `🏆 *Singer(s) of the Day:* ${SOTD_LIST.map(w => `*${w.n}*${w.h !== 'Score' ? ' ('+w.h+')' : ''}`).join(', ')}\n\n` : '') +
-        `🎤 *Songs Performed (${performed.length}):*\n` +
-        performed.map((p, i) => `${i+1}. *${p.singer}* — ${p.song} (${p.songId})`).join('\n') +
-        (finalists.length ? `\n\n⭐ *4-Star SOTM Finalists:* ${finalists.join(', ')}` : '') +
-        `\n\n_Conducted by Tikariya's School of Music_`;
-
-      LIVE = { date: LIVE.date, singers: [], performances: [] };
-      SOTD_LIST = [];
-
-      const m = $('#custom-modal');
-      $('#custom-modal-body').innerHTML = `
-        <h3>✅ Session Ended & Published</h3>
-        <p class="m" style="margin:6px 0">Live session closed. Offline Master Backup saved as:<br><b>${e(backupFileName)}</b></p>
-        <label style="display:block;font-size:12px;font-weight:700;margin-top:8px">WhatsApp Group Summary (Ready to Share):</label>
-        <textarea id="wa_summary_box" rows="6" style="width:100%;margin-top:4px;font-size:12.5px">${e(waText)}</textarea>
-        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
-          <button onclick="copyWhatsAppSummary()">Copy Summary</button>
-          <button class="pri" onclick="window.location.href='index.html'">Done → Home</button>
-        </div>
-      `;
-      m.style.display = 'flex';
-    } catch(err) {
-      SESSION_ENDED = false;
-      showNotice("Error ending session: " + (err.code || err.message), "Error");
+    } catch (sessErr) {
+      console.warn('Live session close warning:', sessErr);
     }
+
+    try { localStorage.removeItem('sfh_live_session_' + LIVE.date); } catch(x){}
+    try { sessionStorage.removeItem('sfh_practice_session'); } catch(x){}
+
+    let sotmSnapData = null;
+    try {
+      const ss = await getDoc(doc(fs, 'pub', 'sotm'));
+      if (ss.exists()) sotmSnapData = ss.data();
+    } catch (e) {}
+
+    const backupFileName = await buildAndSaveMasterBackup(fullSongs, pData, sotmSnapData);
+
+    const finalists = Object.entries(pData.stars || {}).filter(([n, o]) => (o.t || 0) >= 4).map(([n]) => n);
+    const waText =
+      `🎶 *SING FROM HOME — ${fd(LIVE.date)}* 🎶\n` +
+      `_A project of B. S. Tikariya Cultural Foundation ®_\n\n` +
+      (SOTD_LIST.length ? `🏆 *Singer(s) of the Day:* ${SOTD_LIST.map(w => `*${w.n}*${w.h !== 'Score' ? ' ('+w.h+')' : ''}`).join(', ')}\n\n` : '') +
+      `🎤 *Songs Performed (${performed.length}):*\n` +
+      performed.map((p, i) => `${i+1}. *${p.singer}* — ${p.song} (${p.songId})`).join('\n') +
+      (finalists.length ? `\n\n⭐ *4-Star SOTM Finalists:* ${finalists.join(', ')}` : '') +
+      `\n\n_Conducted by Tikariya's School of Music_`;
+
+    LIVE = { date: LIVE.date, singers: [], performances: [] };
+    SOTD_LIST = [];
+
+    const m = $('#custom-modal');
+    $('#custom-modal-body').innerHTML = `
+      <h3>✅ Session Ended & Backup Downloaded</h3>
+      <p class="m" style="margin:6px 0">Live session closed. JSON backup downloaded:<br><b>${e(backupFileName)}</b></p>
+      <label style="display:block;font-size:12px;font-weight:700;margin-top:8px">WhatsApp Group Summary (Ready to Share):</label>
+      <textarea id="wa_summary_box" rows="6" style="width:100%;margin-top:4px;font-size:12.5px">${e(waText)}</textarea>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+        <button onclick="copyWhatsAppSummary()">Copy Summary</button>
+        <button class="pri" onclick="window.location.href='index.html'">Done → Home</button>
+      </div>
+    `;
+    m.style.display = 'flex';
   }, "End & Publish Session");
 };
 
@@ -1946,7 +1967,6 @@ function draw(){
               <div style="display:flex;align-items:center;white-space:nowrap">
                 <div class="song-ac-wrap">
                   <input id="sg_${sKey}" autocomplete="off" value="${e(p.song || '')}" placeholder="Type song..." style="width:195px;text-transform:uppercase" oninput="onSongInput('${e(s.name)}', ${currentRound}, true)" onfocus="onSongInput('${e(s.name)}', ${currentRound}, true)" onkeydown="if(event.key==='Escape')closeAllSongDropdowns()">
-                  <div id="ac_${sKey}" class="song-ac-list"></div>
                 </div>
                 <span id="rep_${sKey}">${p.repeatCount > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${p.repeatCount})</span>` : ''}</span>
                 <button class="btn-meta" style="margin-left:6px" onclick="openMeta('${e(s.name)}', ${currentRound})" title="Metadata (Original singer, composer, lyricist, movie)">ℹ Details</button>
