@@ -746,8 +746,8 @@ function tallyLivePlanBallots(planDocs) {
 async function listenToZoomButtonEntries() {
   if (zoomEntriesUnsub) { zoomEntriesUnsub(); zoomEntriesUnsub = null; }
   if (plansEntriesUnsub) { plansEntriesUnsub(); plansEntriesUnsub = null; }
-  // Keep off-schedule practice isolated from real participant Zoom clicks
-  if (!isWithinLiveSchedule()) return;
+  // Keep off-schedule practice isolated from real participant Zoom clicks, while allowing the 5-min pre-session & live window
+  if (!isWithinAdminLiveWindow()) return;
 
   const qPlans = query(collection(fs, 'plans'), where('date', '==', LIVE.date));
   const qZoom = query(collection(fs, 'zoom_entries'), where('date', '==', LIVE.date));

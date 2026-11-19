@@ -80,10 +80,10 @@ nav{
   gap:5px;
   margin-bottom:8px;
 }
-nav > button,
-nav > button.on,
-nav > button.pri,
-nav > button.warn{
+nav > button:not(.zm),
+nav > button.on:not(.zm),
+nav > button.pri:not(.zm),
+nav > button.warn:not(.zm){
   width:100%;
   height:100%;
   min-height:34px;
@@ -101,10 +101,10 @@ nav > button.warn{
   box-shadow:none !important;
   border:1px solid var(--bd);
 }
-nav > button:hover{
+nav > button:not(.zm):hover{
   border-color:#000000;
 }
-nav > button.on{
+nav > button.on:not(.zm){
   font-weight:800;
   border:1.5px solid #000000;
 }
@@ -116,12 +116,12 @@ nav > .zm{
   font-size:14px;
   font-weight:700;
   box-sizing:border-box;
-  background:linear-gradient(135deg,#0284c7,#0369a1);
-  color:#fff;
-  border-color:transparent;
-  box-shadow:0 4px 14px -2px rgba(2,132,199,0.35);
+  background:linear-gradient(135deg,#0284c7,#0369a1) !important;
+  color:#fff !important;
+  border-color:transparent !important;
+  box-shadow:0 4px 14px -2px rgba(2,132,199,0.35) !important;
 }
-nav > .zm:hover{box-shadow:0 6px 18px -2px rgba(2,132,199,0.45);transform:translateY(-1px)}
+nav > .zm:hover{box-shadow:0 6px 18px -2px rgba(2,132,199,0.45) !important;transform:translateY(-1px)}
 
 input,select,textarea{
   font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--bd);
@@ -824,7 +824,10 @@ window.joinZoom = async () => {
     schedStart.setDate(schedStart.getDate() - 1);
   }
   const cutoffMs = schedStart.getTime() + ((sc.cutoffMins ?? 26) * 60000);
-  const canAutoQueue = Boolean(sc.forceLiveOverride || (LIVE_SESSION && LIVE_SESSION.active) || now.getTime() >= schedStart.getTime());
+  const preOpenMs = schedStart.getTime() - (5 * 60000);
+  const schedDays = Array.isArray(sc.days) ? sc.days : [1, 2, 3, 4, 5];
+  const isSchedDay = schedDays.includes(schedStart.getDay());
+  const canAutoQueue = Boolean(sc.forceLiveOverride || (LIVE_SESSION && LIVE_SESSION.active) || (isSchedDay && now.getTime() >= preOpenMs));
 
   if (singerName && U && canAutoQueue) {
     const entryTimeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
