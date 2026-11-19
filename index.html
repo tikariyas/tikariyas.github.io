@@ -305,6 +305,11 @@ function getSingerAliases() {
   return map;
 }
 
+function getRemovedSingersSet() {
+  const list = (CONF && Array.isArray(CONF.removedSingers)) ? CONF.removedSingers : [];
+  return new Set(list.map(x => String(x || '').trim().toUpperCase()).filter(Boolean));
+}
+
 function canonSinger(rawName) {
   let cur = String(rawName || '').trim().toUpperCase();
   if (!cur) return '';
@@ -470,6 +475,7 @@ const effJudge = () => {
   const vp = curP();
   return Boolean(vp && vp.status == 'approved' && isUserJudge(vp));
 };
+const isExternalJudgeOnly = () => effJudge() && !effSuper() && !effAdmin();
 const curP = () => {
   if (!PREVIEW_PARTICIPANT || !PREVIEW_SINGER) return P || {};
   const target = canonSinger(PREVIEW_SINGER);
@@ -482,6 +488,8 @@ const curP = () => {
 let songListTab = 'today';
 let songArchivesExpanded = false;
 let approvedListExpanded = false;
+let residualListExpanded = false;
+let residualSearch = '';
 let selectedSingerFilter = '';
 let searchSongKeyword = '';
 
@@ -512,22 +520,31 @@ async function load(){
         if (!existingIds.has(row[0])) SONGS.push(row);
       });
 
-      // Capture raw singer names BEFORE alias normalization (for Superadmin Merge tool)
+      const removedSet = getRemovedSingersSet();
+      const isRemovedSinger = nm => {
+        const raw = String(nm || '').trim().toUpperCase();
+        const cn = canonSinger(raw);
+        return Boolean((raw && removedSet.has(raw)) || (cn && removedSet.has(cn)));
+      };
+
+      // Capture raw singer names BEFORE alias normalization (for Superadmin Merge & Residual Removal tools)
       const rawSet = new Set();
-      SONGS.forEach(row => { const nm = String(row[2] || '').trim().toUpperCase(); if (nm) rawSet.add(nm); });
+      SONGS.forEach(row => { const nm = String(row[2] || '').trim().toUpperCase(); if (nm && !isRemovedSinger(nm)) rawSet.add(nm); });
       if (PUB) {
-        (PUB.singers || []).forEach(nm => { const u = String(nm || '').trim().toUpperCase(); if (u) rawSet.add(u); });
-        (PUB.sotd || []).forEach(x => (x.l || []).forEach(w => { const u = String((w && w.n) || w || '').trim().toUpperCase(); if (u) rawSet.add(u); }));
-        Object.keys(PUB.stars || {}).forEach(nm => { const u = String(nm || '').trim().toUpperCase(); if (u) rawSet.add(u); });
+        (PUB.singers || []).forEach(nm => { const u = String(nm || '').trim().toUpperCase(); if (u && !isRemovedSinger(u)) rawSet.add(u); });
+        (PUB.sotd || []).forEach(x => (x.l || []).forEach(w => { const u = String((w && w.n) || w || '').trim().toUpperCase(); if (u && !isRemovedSinger(u)) rawSet.add(u); }));
+        Object.keys(PUB.stars || {}).forEach(nm => { const u = String(nm || '').trim().toUpperCase(); if (u && !isRemovedSinger(u)) rawSet.add(u); });
       }
       RAW_SINGERS_BEFORE_ALIAS = [...rawSet].sort();
 
-      // Normalize songs (date + canonical singer alias)
-      SONGS = SONGS.map(row => [row[0], normDate(row[1]), canonSinger(row[2]), row[3]]);
+      // Normalize songs (date + canonical singer alias) & exclude permanently removed singers
+      SONGS = SONGS
+        .map(row => [row[0], normDate(row[1]), canonSinger(row[2]), row[3]])
+        .filter(row => row[2] && !isRemovedSinger(row[2]));
       SONGS.sort(cmpBySongId);
 
       if (P && P.singer) {
-        P = { ...P, singer: canonSinger(P.singer) };
+        P = { ...P, singer: isRemovedSinger(P.singer) ? '' : canonSinger(P.singer) };
       }
 
       if (PUB) {
@@ -535,7 +552,7 @@ async function load(){
         const mergedStars = {};
         Object.entries(PUB.stars || {}).forEach(([rawName, rec]) => {
           const cn = canonSinger(rawName);
-          if (!cn) return;
+          if (!cn || isRemovedSinger(cn)) return;
           mergedStars[cn] = mergedStars[cn] ? mergeStarRecords(mergedStars[cn], rec) : mergeStarRecords(null, rec);
         });
         PUB.stars = mergedStars;
@@ -545,7 +562,7 @@ async function load(){
         const addSotdWinner = (dtRaw, nameRaw, howRaw) => {
           const dt = normDate(dtRaw);
           const nm = canonSinger(nameRaw);
-          if (!dt || !nm) return;
+          if (!dt || !nm || isRemovedSinger(nm)) return;
           if (!sotdByDate.has(dt)) sotdByDate.set(dt, []);
           const arr = sotdByDate.get(dt);
           if (!arr.some(x => x.n === nm)) {
@@ -579,10 +596,13 @@ async function load(){
         // Normalize SOM values & singers list
         if (PUB.som && typeof PUB.som === 'object') {
           const normSom = {};
-          Object.entries(PUB.som).forEach(([k, v]) => { normSom[k] = canonSinger(v); });
+          Object.entries(PUB.som).forEach(([k, v]) => {
+            const cn = canonSinger(v);
+            if (cn && !isRemovedSinger(cn)) normSom[k] = cn;
+          });
           PUB.som = normSom;
         }
-        PUB.singers = [...new Set([...(PUB.singers || []).map(canonSinger), ...SONGS.map(r => r[2])].filter(Boolean))].sort();
+        PUB.singers = [...new Set([...(PUB.singers || []).map(canonSinger), ...SONGS.map(r => r[2])].filter(nm => nm && !isRemovedSinger(nm)))].sort();
       }
 
       try {
@@ -633,6 +653,9 @@ onAuthStateChanged(auth, async u => {
     IS_ADMIN = IS_SUPER || (P && P.status == 'approved' && P.role == 'admin');
     IS_JUDGE = Boolean(P && P.status == 'approved' && isUserJudge(P));
     ADM = IS_ADMIN;
+    if (IS_JUDGE && !IS_SUPER && !IS_ADMIN) {
+      tab = 'judge';
+    }
 
     if (IS_SUPER && AUTO_PREVIEW_PARTICIPANT) {
       PREVIEW_PARTICIPANT = true;
@@ -926,10 +949,14 @@ function renderPreviewBar(){
 
 function draw(){
   $('#hb').innerHTML=U?`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end"><a href="#" onclick="out();return false" style="color:var(--ac);font-size:14px;text-decoration:underline;cursor:pointer;white-space:nowrap">Sign out</a></div>`:'';
-  if(showAbout){$('#app').innerHTML=vAbout(true);return}
+  if(showAbout&&!isExternalJudgeOnly()){$('#app').innerHTML=vAbout(true);return}
   if(!U){$('#app').innerHTML=vLogin();return}
   if(loadErr){$('#app').innerHTML='<div class="c"><b>Could not load data</b><p class="m">'+e(loadErr)+'</p><p class="m">Check your internet and try again.</p><p><button class="pri" onclick="refresh()">↻ Try again</button></p></div>';return}
   if(!effAdm()&&curP().status!='approved'){$('#app').innerHTML=renderPreviewBar()+vWait();return}
+  if(isExternalJudgeOnly()){
+    $('#app').innerHTML=renderPreviewBar()+vJudge();
+    return;
+  }
   $('#app').innerHTML=renderPreviewBar()+tabs()+(
     tab=='home'?vHome():
     tab=='sotd'?vSotd():
@@ -1928,11 +1955,314 @@ function renderBottomSongListHTML() {
   `;
 }
 
+function getHolidayDateSet() {
+  const list = (CONF && Array.isArray(CONF.holidays)) ? CONF.holidays : (Array.isArray(HOLIDAYS) ? HOLIDAYS : []);
+  return new Set(list.map(x => normDate(typeof x === 'string' ? x : (x && x.date))).filter(Boolean));
+}
+
+function localDateKeyOf(dt) {
+  return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+}
+
+function fmtTime12h(hhmm) {
+  const [h, m] = String(hhmm || '20:30').split(':').map(Number);
+  const hr = isNaN(h) ? 20 : h;
+  const mn = isNaN(m) ? 30 : m;
+  const ap = hr >= 12 ? 'pm' : 'am';
+  const hr12 = (hr % 12) || 12;
+  return `${hr12}:${String(mn).padStart(2, '0')} ${ap}`;
+}
+
+function getNextSessionState(now = new Date()) {
+  const sc = (typeof getSchedule === 'function')
+    ? getSchedule()
+    : { days: [1, 2, 3, 4, 5], startTime: '20:30', endTime: '23:30', cutoffMins: 15, forceLiveOverride: false };
+  const days = Array.isArray(sc.days) && sc.days.length ? sc.days : [1, 2, 3, 4, 5];
+  const [sh, sm] = String(sc.startTime || '20:30').split(':').map(Number);
+  const [eh, em] = String(sc.endTime || '23:30').split(':').map(Number);
+  const holidays = getHolidayDateSet();
+  const todayKey = localDateKeyOf(now);
+  const todayIsHoliday = holidays.has(todayKey);
+
+  if (sc.forceLiveOverride || (!todayIsHoliday && isWithinLiveScheduleNow(now))) {
+    const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), sh || 20, sm || 30, 0, 0);
+    return {
+      state: 'live',
+      dateKey: todayKey,
+      startDate,
+      msRemaining: 0,
+      msSinceStart: Math.max(0, now.getTime() - startDate.getTime()),
+      timeLabel: `${fmtTime12h(sc.startTime)} – ${fmtTime12h(sc.endTime)}`
+    };
+  }
+
+  for (let offset = 0; offset <= 14; offset++) {
+    const cand = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset, sh || 20, sm || 30, 0, 0);
+    const dk = localDateKeyOf(cand);
+    if (!days.includes(cand.getDay())) continue;
+    if (holidays.has(dk)) continue;
+    const diff = cand.getTime() - now.getTime();
+    if (diff > 0) {
+      const dayLbl = offset === 0
+        ? 'Today'
+        : (offset === 1 ? 'Tomorrow' : cand.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }));
+      return {
+        state: 'upcoming',
+        dateKey: dk,
+        startDate: cand,
+        msRemaining: diff,
+        msSinceStart: 0,
+        dayLabel: dayLbl,
+        timeLabel: fmtTime12h(sc.startTime)
+      };
+    }
+  }
+  return { state: 'none', dateKey: '', startDate: null, msRemaining: 0, msSinceStart: 0, dayLabel: '', timeLabel: '' };
+}
+
+function formatCountdownClock(ms) {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const hh = String(h).padStart(2, '0');
+  const mm = String(m).padStart(2, '0');
+  const ss = String(s).padStart(2, '0');
+  return d > 0 ? `${d}d ${hh}:${mm}:${ss}` : `${hh}:${mm}:${ss}`;
+}
+
+function isNotifSupported() {
+  return typeof window !== 'undefined' && 'Notification' in window;
+}
+
+function isNotifEnabledPref() {
+  try { return localStorage.getItem('sfh_notif_enabled') !== '0'; } catch (_e) { return true; }
+}
+
+function showInAppToast(title, body) {
+  try {
+    let el = document.getElementById('sfh-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'sfh-toast';
+      el.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9999;max-width:420px;width:calc(100% - 28px);background:#0f3460;color:#fff;padding:12px 14px;border-radius:12px;box-shadow:0 10px 28px rgba(0,0,0,0.28);font-size:13px;line-height:1.4';
+      document.body.appendChild(el);
+    }
+    el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><b style="display:block;margin-bottom:2px">${e(title)}</b><span>${e(body)}</span></div><button onclick="this.closest('#sfh-toast').remove()" style="background:transparent;border:0;color:#fff;font-size:16px;padding:0 4px;cursor:pointer">✕</button></div>`;
+    clearTimeout(window._sfhToastTimer);
+    window._sfhToastTimer = setTimeout(() => {
+      const t = document.getElementById('sfh-toast');
+      if (t) t.remove();
+    }, 8000);
+  } catch (_e) {}
+}
+
+async function sendSessionPushNotification(title, body, tag = 'sfh-session') {
+  showInAppToast(title, body);
+  if (!isNotifSupported() || Notification.permission !== 'granted') return false;
+  try {
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.ready;
+      if (reg && typeof reg.showNotification === 'function') {
+        await reg.showNotification(title, {
+          body,
+          tag,
+          icon: 'icon-192.png',
+          badge: 'icon-192.png',
+          vibrate: [180, 90, 180],
+          renotify: true
+        });
+        return true;
+      }
+    }
+  } catch (_swErr) {}
+  try {
+    new Notification(title, { body, tag, icon: 'icon-192.png' });
+    return true;
+  } catch (_nErr) {
+    return false;
+  }
+}
+
+window.enableSessionNotifications = async () => {
+  if (!isNotifSupported()) {
+    showNotice('Push notifications are not supported on this browser.');
+    return;
+  }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') {
+      try { localStorage.setItem('sfh_notif_enabled', '1'); } catch (_e) {}
+      draw();
+      await sendSessionPushNotification(
+        'Session Alerts Active',
+        'You will automatically be notified 15 min before, 5 min before, and when Sing From Home starts.',
+        'sfh-alerts-enabled'
+      );
+    } else if (perm === 'denied') {
+      showNotice('Notifications are blocked in your browser settings. Enable notifications for this site in browser settings to receive automatic session reminders.');
+      draw();
+    }
+  } catch (_err) {
+    showNotice('Could not request notification permission on this device.');
+  }
+};
+
+window.toggleSessionNotifications = () => {
+  const next = !isNotifEnabledPref();
+  try { localStorage.setItem('sfh_notif_enabled', next ? '1' : '0'); } catch (_e) {}
+  draw();
+  showInAppToast(
+    next ? 'Auto Session Alerts On' : 'Auto Session Alerts Paused',
+    next ? 'You will get reminders 15 min before, 5 min before, and at session start.' : 'Automatic session reminders are paused.'
+  );
+};
+
+window.testSessionNotification = async () => {
+  const st = getNextSessionState();
+  const body = st.state === 'live'
+    ? 'Sing From Home session is LIVE now! Tap Start Zoom to join.'
+    : (st.state === 'upcoming'
+      ? `Next session starts in ${formatCountdownClock(st.msRemaining)} (${st.dayLabel} at ${st.timeLabel}).`
+      : 'Session reminders are working properly!');
+  await sendSessionPushNotification('Sing From Home Reminder', body, 'sfh-test-' + Date.now());
+};
+
+function renderSessionTimerCard() {
+  const st = getNextSessionState();
+  if (st.state === 'none') return '';
+  const isLive = st.state === 'live';
+  const isSoon = !isLive && st.msRemaining <= 5 * 60 * 1000;
+  const borderCol = isLive ? '#16a34a' : (isSoon ? '#d97706' : 'var(--ac)');
+  const bgCol = isLive ? '#f0fdf4' : (isSoon ? '#fffbeb' : 'var(--ac-light)');
+  const titleTxt = isLive
+    ? 'Session is LIVE now!'
+    : (isSoon ? 'Session Starting Soon!' : 'Next Session Starts In');
+  const valTxt = isLive ? 'LIVE NOW' : formatCountdownClock(st.msRemaining);
+  const subTxt = isLive
+    ? `Scheduled: ${st.timeLabel}`
+    : `${st.dayLabel} · ${st.timeLabel}`;
+
+  let notifControls = '';
+  if (isNotifSupported()) {
+    const perm = Notification.permission;
+    const enabled = isNotifEnabledPref();
+    if (perm === 'granted') {
+      notifControls = `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px">
+        <button style="padding:4px 9px;font-size:11.5px;border-color:${enabled ? '#16a34a' : 'var(--bd)'};color:${enabled ? '#15803d' : 'var(--mut)'}" onclick="toggleSessionNotifications()">${enabled ? '🔔 Alerts On (15m, 5m & Start)' : '🔕 Alerts Paused — Resume'}</button>
+        ${enabled ? `<button style="padding:4px 8px;font-size:11.5px" onclick="testSessionNotification()">Test</button>` : ''}
+      </div>`;
+    } else if (perm === 'denied') {
+      notifControls = `<p class="m" style="margin:6px 0 0;font-size:11.5px">🔕 Browser notifications blocked — allow in browser site settings for automatic reminders.</p>`;
+    } else {
+      notifControls = `<div style="margin-top:8px"><button class="pri" style="padding:5px 11px;font-size:12px" onclick="enableSessionNotifications()">🔔 Enable Auto Push Alerts (15m, 5m & Start)</button></div>`;
+    }
+  }
+
+  return `<div class="c" id="sess-timer-card" style="border-left:4px solid ${borderCol};background:${bgCol};padding:11px 14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <div>
+        <div id="sess-countdown-title" style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.4px;color:${borderCol}">${titleTxt}</div>
+        <div id="sess-countdown-sub" class="m" style="margin-top:2px;font-size:12.5px">${e(subTxt)}</div>
+      </div>
+      <div id="sess-countdown-val" style="font-size:24px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:0.5px;color:${borderCol}">${e(valTxt)}</div>
+    </div>
+    ${notifControls}
+  </div>`;
+}
+
+let _lastSessionTimerState = null;
+function readSentNotifMap() {
+  try { return JSON.parse(localStorage.getItem('sfh_notif_sent') || '{}'); } catch (_e) { return {}; }
+}
+function markNotifSent(key) {
+  try {
+    const m = readSentNotifMap();
+    m[key] = Date.now();
+    const entries = Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 24);
+    localStorage.setItem('sfh_notif_sent', JSON.stringify(Object.fromEntries(entries)));
+  } catch (_e) {}
+}
+
+function tickSessionTimerAndAlerts() {
+  if (!U || isExternalJudgeOnly()) return;
+  const st = getNextSessionState(new Date());
+  if (st.state === 'none') return;
+
+  // Update DOM in-place without full re-render
+  const valEl = document.getElementById('sess-countdown-val');
+  const titleEl = document.getElementById('sess-countdown-title');
+  const subEl = document.getElementById('sess-countdown-sub');
+  const cardEl = document.getElementById('sess-timer-card');
+  if (valEl && titleEl && subEl && cardEl) {
+    const isLive = st.state === 'live';
+    const isSoon = !isLive && st.msRemaining <= 5 * 60 * 1000;
+    const borderCol = isLive ? '#16a34a' : (isSoon ? '#d97706' : 'var(--ac)');
+    const bgCol = isLive ? '#f0fdf4' : (isSoon ? '#fffbeb' : 'var(--ac-light)');
+    valEl.textContent = isLive ? 'LIVE NOW' : formatCountdownClock(st.msRemaining);
+    valEl.style.color = borderCol;
+    titleEl.textContent = isLive ? 'Session is LIVE now!' : (isSoon ? 'Session Starting Soon!' : 'Next Session Starts In');
+    titleEl.style.color = borderCol;
+    subEl.textContent = isLive ? `Scheduled: ${st.timeLabel}` : `${st.dayLabel} · ${st.timeLabel}`;
+    cardEl.style.borderLeftColor = borderCol;
+    cardEl.style.background = bgCol;
+  }
+
+  if (_lastSessionTimerState !== null && _lastSessionTimerState !== st.state && !effAdm() && tab === 'home') {
+    _lastSessionTimerState = st.state;
+    draw();
+  } else {
+    _lastSessionTimerState = st.state;
+  }
+
+  // Automatic Push Notifications for Participants (15 min, 5 min, and Start)
+  if (!effAdm() && isNotifSupported() && Notification.permission === 'granted' && isNotifEnabledPref()) {
+    const sent = readSentNotifMap();
+    if (st.state === 'upcoming' && st.dateKey) {
+      if (st.msRemaining <= 15 * 60 * 1000 && st.msRemaining > 5 * 60 * 1000) {
+        const k15 = `${st.dateKey}_15m`;
+        if (!sent[k15]) {
+          markNotifSent(k15);
+          sendSessionPushNotification(
+            'Sing From Home — 15 Minutes to Go!',
+            `Today's session starts at ${st.timeLabel}. Get your mic & songs ready!`,
+            k15
+          );
+        }
+      } else if (st.msRemaining <= 5 * 60 * 1000 && st.msRemaining > 0) {
+        const k5 = `${st.dateKey}_5m`;
+        if (!sent[k5]) {
+          markNotifSent(k5);
+          sendSessionPushNotification(
+            'Sing From Home Starts in 5 Minutes!',
+            `Session begins at ${st.timeLabel}. You can tap Start Zoom now to enter the queue.`,
+            k5
+          );
+        }
+      }
+    } else if (st.state === 'live' && st.dateKey && st.msSinceStart <= 10 * 60 * 1000) {
+      const k0 = `${st.dateKey}_start`;
+      if (!sent[k0]) {
+        markNotifSent(k0);
+        sendSessionPushNotification(
+          'Sing From Home is LIVE Now!',
+          'The singing session has started. Open the app and tap Start Zoom to join!',
+          k0
+        );
+      }
+    }
+  }
+}
+
+setInterval(tickSessionTimerAndAlerts, 1000);
+
 function vHome(){
   if(!PUB)return '<div class="c"><p class="m">No data has been published yet.</p></div>';
   const vp=curP(),ds=sdates(),d=HDATE||ds[ds.length-1]||tdy(),sk=(vp.singer||'').toUpperCase(),s=(PUB.stars||{})[sk],mo=nowM();
   const som=Object.entries(PUB.som||{}).sort().reverse();
   let h='';
+  if(!effAdm()) h+=renderSessionTimerCard();
   const un=MSGS.filter(m=>m.ts>seen).length;if(!effAdm()&&un)h+=`<div class="c" style="border-left:4px solid var(--ac)">📩 You have <b>${un}</b> new message${un>1?'s':''} <button style="margin-left:8px" onclick="go('msg')">Read</button></div>`;
   h+=bdCard();
 
@@ -2969,7 +3299,7 @@ function showCard(o){const old=document.getElementById('dw');if(old)old.remove()
 function seenMap(){try{return JSON.parse(localStorage.getItem('sfh_cards')||'{}')}catch(x){return {}}}
 function nextCard(){if(document.getElementById('dw'))return;const c=GQ.shift();if(!c)return;const m=seenMap();m[c.key]=tdy();try{localStorage.setItem('sfh_cards',JSON.stringify(m))}catch(x){}showCard(c)}
 window.closeDw=()=>{const d=document.getElementById('dw');if(d)d.remove();nextCard()};
-function runCards(){const t=tdy(),m=seenMap(),due=[];
+function runCards(){if(isExternalJudgeOnly())return;const t=tdy(),m=seenMap(),due=[];
   [...BUILTIN,...GRT].forEach(g=>{const k='g-'+(g.id||g.title);if(g.from<=t&&t<=g.to&&m[k]!==t)due.push({key:k,icon:g.icon||'🎉',title:g.title,sub:g.hi,text:g.text,sig:SIGN})});
   if(U&&P&&(ADM||P.status=='approved')){const md=t.slice(5),bl=BD.filter(b=>b.md==md);
     if(bl.length&&m['bd-'+t]!==t){const mine=bl.some(b=>b.id==U.uid),names=bl.map(b=>b.singer).join(', ');
@@ -3027,9 +3357,80 @@ function vAdm(){
     <p style="margin-top:8px"><button class="pri" onclick="mergeSingersInCloud()">Merge Permanently</button></p>
     ${aliasEntries.length ? `<p class="m" style="margin:8px 0 0"><b>Active Auto-Merge Rules:</b> ${aliasEntries.map(([k, v]) => `${e(k)} → <b>${e(v)}</b>`).join(' · ')}</p>` : ''}
   </div>` : '';
+
+  const buildResidualInventory = () => {
+    const songCount = {};
+    SONGS.forEach(r => { const nm = String(r[2] || '').trim().toUpperCase(); if (nm) songCount[nm] = (songCount[nm] || 0) + 1; });
+    const sotdCount = {};
+    ((PUB && PUB.sotd) || []).forEach(entry => {
+      (entry.l || []).forEach(w => {
+        const nm = canonSinger((w && w.n) || w);
+        if (nm) sotdCount[nm] = (sotdCount[nm] || 0) + 1;
+      });
+    });
+    const acctCount = {};
+    AU.forEach(u => {
+      const nm = String(u.singer || '').trim().toUpperCase();
+      if (nm) acctCount[nm] = (acctCount[nm] || 0) + 1;
+    });
+    return allRawSingers.map(nm => {
+      const cn = canonSinger(nm);
+      const starObj = (PUB && PUB.stars && (PUB.stars[nm] || PUB.stars[cn])) || null;
+      return {
+        name: nm,
+        songs: songCount[nm] || 0,
+        sotd: sotdCount[nm] || 0,
+        stars: starObj ? (Number(starObj.t) || 0) : 0,
+        accts: acctCount[nm] || 0
+      };
+    }).sort((a, b) => (a.songs - b.songs) || (a.sotd - b.sotd) || a.name.localeCompare(b.name));
+  };
+  const residualRows = effSuper() ? buildResidualInventory() : [];
+  const filteredResidualRows = residualSearch
+    ? residualRows.filter(r => r.name.includes(residualSearch.toUpperCase()))
+    : residualRows;
+  const removedList = [...getRemovedSingersSet()].sort();
+  const residualCard = effSuper() ? `<div class="c" style="border-left:4px solid #dc2626">
+    <div class="row" style="justify-content:space-between">
+      <b>Remove Residual / Trial Singers (${residualRows.length})</b>
+      <button onclick="toggleResidualList()" style="font-size:11.5px;padding:4px 9px">${residualListExpanded ? 'Collapse ▲' : 'Expand List ▼'}</button>
+    </div>
+    <p class="m" style="margin:3px 0 8px">Permanently delete non-existent or trial singer entries one by one from songs, SOTD, stars, birthdays, plans, and singer lists. Sorted by fewest songs first.</p>
+    ${residualListExpanded ? `
+      <div class="f" style="margin-bottom:8px">
+        <input id="residual_search_inp" value="${e(residualSearch)}" oninput="filterResidualList(this.value)" placeholder="Search singer name to delete…" style="width:100%">
+      </div>
+      <div class="tbl"><table>
+        <tr>
+          <th>Singer</th>
+          <th class="n">Songs</th>
+          <th class="n">SOTD</th>
+          <th class="n">Stars</th>
+          <th style="text-align:center">Action</th>
+        </tr>
+        <tbody id="residual_tbody">
+          ${filteredResidualRows.length ? filteredResidualRows.map(r => `<tr>
+            <td><b>${e(r.name)}</b>${r.accts ? ` <span class="m" style="font-size:11px">(${r.accts} acct)</span>` : ''}</td>
+            <td class="n">${r.songs}</td>
+            <td class="n">${r.sotd}</td>
+            <td class="n">${r.stars}</td>
+            <td style="text-align:center"><button class="danger" style="padding:3px 9px;font-size:11.5px" onclick="deleteResidualSinger('${e(r.name).replace(/'/g, "\\'")}')">Delete</button></td>
+          </tr>`).join('') : '<tr><td colspan="5" class="m">No matching singers found.</td></tr>'}
+        </tbody>
+      </table></div>
+      ${removedList.length ? `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--bd)">
+        <span class="m"><b>Permanently Removed (${removedList.length}):</b></span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+          ${removedList.map(nm => `<span style="display:inline-flex;align-items:center;gap:5px;border:1px solid var(--bd);border-radius:6px;padding:2px 7px;font-size:11.5px"><span>${e(nm)}</span><a href="#" onclick="restoreRemovedSinger('${e(nm).replace(/'/g, "\\'")}');return false" style="color:var(--ac);font-weight:700">Restore</a></span>`).join('')}
+        </div>
+      </div>` : ''}
+    ` : `<p class="m" style="margin:4px 0 0">Tap "Expand List" to permanently delete residual or trial singers one by one${removedList.length ? ` (${removedList.length} already removed)` : ''}.</p>`}
+  </div>` : '';
+
   return `${EDU?vEdU():''}${effSuper()?`<div class="c"><b>Publish Data / Restore Master Backup</b><p class="m">${PUB?'Last updated: '+e(PUB.ts||''):'Nothing published yet.'} (${SONGS.length} songs). Upload any timestamped <code>SFH_Master_Backup_*.json</code> file here to restore all data even after a full flush.</p>
 <label class="up">⬆ Choose Master Backup or Host JSON File<input type="file" accept=".json,application/json" hidden onchange="pubUp(this)"></label></div>`:''}
 ${mergeCard}
+${residualCard}
 ${effSuper()?`<div class="c"><b>Zoom link</b><input id="zl" style="width:100%" value="${e(CONF.zoom||'')}"><p style="margin-top:10px"><button onclick="saveZ()">Save link</button></p></div>`:''}
 <div class="c"><b>Festival greetings</b><select id="gf" onchange="fillFest(this.value)"><option value="">Choose a festival…</option>${FEST.map((f,i)=>`<option value="${i}">${e(f.t)}</option>`).join('')}</select><input id="gt" placeholder="Title" style="width:100%;margin-top:8px"><input id="gh" placeholder="Hindi / Marathi line (optional)" style="width:100%;margin-top:8px"><textarea id="gx" rows="3" placeholder="Message" style="width:100%;margin-top:8px"></textarea><div class="f"><label>Show from<input type="date" id="gfrom" value="${tdy()}"></label><label>Show until<input type="date" id="gto" value="${tdy()}"></label></div><p style="margin-top:10px"><button class="pri" onclick="addGreet()">Add greeting</button> <button onclick="prevGreet()">Preview</button></p>${GRT.length?GRT.slice().sort((a,b)=>a.from<b.from?1:-1).map(g=>`<p style="margin:6px 0"><b>${e(g.title)}</b> <span class="m">${fd(g.from)} – ${fd(g.to)}</span> <button onclick="delGreet('${e(g.id)}')">Delete</button></p>`).join(''):'<p class="m">No greetings added yet. The Diwali greeting for 5 to 12 Nov 2026 is built in.</p>'}</div>
 <div class="c"><b>Songs declared by participants</b><div class="f"><input type="date" value="${PD||tdy()}" onchange="setPD(this.value)"></div>${PL.length?PL.map((p,i)=>`<p style="margin:6px 0"><b>${i+1}. ${e(p.singer)}</b> <span class="m">${fdt(p.ts)}</span><br>${(p.songs||[]).map(x=>e(x)).join(' / ')}</p>`).join(''):'<p class="m">Nothing declared for this date.</p>'}<button onclick="copyPlans()">Copy list</button></div>
@@ -3092,6 +3493,230 @@ ${effSuper()?`<div class="c">
 window.toggleApprovedList = () => {
   approvedListExpanded = !approvedListExpanded;
   draw();
+};
+
+window.toggleResidualList = () => {
+  residualListExpanded = !residualListExpanded;
+  draw();
+};
+
+window.filterResidualList = (val) => {
+  residualSearch = String(val || '').trim();
+  const tb = document.getElementById('residual_tbody');
+  if (!tb) return;
+  const q = residualSearch.toUpperCase();
+  const names = (PUB && PUB.singers) || [];
+  const allRaw = [...new Set([
+    ...RAW_SINGERS_BEFORE_ALIAS,
+    ...names,
+    ...AU.map(u => String(u.singer || '').trim().toUpperCase()).filter(Boolean)
+  ])].sort();
+  const songCount = {};
+  SONGS.forEach(r => { const nm = String(r[2] || '').trim().toUpperCase(); if (nm) songCount[nm] = (songCount[nm] || 0) + 1; });
+  const sotdCount = {};
+  ((PUB && PUB.sotd) || []).forEach(entry => {
+    (entry.l || []).forEach(w => {
+      const nm = canonSinger((w && w.n) || w);
+      if (nm) sotdCount[nm] = (sotdCount[nm] || 0) + 1;
+    });
+  });
+  const acctCount = {};
+  AU.forEach(u => { const nm = String(u.singer || '').trim().toUpperCase(); if (nm) acctCount[nm] = (acctCount[nm] || 0) + 1; });
+  const rows = allRaw
+    .filter(nm => !q || nm.includes(q))
+    .map(nm => {
+      const cn = canonSinger(nm);
+      const starObj = (PUB && PUB.stars && (PUB.stars[nm] || PUB.stars[cn])) || null;
+      return { name: nm, songs: songCount[nm] || 0, sotd: sotdCount[nm] || 0, stars: starObj ? (Number(starObj.t) || 0) : 0, accts: acctCount[nm] || 0 };
+    })
+    .sort((a, b) => (a.songs - b.songs) || (a.sotd - b.sotd) || a.name.localeCompare(b.name));
+  tb.innerHTML = rows.length ? rows.map(r => `<tr>
+    <td><b>${e(r.name)}</b>${r.accts ? ` <span class="m" style="font-size:11px">(${r.accts} acct)</span>` : ''}</td>
+    <td class="n">${r.songs}</td>
+    <td class="n">${r.sotd}</td>
+    <td class="n">${r.stars}</td>
+    <td style="text-align:center"><button class="danger" style="padding:3px 9px;font-size:11.5px" onclick="deleteResidualSinger('${e(r.name).replace(/'/g, "\\'")}')">Delete</button></td>
+  </tr>`).join('') : '<tr><td colspan="5" class="m">No matching singers found.</td></tr>';
+};
+
+window.deleteResidualSinger = async (rawName) => {
+  if (!IS_SUPER) return;
+  const target = String(rawName || '').trim().toUpperCase();
+  const targetCanon = canonSinger(target);
+  if (!target) return;
+  const isMatch = nm => {
+    const up = String(nm || '').trim().toUpperCase();
+    return Boolean(up && (up === target || canonSinger(up) === targetCanon));
+  };
+  const sCnt = SONGS.filter(r => isMatch(r[2])).length;
+  const sotdCnt = ((PUB && PUB.sotd) || []).reduce((acc, entry) => acc + (entry.l || []).filter(w => isMatch((w && w.n) || w)).length, 0);
+  const starObj = (PUB && PUB.stars && (PUB.stars[target] || PUB.stars[targetCanon])) || null;
+  const starCnt = starObj ? (Number(starObj.t) || 0) : 0;
+  const acctCnt = AU.filter(u => isMatch(u.singer)).length;
+
+  showConfirm(
+    `Permanently remove "${target}" everywhere?\n\n` +
+    `• Songs to delete: ${sCnt}\n` +
+    `• SOTD entries to remove: ${sotdCnt}\n` +
+    `• Stars to remove: ${starCnt}\n` +
+    `• Linked accounts to unlink: ${acctCnt}\n` +
+    `• Will also be added to permanent Removed Singers blocklist so it never returns.`,
+    async () => {
+      try {
+        let songsRemoved = 0;
+        let monthsUpdated = 0;
+
+        // 1. Clean monthly song archives & pub/idx
+        const ixRef = doc(fs, 'pub', 'idx');
+        const ixSnap = await getDoc(ixRef);
+        if (ixSnap.exists()) {
+          const ixData = ixSnap.data();
+          const monthsObj = { ...(ixData.months || {}) };
+          const ms = Object.keys(monthsObj).sort();
+          let totalBytes = 0;
+          for (const m of ms) {
+            const mRef = doc(fs, 'pub', 'songs_' + m);
+            const mSnap = await getDoc(mRef);
+            if (!mSnap.exists()) continue;
+            const rows = JSON.parse(mSnap.data().json || '[]');
+            const filtered = rows.filter(r => !isMatch(r[2]));
+            const diff = rows.length - filtered.length;
+            if (diff > 0) {
+              songsRemoved += diff;
+              monthsUpdated++;
+              if (filtered.length === 0) {
+                await deleteDoc(mRef);
+                delete monthsObj[m];
+              } else {
+                const js = JSON.stringify(filtered);
+                const hh = hsh(js);
+                await setDoc(mRef, { json: js, n: filtered.length, h: hh, ts: tdy() });
+                monthsObj[m] = { n: filtered.length, h: hh };
+                totalBytes += js.length;
+              }
+            } else {
+              totalBytes += String(mSnap.data().json || '').length;
+            }
+          }
+          if (monthsUpdated > 0) {
+            await setDoc(ixRef, { ...ixData, months: monthsObj, total: totalBytes, ts: tdy() });
+          }
+        }
+
+        // 2. Clean pub/data (singers, sotd, stars, som)
+        const pubRef = doc(fs, 'pub', 'data');
+        const pubSnap = await getDoc(pubRef);
+        let sotdRemoved = 0;
+        if (pubSnap.exists()) {
+          const pd = pubSnap.data();
+          const nextSingers = (pd.singers || []).filter(nm => !isMatch(nm));
+          const nextStars = {};
+          Object.entries(pd.stars || {}).forEach(([k, v]) => {
+            if (!isMatch(k)) nextStars[k] = v;
+          });
+          const nextSotd = (pd.sotd || []).map(entry => {
+            const before = (entry.l || []).length;
+            const kept = (entry.l || []).filter(w => !isMatch((w && w.n) || w));
+            sotdRemoved += (before - kept.length);
+            return { ...entry, l: kept };
+          }).filter(entry => entry.l.length > 0);
+          const nextSom = {};
+          Object.entries(pd.som || {}).forEach(([k, v]) => {
+            if (!isMatch(v)) nextSom[k] = v;
+          });
+          await setDoc(pubRef, { ...pd, singers: nextSingers, stars: nextStars, sotd: nextSotd, som: nextSom, ts: tdy() });
+        }
+
+        // 3. Unlink users, delete matching birthdays & plans
+        let usersUnlinked = 0;
+        try {
+          const uSnap = await getDocs(collection(fs, 'users'));
+          for (const d of uSnap.docs) {
+            if (isMatch(d.data().singer)) {
+              await updateDoc(doc(fs, 'users', d.id), { singer: '' });
+              usersUnlinked++;
+            }
+          }
+        } catch (_ue) {}
+
+        try {
+          const bdSnap = await getDocs(collection(fs, 'birthdays'));
+          for (const d of bdSnap.docs) {
+            if (isMatch(d.data().singer)) {
+              await deleteDoc(doc(fs, 'birthdays', d.id));
+            }
+          }
+        } catch (_bde) {}
+
+        try {
+          const plSnap = await getDocs(collection(fs, 'plans'));
+          for (const d of plSnap.docs) {
+            if (isMatch(d.data().singer)) {
+              await deleteDoc(doc(fs, 'plans', d.id));
+            }
+          }
+        } catch (_ple) {}
+
+        // 4. Clean vote/sotm_panel if present
+        try {
+          const spRef = doc(fs, 'vote', 'sotm_panel');
+          const spSnap = await getDoc(spRef);
+          if (spSnap.exists()) {
+            const sp = spSnap.data();
+            const nf = (sp.finalists || []).filter(f => !isMatch(f && f.name));
+            const nj = (sp.judges || []).filter(j => !isMatch(j));
+            await setDoc(spRef, { ...sp, finalists: nf, judges: nj, updatedAt: Date.now() }, { merge: true });
+          }
+        } catch (_spe) {}
+
+        // 5. Save to permanent removedSingers blocklist & clean aliases/sotmJudges in config/app
+        const nextRemoved = [...new Set([...(CONF.removedSingers || []).map(x => String(x || '').trim().toUpperCase()), target, targetCanon].filter(Boolean))].sort();
+        const nextAliases = {};
+        Object.entries(CONF.singerAliases || {}).forEach(([k, v]) => {
+          if (!isMatch(k) && !isMatch(v)) nextAliases[k] = v;
+        });
+        const nextJudges = (CONF.sotmJudges || []).filter(j => !isMatch(j));
+        await setDoc(doc(fs, 'config', 'app'), { removedSingers: nextRemoved, singerAliases: nextAliases, sotmJudges: nextJudges }, { merge: true });
+        CONF.removedSingers = nextRemoved;
+        CONF.singerAliases = nextAliases;
+        CONF.sotmJudges = nextJudges;
+
+        await load();
+        await loadAdm();
+        draw();
+        showNotice(
+          `Permanently removed "${target}"!\n\n` +
+          `• Songs deleted: ${songsRemoved} (${monthsUpdated} month(s) updated)\n` +
+          `• SOTD records removed: ${sotdRemoved}\n` +
+          `• Linked accounts unlinked: ${usersUnlinked}\n` +
+          `• Added to permanent blocklist`,
+          'Singer Permanently Removed'
+        );
+      } catch (err) {
+        showNotice('Removal failed: ' + (err.code || err.message), 'Error');
+      }
+    },
+    'Permanently Remove Singer'
+  );
+};
+
+window.restoreRemovedSinger = async (rawName) => {
+  if (!IS_SUPER) return;
+  const target = String(rawName || '').trim().toUpperCase();
+  if (!target) return;
+  showConfirm(`Remove "${target}" from the permanent Removed Singers blocklist?`, async () => {
+    try {
+      const nextRemoved = (CONF.removedSingers || []).map(x => String(x || '').trim().toUpperCase()).filter(x => x && x !== target);
+      await setDoc(doc(fs, 'config', 'app'), { removedSingers: nextRemoved }, { merge: true });
+      CONF.removedSingers = nextRemoved;
+      await load();
+      await loadAdm();
+      draw();
+      showNotice(`"${target}" removed from blocklist.`);
+    } catch (err) {
+      showNotice('Restore failed: ' + (err.code || err.message));
+    }
+  }, 'Restore Singer');
 };
 
 window.clearStaleLiveBanner = async () => {
@@ -3357,6 +3982,36 @@ function vJudge() {
   const panelFinalists = (SOTM_PANEL_CACHE && Array.isArray(SOTM_PANEL_CACHE.finalists)) ? SOTM_PANEL_CACHE.finalists : [];
   const savedScores = (PLAN && PLAN.sotmJudgeScores) || {};
   const monthLabel = (SOTM_PANEL_CACHE && SOTM_PANEL_CACHE.monthLabel) || fm(nowM()).toUpperCase();
+
+  if (isExternalJudgeOnly()) {
+    return `<div class="c">
+      ${finalists.length ? `<div class="tbl"><table>
+        <tr>
+          <th class="n">#</th>
+          <th>Singer</th>
+          <th class="n">Sur</th>
+          <th class="n">Taal</th>
+          <th class="n">Choice</th>
+          <th class="n">Perf</th>
+          <th class="n">Total</th>
+        </tr>
+        ${finalists.map((nm, idx) => {
+          const cur = savedScores[nm] || { sur: '', taal: '', sel: '', perf: '' };
+          const tot = parseFloat(((Number(cur.sur)||0)+(Number(cur.taal)||0)+(Number(cur.sel)||0)+(Number(cur.perf)||0)).toFixed(1));
+          return `<tr>
+            <td class="n">${idx + 1}</td>
+            <td><b>${e(nm)}</b></td>
+            <td class="n"><input id="jdg_sur_${idx}" type="number" step="0.5" min="0" max="10" value="${cur.sur !== '' && cur.sur != null ? e(cur.sur) : ''}" oninput="recalcJudgeRow(${idx},0)" style="width:56px;padding:4px 6px;text-align:center"></td>
+            <td class="n"><input id="jdg_taal_${idx}" type="number" step="0.5" min="0" max="10" value="${cur.taal !== '' && cur.taal != null ? e(cur.taal) : ''}" oninput="recalcJudgeRow(${idx},0)" style="width:56px;padding:4px 6px;text-align:center"></td>
+            <td class="n"><input id="jdg_sel_${idx}" type="number" step="0.5" min="0" max="10" value="${cur.sel !== '' && cur.sel != null ? e(cur.sel) : ''}" oninput="recalcJudgeRow(${idx},0)" style="width:56px;padding:4px 6px;text-align:center"></td>
+            <td class="n"><input id="jdg_perf_${idx}" type="number" step="0.5" min="0" max="10" value="${cur.perf !== '' && cur.perf != null ? e(cur.perf) : ''}" oninput="recalcJudgeRow(${idx},0)" style="width:56px;padding:4px 6px;text-align:center"></td>
+            <td class="n"><b id="jdg_tot_${idx}" style="color:var(--ac)">${tot}</b></td>
+          </tr>`;
+        }).join('')}
+      </table></div>
+      <p style="margin:12px 0 0"><button class="pri" onclick="submitJudgeScores()">Submit</button></p>` : '<p class="m">No finalists are ready for judging yet.</p>'}
+    </div>`;
+  }
 
   const appointedJudges = [...new Set([
     ...((CONF && Array.isArray(CONF.sotmJudges)) ? CONF.sotmJudges : []),
@@ -3625,5 +4280,5 @@ window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.on
     }, label);
   }catch(z){showNotice(z=='size'?'One month of songs is too large for a single document.':(z&&z.code?'Restore/Publish failed ('+z.code+'). Check Firebase rules.':'That is not a valid SFH backup or participants file.'))}};r.readAsText(f)};
 
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=40').then(r=>r.update()).catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=41').then(r=>r.update()).catch(()=>{});}
 </script></body></html>

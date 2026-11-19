@@ -474,10 +474,12 @@ let sotmPanelExpanded = true;
 let sotmBlindInterval = null;
 
 function syncSOTMFinalistsFromFourStars(forceSync = false) {
+  const removedSet = getRemovedSingersSet();
   const starsMap = (PUB_CACHE && PUB_CACHE.stars) || {};
   const fourStarNames = Object.entries(starsMap)
-    .filter(([_, info]) => (info && (info.t || 0)) >= 4)
-    .map(([nm]) => nm.toUpperCase())
+    .filter(([nm, info]) => !removedSet.has(canonSinger(nm)) && (info && (info.t || 0)) >= 4)
+    .map(([nm]) => canonSinger(nm))
+    .filter(Boolean)
     .sort();
   if (forceSync || !SOTM_PANEL.finalists || !SOTM_PANEL.finalists.length) {
     SOTM_PANEL.finalists = fourStarNames.map(nm => {
@@ -541,6 +543,11 @@ function getSingerAliases() {
     if (fk && fv && fk !== fv) map[fk] = fv;
   });
   return map;
+}
+
+function getRemovedSingersSet() {
+  const list = (CONF_CACHE && Array.isArray(CONF_CACHE.removedSingers)) ? CONF_CACHE.removedSingers : [];
+  return new Set(list.map(x => String(x || '').trim().toUpperCase()).filter(Boolean));
 }
 
 function canonSinger(rawName) {
@@ -868,10 +875,11 @@ async function init(){
   }
 
   try {
+    const removedSet = getRemovedSingersSet();
     const pubData = await getDoc(doc(fs, 'pub', 'data'));
     if(pubData.exists()){
       PUB_CACHE = pubData.data();
-      KNOWN_SINGERS = [...new Set((PUB_CACHE.singers || []).map(canonSinger).filter(Boolean))].sort();
+      KNOWN_SINGERS = [...new Set((PUB_CACHE.singers || []).map(canonSinger).filter(nm => nm && !removedSet.has(nm)))].sort();
       SONG_META_ARCHIVE = { ...(PUB_CACHE.songMeta || {}) };
       const savedMeta = (PUB_CACHE.sessionMeta && PUB_CACHE.sessionMeta[LIVE.date]) || null;
       if (savedMeta) {
@@ -912,7 +920,10 @@ async function init(){
     NOV16_SONGS.forEach(row => {
       if (!existingIds.has(row[0])) ALL_SONGS.push(row);
     });
-    ALL_SONGS = ALL_SONGS.map(r => [r[0], r[1], canonSinger(r[2]), r[3]]);
+    const removedSetSongs = getRemovedSingersSet();
+    ALL_SONGS = ALL_SONGS
+      .map(r => [r[0], r[1], canonSinger(r[2]), r[3]])
+      .filter(r => !removedSetSongs.has(r[2]));
     ALL_SONGS.sort(cmpBySongId);
 
     MAX_ID_NUM = 0;
