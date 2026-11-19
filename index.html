@@ -197,7 +197,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-19 b39';
+const VER='2026-11-19 b40';
 const CFG = {
   firebase: {
     apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
@@ -535,7 +535,7 @@ window.submitLiveBallot = async (kind, targetSinger, score) => {
 window.joinZoom = async () => {
   if (!CONF.zoom) return;
   const singerName = ((P && P.singer) || (P && P.name) || (U && U.displayName) || '').trim().toUpperCase();
-  const todayStr = tdy();
+  const todayStr = (LIVE_SESSION && LIVE_SESSION.active && LIVE_SESSION.date) ? LIVE_SESSION.date : tdy();
   const now = new Date();
   const sc = getSchedule();
   const [sh, sm] = (sc.startTime || '20:20').split(':').map(Number);
@@ -544,18 +544,22 @@ window.joinZoom = async () => {
     schedStart.setDate(schedStart.getDate() - 1);
   }
   const cutoffMs = schedStart.getTime() + ((sc.cutoffMins ?? 26) * 60000);
+  const canAutoQueue = Boolean(sc.forceLiveOverride || (LIVE_SESSION && LIVE_SESSION.active) || now.getTime() >= schedStart.getTime());
 
-  // Record entry time if singer enters after session's scheduled start time (first time only)
-  if (singerName && now.getTime() >= schedStart.getTime()) {
+  if (singerName && U && canAutoQueue) {
     const entryTimeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-    const eligible = sc.forceLiveOverride ? true : (now.getTime() <= cutoffMs);
+    const eligible = (sc.forceLiveOverride || now.getTime() < schedStart.getTime()) ? true : (now.getTime() <= cutoffMs);
     const entryDocId = `${todayStr}_${U.uid}`;
+    const clearedCutoff = Math.max(
+      (LIVE_SESSION && LIVE_SESSION.sessionClearedAt) || 0,
+      (CONF && CONF.liveSession && CONF.liveSession.sessionClearedAt) || 0
+    );
     try {
-      // 1) Write to plans/{date}_{uid} (guaranteed write permission for all approved participants)
       const planRef = doc(fs, 'plans', entryDocId);
       const planSnap = await getDoc(planRef);
       const existingPlan = planSnap.exists() ? planSnap.data() : {};
-      if (!existingPlan.zoomEntered) {
+      const prevZoomTs = existingPlan.zoomTs || 0;
+      if (!existingPlan.zoomEntered || prevZoomTs <= clearedCutoff) {
         await setDoc(planRef, {
           uid: U.uid,
           date: todayStr,
@@ -570,11 +574,11 @@ window.joinZoom = async () => {
           zoomEligible: eligible
         }, { merge: true });
       }
-      // 2) Also mirror to zoom_entries if rules allow
       try {
         const entryRef = doc(fs, 'zoom_entries', entryDocId);
         const existingSnap = await getDoc(entryRef);
-        if (!existingSnap.exists()) {
+        const prevZDocTs = existingSnap.exists() ? (existingSnap.data().ts || 0) : 0;
+        if (!existingSnap.exists() || prevZDocTs <= clearedCutoff) {
           await setDoc(entryRef, {
             uid: U.uid,
             date: todayStr,
@@ -585,24 +589,10 @@ window.joinZoom = async () => {
           });
         }
       } catch (_ze) {}
-      // Also append directly to live/session if active and singer not yet in queue
-      const liveRef = doc(fs, 'live', 'session');
-      const liveSnap = await getDoc(liveRef);
-      if (liveSnap.exists()) {
-        const ld = liveSnap.data();
-        if (ld.date === todayStr && ld.active) {
-          const curSingers = Array.isArray(ld.singers) ? ld.singers.slice() : [];
-          if (!curSingers.some(s => s.name === singerName)) {
-            curSingers.push({ name: singerName, joinTime: entryTimeStr, eligible, viaZoomBtn: true });
-            await setDoc(liveRef, { ...ld, singers: curSingers, updatedAt: Date.now() });
-          }
-        }
-      }
     } catch (ze) {
       console.warn('Zoom entry auto-queue warning:', ze);
     }
   }
-
   window.open(CONF.zoom, '_blank', 'noopener');
 };
 
@@ -2428,5 +2418,5 @@ window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.on
     }, label);
   }catch(z){showNotice(z=='size'?'One month of songs is too large for a single document.':(z&&z.code?'Restore/Publish failed ('+z.code+'). Check Firebase rules.':'That is not a valid SFH backup or participants file.'))}};r.readAsText(f)};
 
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=39').then(r=>r.update()).catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=40').then(r=>r.update()).catch(()=>{});}
 </script></body></html>

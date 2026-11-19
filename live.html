@@ -439,6 +439,7 @@ function resolveCanonicalSingerName(rawName) {
 
 let syncTimer = null;
 let SESSION_ENDED = false;
+let SESSION_CLEARED_AT = 0;
 
 async function writeLivePayloadEverywhere(rawPayload) {
   const cleanPayload = JSON.parse(JSON.stringify(rawPayload));
@@ -470,6 +471,7 @@ async function pushLiveSessionNow() {
       remaining: SOTM_PANEL.activeBlindVote.remaining || 30,
       endsAt: SOTM_PANEL.activeBlindVote.endsAt || (Date.now() + 30000)
     } : null,
+    sessionClearedAt: SESSION_CLEARED_AT,
     updatedAt: Date.now(),
     active: isActive
   };
@@ -588,20 +590,21 @@ async function listenToZoomButtonEntries() {
   const qPlans = query(collection(fs, 'plans'), where('date', '==', LIVE.date));
   const qZoom = query(collection(fs, 'zoom_entries'), where('date', '==', LIVE.date));
 
-  // Immediate one-time fetch so entries pressed before live.html opened appear right away
   try {
     const [pSnap, zSnap] = await Promise.all([getDocs(qPlans), getDocs(qZoom).catch(() => ({ docs: [] }))]);
     const combined = [];
     pSnap.docs.forEach(docSnap => {
       const d = docSnap.data();
-      if (d.zoomEntered && d.singer) {
-        combined.push({ singer: d.singer, entryTime: d.zoomEntryTime, eligible: d.zoomEligible, ts: d.zoomTs || d.ts || 0 });
+      const zts = d.zoomTs || d.ts || 0;
+      if (d.zoomEntered && d.singer && zts > SESSION_CLEARED_AT) {
+        combined.push({ singer: d.singer, entryTime: d.zoomEntryTime, eligible: d.zoomEligible, ts: zts });
       }
     });
     zSnap.docs.forEach(docSnap => {
       const d = docSnap.data();
-      if (d.singer) {
-        combined.push({ singer: d.singer, entryTime: d.entryTime, eligible: d.eligible, ts: d.ts || 0 });
+      const zts = d.ts || 0;
+      if (d.singer && zts > SESSION_CLEARED_AT) {
+        combined.push({ singer: d.singer, entryTime: d.entryTime, eligible: d.eligible, ts: zts });
       }
     });
     combined.sort((a, b) => (a.ts || 0) - (b.ts || 0));
@@ -614,7 +617,9 @@ async function listenToZoomButtonEntries() {
 
   plansEntriesUnsub = onSnapshot(qPlans, snap => {
     const docsData = snap.docs.map(d => d.data());
-    const zoomDocs = docsData.filter(d => d.zoomEntered && d.singer).sort((a, b) => (a.zoomTs || a.ts || 0) - (b.zoomTs || b.ts || 0));
+    const zoomDocs = docsData
+      .filter(d => d.zoomEntered && d.singer && (d.zoomTs || d.ts || 0) > SESSION_CLEARED_AT)
+      .sort((a, b) => (a.zoomTs || a.ts || 0) - (b.zoomTs || b.ts || 0));
     let changed = false;
     zoomDocs.forEach(ent => {
       if (mergeZoomEntryIntoQueue(ent.singer, ent.zoomEntryTime, ent.zoomEligible, ent.zoomTs || ent.ts)) changed = true;
@@ -624,7 +629,10 @@ async function listenToZoomButtonEntries() {
   }, err => console.warn('Plans auto-queue listener:', err));
 
   zoomEntriesUnsub = onSnapshot(qZoom, snap => {
-    const entries = snap.docs.map(d => d.data()).sort((a, b) => (a.ts || 0) - (b.ts || 0));
+    const entries = snap.docs
+      .map(d => d.data())
+      .filter(d => (d.ts || 0) > SESSION_CLEARED_AT)
+      .sort((a, b) => (a.ts || 0) - (b.ts || 0));
     let changed = false;
     entries.forEach(ent => {
       if (mergeZoomEntryIntoQueue(ent.singer, ent.entryTime, ent.eligible, ent.ts)) changed = true;
@@ -651,7 +659,26 @@ async function init(){
   LIVE = { date: tdy(), singers: [], performances: [] };
   SOTD_LIST = [];
   currentRound = 1;
-  loadLocal();
+
+  let wasExplicitlyEnded = false;
+  try {
+    const liveSessSnap = await getDoc(doc(fs, 'live', 'session'));
+    const lsDoc = liveSessSnap.exists() ? liveSessSnap.data() : null;
+    const cfgLsDoc = (CONF_CACHE && CONF_CACHE.liveSession) ? CONF_CACHE.liveSession : null;
+    const latestMeta = [lsDoc, cfgLsDoc].filter(Boolean).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0];
+    if (latestMeta && latestMeta.date === LIVE.date) {
+      SESSION_CLEARED_AT = Math.max(SESSION_CLEARED_AT, latestMeta.sessionClearedAt || latestMeta.endedAt || 0);
+      if (latestMeta.active === false && (latestMeta.endedAt || latestMeta.sessionClearedAt)) {
+        wasExplicitlyEnded = true;
+        try { localStorage.removeItem('sfh_live_session_' + LIVE.date); } catch(_x){}
+        try { sessionStorage.removeItem('sfh_practice_session'); } catch(_x){}
+      }
+    }
+  } catch (_initMetaErr) {}
+
+  if (!wasExplicitlyEnded) {
+    loadLocal();
+  }
 
   try {
     const pubData = await getDoc(doc(fs, 'pub', 'data'));
@@ -694,15 +721,6 @@ async function init(){
       if(num > MAX_ID_NUM) MAX_ID_NUM = num;
     });
   } catch(x) {}
-
-  // Only restore today's published songs into queue if live/session was NOT explicitly ended
-  let wasExplicitlyEnded = false;
-  try {
-    const liveSessSnap = await getDoc(doc(fs, 'live', 'session'));
-    if (liveSessSnap.exists() && liveSessSnap.data().date === LIVE.date && liveSessSnap.data().endedAt) {
-      wasExplicitlyEnded = true;
-    }
-  } catch (_le) {}
 
   if (isWithinLiveSchedule() && !wasExplicitlyEnded) {
     const todayPubSongs = ALL_SONGS.filter(r => r[1] === LIVE.date);
@@ -1824,12 +1842,14 @@ window.manualPublishSession = () => {
 window.resetAndClearLiveBanner = () => {
   showConfirm("Reset console & clear any active Live Session banner on Home?", async () => {
     SESSION_ENDED = true;
+    SESSION_CLEARED_AT = Date.now();
     clearTimeout(syncTimer);
     if (sotdTimerInterval) { clearInterval(sotdTimerInterval); sotdTimerInterval = null; }
     if (sotmBlindInterval) { clearInterval(sotmBlindInterval); sotmBlindInterval = null; }
     if (zoomEntriesUnsub) { zoomEntriesUnsub(); zoomEntriesUnsub = null; }
     if (plansEntriesUnsub) { plansEntriesUnsub(); plansEntriesUnsub = null; }
 
+    SESSION_CLEARED_AT = Date.now();
     LIVE = { date: LIVE.date, singers: [], performances: [] };
     SOTD_LIST = [];
     PRACTICE_COUNTER = 0;
@@ -1844,6 +1864,8 @@ window.resetAndClearLiveBanner = () => {
       sotdList: [],
       sotdVote: null,
       sotmVote: null,
+      sessionClearedAt: SESSION_CLEARED_AT,
+      sessionClearedAt: SESSION_CLEARED_AT,
       endedAt: Date.now(),
       updatedAt: Date.now()
     });
@@ -1857,6 +1879,7 @@ window.resetAndClearLiveBanner = () => {
 window.endSession = async () => {
   showConfirm("End & Publish today's live session?\n\n• Publishes all songs, stars & SOTDs\n• Downloads Master Backup JSON automatically\n• Closes Live Session banner on Home & returns to Home", async () => {
     SESSION_ENDED = true;
+    SESSION_CLEARED_AT = Date.now();
     clearTimeout(syncTimer);
     if (sotdTimerInterval) { clearInterval(sotdTimerInterval); sotdTimerInterval = null; }
     if (sotmBlindInterval) { clearInterval(sotmBlindInterval); sotmBlindInterval = null; }
@@ -1886,6 +1909,8 @@ window.endSession = async () => {
       sotdList: [],
       sotdVote: null,
       sotmVote: null,
+      sessionClearedAt: SESSION_CLEARED_AT,
+      sessionClearedAt: SESSION_CLEARED_AT,
       endedAt: Date.now(),
       updatedAt: Date.now()
     });
