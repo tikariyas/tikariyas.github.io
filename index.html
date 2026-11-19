@@ -61,7 +61,17 @@ button.warn{
   background:linear-gradient(135deg,#d97706,#b45309);color:#fff;border-color:transparent;
 }
 button.danger{
-  background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;border-color:transparent;
+  background:linear-gradient(135deg,#e11d48,#be123c);color:#fff;border-color:transparent;
+}
+
+#hb button,#hb button.on,#hb button.pri,#hb button.warn,#hb button.danger{
+  background:transparent !important;
+  color:#000000 !important;
+  box-shadow:none !important;
+  border:1px solid var(--bd);
+}
+#hb button:hover,#hb button.on,#hb button.warn{
+  border-color:#000000;
 }
 
 nav{
@@ -70,7 +80,10 @@ nav{
   gap:5px;
   margin-bottom:8px;
 }
-nav > button{
+nav > button,
+nav > button.on,
+nav > button.pri,
+nav > button.warn{
   width:100%;
   height:100%;
   min-height:34px;
@@ -83,6 +96,17 @@ nav > button{
   align-items:center;
   justify-content:center;
   line-height:1.2;
+  background:transparent !important;
+  color:#000000 !important;
+  box-shadow:none !important;
+  border:1px solid var(--bd);
+}
+nav > button:hover{
+  border-color:#000000;
+}
+nav > button.on{
+  font-weight:800;
+  border:1.5px solid #000000;
 }
 nav > .zm{
   grid-column:1 / -1;
@@ -146,7 +170,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 .badge-round{color:var(--ac);background:var(--ac-light);font-weight:800;padding:2px 8px;border-radius:6px;font-size:12px}
 .badge-ok{color:#15803d;background:#dcfce7;font-weight:700;padding:2px 6px;border-radius:6px;font-size:11px}
 .badge-warn{color:#b45309;background:#fef3c7;font-weight:700;padding:2px 6px;border-radius:6px;font-size:11px}
-.badge-ded{color:#b91c1c;background:#fee2e2;font-weight:700;padding:2px 6px;border-radius:6px;font-size:11px}
+.badge-ded{color:#ea580c;background:#ffedd5;font-weight:700;padding:2px 6px;border-radius:6px;font-size:11px}
 
 .sotm-card{
   border:2px solid #16a34a;
@@ -177,7 +201,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 </style></head><body>
 <header>
   <div>
-    <h1>SING FRO<span style="color:#b30000;font-weight:900">M</span> HO<span style="color:#b30000;font-weight:900">M</span>E</h1>
+    <h1>SING FRO<span style="color:#8b0000;font-weight:900">M</span> HO<span style="color:#8b0000;font-weight:900">M</span>E</h1>
     <div class="sub-fnd">A project of B. S. Tikariya Cultural Foundation ®<br>(CIN: U88900MH2025NPL454435)</div>
     <span id="ver" style="display:none"></span>
   </div>
@@ -266,6 +290,87 @@ const cmpBySongId = (a, b) => {
   return parseSongNum(idA) - parseSongNum(idB);
 };
 
+const DEFAULT_SINGER_ALIASES = {
+  'NANDU GHADSING': 'SURESH GHADSING'
+};
+
+function getSingerAliases() {
+  const map = { ...DEFAULT_SINGER_ALIASES };
+  const saved = (CONF && CONF.singerAliases) || {};
+  Object.entries(saved).forEach(([k, v]) => {
+    const fk = String(k || '').trim().toUpperCase();
+    const fv = String(v || '').trim().toUpperCase();
+    if (fk && fv && fk !== fv) map[fk] = fv;
+  });
+  return map;
+}
+
+function canonSinger(rawName) {
+  let cur = String(rawName || '').trim().toUpperCase();
+  if (!cur) return '';
+  const aliases = getSingerAliases();
+  for (let i = 0; i < 5 && aliases[cur]; i++) {
+    cur = aliases[cur];
+  }
+  return cur;
+}
+
+function normDate(val) {
+  const s = String(val || '').trim();
+  if (!s) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const dmY = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (dmY) {
+    return `${dmY[3]}-${dmY[2].padStart(2, '0')}-${dmY[1].padStart(2, '0')}`;
+  }
+  const yMd = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (yMd) {
+    return `${yMd[1]}-${yMd[2].padStart(2, '0')}-${yMd[3].padStart(2, '0')}`;
+  }
+  return s;
+}
+
+function mergeStarRecords(a, b) {
+  const recA = a || { t: 0, d: [], m: {} };
+  const recB = b || { t: 0, d: [], m: {} };
+  const datesA = [...new Set((recA.d || []).map(normDate).filter(Boolean))];
+  const datesB = [...new Set((recB.d || []).map(normDate).filter(Boolean))];
+  const overlap = datesA.filter(dt => datesB.includes(dt)).length;
+  const combinedDates = [...new Set([...datesA, ...datesB])].sort();
+  const tA = Math.max(0, Number(recA.t) || 0);
+  const tB = Math.max(0, Number(recB.t) || 0);
+  const dedupOverlap = Math.min(overlap, Math.min(tA, tB));
+  const combinedT = Math.max(0, tA + tB - dedupOverlap);
+  const mOut = { ...(recA.m && typeof recA.m === 'object' ? recA.m : {}) };
+  if (recB.m && typeof recB.m === 'object') {
+    Object.entries(recB.m).forEach(([k, v]) => {
+      if (typeof v === 'number') mOut[k] = (Number(mOut[k]) || 0) + v;
+      else if (mOut[k] == null) mOut[k] = v;
+    });
+  }
+  return { t: combinedT, d: combinedDates, m: mOut };
+}
+
+function isWithinLiveScheduleNow(now = new Date()) {
+  const sc = (typeof getSchedule === 'function')
+    ? getSchedule()
+    : { days: [1,2,3,4,5], startTime: '20:20', endTime: '23:30', cutoffMins: 26, forceLiveOverride: false };
+  if (sc.forceLiveOverride) return true;
+  const day = now.getDay();
+  const prevDay = (day + 6) % 7;
+  const [sh, sm] = (sc.startTime || '20:20').split(':').map(Number);
+  const [eh, em] = (sc.endTime || '23:30').split(':').map(Number);
+  const curMins = now.getHours() * 60 + now.getMinutes();
+  const startMins = sh * 60 + sm;
+  let endMins = eh * 60 + em;
+  if (endMins <= startMins) {
+    endMins = Math.max(endMins + 1440, startMins + 120);
+  }
+  if (sc.days.includes(day) && curMins >= startMins && curMins <= endMins) return true;
+  if (sc.days.includes(prevDay) && (curMins + 1440) >= startMins && (curMins + 1440) <= endMins) return true;
+  return false;
+}
+
 window.showNotice = (msg, title="Sing From Home") => {
   const m = $('#custom-modal');
   $('#custom-modal-body').innerHTML = `<h3>${e(title)}</h3><p style="margin:12px 0 16px;white-space:pre-line">${e(msg)}</p><p style="text-align:right;margin:0"><button class="pri" onclick="closeModal()">OK</button></p>`;
@@ -351,7 +456,28 @@ const fd=k=>k.slice(8)+'/'+k.slice(5,7)+'/'+k.slice(0,4);
 const fm=m=>new Date(m+'-01T00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
 const nowM=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
 const okImg=s=>typeof s=='string'&&s.startsWith('data:image/');
-let U=null,P=null,PUB=null,SONGS=[],CONF={},AU=[],tab='home',ADM=false,IS_SUPER=false,IS_ADMIN=false,LIVE_SESSION=null,SOTM_RESULT=null,HOLIDAYS=[],loadErr='',HDATE='',EDU='',GRT=[],BD=[],GQ=[],showAbout=location.hash=='#about',MSGS=[],AM=[],AIN=[],PL=[],PD='',PLAN=null,pendingName='',seenAdm=(()=>{try{return +localStorage.getItem('sfh_seen_adm')||0}catch(x){return 0}})(),seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
+let U=null,P=null,PUB=null,SONGS=[],CONF={},AU=[],tab='home',ADM=false,IS_SUPER=false,IS_ADMIN=false,IS_JUDGE=false,LIVE_SESSION=null,SOTM_RESULT=null,SOTM_PANEL_CACHE=null,HOLIDAYS=[],loadErr='',HDATE='',EDU='',GRT=[],BD=[],GQ=[],showAbout=location.hash=='#about',MSGS=[],AM=[],AIN=[],PL=[],PD='',PLAN=null,pendingName='',seenAdm=(()=>{try{return +localStorage.getItem('sfh_seen_adm')||0}catch(x){return 0}})(),seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
+let PREVIEW_PARTICIPANT = false;
+let PREVIEW_SINGER = '';
+const URL_PARAMS = new URLSearchParams(location.search);
+const AUTO_PREVIEW_PARTICIPANT = URL_PARAMS.get('preview') === 'participant';
+const IS_EMBED_PREVIEW = URL_PARAMS.get('embed') === '1';
+const effSuper = () => IS_SUPER && !PREVIEW_PARTICIPANT;
+const effAdmin = () => IS_ADMIN && !PREVIEW_PARTICIPANT;
+const effAdm = () => ADM && !PREVIEW_PARTICIPANT;
+const isUserJudge = u => Boolean(u && (u.isJudge === true || u.role === 'judge'));
+const effJudge = () => {
+  const vp = curP();
+  return Boolean(vp && vp.status == 'approved' && isUserJudge(vp));
+};
+const curP = () => {
+  if (!PREVIEW_PARTICIPANT || !PREVIEW_SINGER) return P || {};
+  const target = canonSinger(PREVIEW_SINGER);
+  const match = AU.find(u => canonSinger(u.singer) === target);
+  return match
+    ? { ...match, status: 'approved', singer: target }
+    : { ...(P || {}), status: 'approved', singer: target, name: target, photo: '' };
+};
 
 let songListTab = 'today';
 let songArchivesExpanded = false;
@@ -363,8 +489,10 @@ let searchSongKeyword = '';
 let ruleEvalWeekStart = '';
 let ruleEvalPreview = null;
 
+let RAW_SINGERS_BEFORE_ALIAS = [];
+
 async function load(){
-  loadErr='';PUB=null;SONGS=[];CONF={};SOTM_RESULT=null;HOLIDAYS=[];
+  loadErr='';PUB=null;SONGS=[];CONF={};SOTM_RESULT=null;HOLIDAYS=[];RAW_SINGERS_BEFORE_ALIAS=[];
   try{
     const r=doc(fs,'users',U.uid);let s=await getDoc(r);
     if(!s.exists()&&!ADM){
@@ -375,17 +503,6 @@ async function load(){
     if(ADM||P.status=='approved'){
       const [a,ix,c]=await Promise.all([getDoc(doc(fs,'pub','data')),getDoc(doc(fs,'pub','idx')),getDoc(doc(fs,'config','app'))]);
       PUB=a.exists()?a.data():null;CONF=c.exists()?c.data():{};
-      if (PUB) {
-        const curSotd = Array.isArray(PUB.sotd) ? PUB.sotd.slice() : [];
-        const existingSotdDates = new Set(curSotd.map(x => x.d));
-        HISTORICAL_SOTD_PRE_OCT26.forEach(item => {
-          if (!existingSotdDates.has(item.d)) {
-            curSotd.push(item);
-          }
-        });
-        curSotd.sort((x, y) => x.d.localeCompare(y.d));
-        PUB.sotd = curSotd;
-      }
       HOLIDAYS = Array.isArray(CONF.holidays) ? CONF.holidays : [];
       if(ix.exists()){const ms=Object.keys(ix.data().months||{}).sort();const ds=await Promise.all(ms.map(m=>getDoc(doc(fs,'pub','songs_'+m))));SONGS=[].concat(...ds.map(d=>d.exists()?JSON.parse(d.data().json):[]))}
       else{const b=await getDoc(doc(fs,'pub','songs'));SONGS=b.exists()?(b.data().json?JSON.parse(b.data().json):(b.data().list||[])):[]}
@@ -394,14 +511,88 @@ async function load(){
       NOV16_SONGS.forEach(row => {
         if (!existingIds.has(row[0])) SONGS.push(row);
       });
+
+      // Capture raw singer names BEFORE alias normalization (for Superadmin Merge tool)
+      const rawSet = new Set();
+      SONGS.forEach(row => { const nm = String(row[2] || '').trim().toUpperCase(); if (nm) rawSet.add(nm); });
+      if (PUB) {
+        (PUB.singers || []).forEach(nm => { const u = String(nm || '').trim().toUpperCase(); if (u) rawSet.add(u); });
+        (PUB.sotd || []).forEach(x => (x.l || []).forEach(w => { const u = String((w && w.n) || w || '').trim().toUpperCase(); if (u) rawSet.add(u); }));
+        Object.keys(PUB.stars || {}).forEach(nm => { const u = String(nm || '').trim().toUpperCase(); if (u) rawSet.add(u); });
+      }
+      RAW_SINGERS_BEFORE_ALIAS = [...rawSet].sort();
+
+      // Normalize songs (date + canonical singer alias)
+      SONGS = SONGS.map(row => [row[0], normDate(row[1]), canonSinger(row[2]), row[3]]);
       SONGS.sort(cmpBySongId);
 
+      if (P && P.singer) {
+        P = { ...P, singer: canonSinger(P.singer) };
+      }
+
+      if (PUB) {
+        // Normalize & merge stars by canonical singer name
+        const mergedStars = {};
+        Object.entries(PUB.stars || {}).forEach(([rawName, rec]) => {
+          const cn = canonSinger(rawName);
+          if (!cn) return;
+          mergedStars[cn] = mergedStars[cn] ? mergeStarRecords(mergedStars[cn], rec) : mergeStarRecords(null, rec);
+        });
+        PUB.stars = mergedStars;
+
+        // Normalize & unify SOTD across PUB.sotd, HISTORICAL_SOTD_PRE_OCT26, and PUB.stars dates
+        const sotdByDate = new Map();
+        const addSotdWinner = (dtRaw, nameRaw, howRaw) => {
+          const dt = normDate(dtRaw);
+          const nm = canonSinger(nameRaw);
+          if (!dt || !nm) return;
+          if (!sotdByDate.has(dt)) sotdByDate.set(dt, []);
+          const arr = sotdByDate.get(dt);
+          if (!arr.some(x => x.n === nm)) {
+            arr.push({ n: nm, h: howRaw || 'Score' });
+          }
+        };
+
+        (Array.isArray(PUB.sotd) ? PUB.sotd : []).forEach(entry => {
+          if (!entry || !entry.d) return;
+          (Array.isArray(entry.l) ? entry.l : []).forEach(w => {
+            if (typeof w === 'string') addSotdWinner(entry.d, w, 'Score');
+            else if (w && w.n) addSotdWinner(entry.d, w.n, w.h || 'Score');
+          });
+        });
+
+        HISTORICAL_SOTD_PRE_OCT26.forEach(item => {
+          if (!sotdByDate.has(item.d) || !sotdByDate.get(item.d).length) {
+            (item.l || []).forEach(w => addSotdWinner(item.d, w.n, w.h || 'Score'));
+          }
+        });
+
+        Object.entries(PUB.stars || {}).forEach(([nm, rec]) => {
+          (rec.d || []).forEach(dt => addSotdWinner(dt, nm, 'Score'));
+        });
+
+        PUB.sotd = [...sotdByDate.entries()]
+          .filter(([, l]) => l.length > 0)
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .map(([d, l]) => ({ d, l }));
+
+        // Normalize SOM values & singers list
+        if (PUB.som && typeof PUB.som === 'object') {
+          const normSom = {};
+          Object.entries(PUB.som).forEach(([k, v]) => { normSom[k] = canonSinger(v); });
+          PUB.som = normSom;
+        }
+        PUB.singers = [...new Set([...(PUB.singers || []).map(canonSinger), ...SONGS.map(r => r[2])].filter(Boolean))].sort();
+      }
+
       try {
-        const [sotmSnap, voteResSnap, voteSessSnap] = await Promise.all([
+        const [sotmSnap, voteResSnap, voteSessSnap, sotmPanelSnap] = await Promise.all([
           getDoc(doc(fs, 'pub', 'sotm')),
           getDoc(doc(fs, 'vote', 'result')),
-          getDoc(doc(fs, 'vote', 'session'))
+          getDoc(doc(fs, 'vote', 'session')),
+          getDoc(doc(fs, 'vote', 'sotm_panel')).catch(() => ({ exists: () => false }))
         ]);
+        SOTM_PANEL_CACHE = (sotmPanelSnap && sotmPanelSnap.exists()) ? sotmPanelSnap.data() : null;
         if (sotmSnap.exists()) {
           SOTM_RESULT = sotmSnap.data();
         } else if (voteResSnap.exists()) {
@@ -420,78 +611,167 @@ async function load(){
 }
 
 onAuthStateChanged(auth, async u => {
-  U = u;
-  if (!u) {
-    P = null;
-    IS_SUPER = false;
-    IS_ADMIN = false;
-    ADM = false;
-    draw();
-    return;
-  }
-  const em = (u.email || '').toLowerCase();
-  const verified = u.emailVerified === true;
-  IS_SUPER = (CFG.superadmins || []).map(x => x.toLowerCase()).includes(em) && verified;
-  ADM = IS_SUPER;
-
-  await load();
-
-  IS_ADMIN = IS_SUPER || (P && P.status == 'approved' && P.role == 'admin');
-  ADM = IS_ADMIN;
-
-  let _lsFromLiveDoc = null;
-  let _lsFromCfgDoc = null;
-  const applyMergedLiveSession = () => {
-    const candidates = [_lsFromLiveDoc, _lsFromCfgDoc].filter(Boolean);
-    if (!candidates.length) {
-      LIVE_SESSION = null;
-    } else {
-      candidates.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-      const latest = candidates[0];
-      const isFresh = (Date.now() - (latest.updatedAt || 0)) < (8 * 3600 * 1000);
-      LIVE_SESSION = (latest.active === true && isFresh) ? latest : null;
+  try {
+    U = u;
+    if (!u) {
+      P = null;
+      IS_SUPER = false;
+      IS_ADMIN = false;
+      ADM = false;
+      PREVIEW_PARTICIPANT = false;
+      PREVIEW_SINGER = '';
+      draw();
+      return;
     }
-    if (tab === 'home') draw();
-  };
+    const em = (u.email || '').toLowerCase();
+    const verified = u.emailVerified === true;
+    IS_SUPER = (CFG.superadmins || []).map(x => x.toLowerCase()).includes(em) && verified;
+    ADM = IS_SUPER;
 
-  onSnapshot(doc(fs, 'live', 'session'), snap => {
-    _lsFromLiveDoc = snap.exists() ? snap.data() : null;
-    applyMergedLiveSession();
-  }, () => {});
+    await load();
 
-  onSnapshot(doc(fs, 'config', 'app'), snap => {
-    if (snap.exists()) {
-      const cfgData = snap.data();
-      CONF = cfgData;
-      _lsFromCfgDoc = cfgData.liveSession || null;
-    } else {
-      _lsFromCfgDoc = null;
+    IS_ADMIN = IS_SUPER || (P && P.status == 'approved' && P.role == 'admin');
+    IS_JUDGE = Boolean(P && P.status == 'approved' && isUserJudge(P));
+    ADM = IS_ADMIN;
+
+    if (IS_SUPER && AUTO_PREVIEW_PARTICIPANT) {
+      PREVIEW_PARTICIPANT = true;
+      try {
+        const q = await getDocs(collection(fs, 'users'));
+        AU = q.docs.map(x => ({ id: x.id, ...x.data() }));
+      } catch (_e) {}
+      await Promise.all([loadMsgs(), loadPlan()]);
     }
-    applyMergedLiveSession();
-  }, () => {});
 
-  draw();
-  setTimeout(runCards, 400);
-setInterval(() => {
-  if (tab === 'home' && LIVE_SESSION && ((LIVE_SESSION.sotdVote && LIVE_SESSION.sotdVote.active) || (LIVE_SESSION.sotmVote && LIVE_SESSION.sotmVote.active))) {
+    let _lsFromLiveDoc = null;
+    let _lsFromCfgDoc = null;
+    const applyMergedLiveSession = () => {
+      const candidates = [_lsFromLiveDoc, _lsFromCfgDoc].filter(Boolean);
+      if (!candidates.length) {
+        LIVE_SESSION = null;
+      } else {
+        candidates.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+        const latest = candidates[0];
+        const isFresh = (Date.now() - (latest.updatedAt || 0)) < (5 * 3600 * 1000);
+        const isToday = normDate(latest.date) === tdy();
+        const inSchedule = isWithinLiveScheduleNow();
+        const hasContent = Boolean(
+          (Array.isArray(latest.singers) && latest.singers.length > 0) ||
+          (Array.isArray(latest.sotdList) && latest.sotdList.length > 0) ||
+          (latest.sotdVote && latest.sotdVote.active) ||
+          (latest.sotmVote && latest.sotmVote.active)
+        );
+        if (latest.active === true && latest.practice !== true && isToday && isFresh && inSchedule && hasContent) {
+          LIVE_SESSION = {
+            ...latest,
+            singers: (latest.singers || []).map(sg => ({ ...sg, name: canonSinger(sg.name) })),
+            performances: (latest.performances || []).map(p => ({ ...p, singer: canonSinger(p.singer) })),
+            sotdList: (latest.sotdList || []).map(w => ({ ...w, n: canonSinger(w.n) }))
+          };
+        } else {
+          LIVE_SESSION = null;
+        }
+      }
+      if (tab === 'home') draw();
+    };
+
+    onSnapshot(doc(fs, 'live', 'session'), snap => {
+      _lsFromLiveDoc = snap.exists() ? snap.data() : null;
+      applyMergedLiveSession();
+    }, () => {});
+
+    onSnapshot(doc(fs, 'config', 'app'), snap => {
+      if (snap.exists()) {
+        const cfgData = snap.data();
+        CONF = cfgData;
+        _lsFromCfgDoc = cfgData.liveSession || null;
+      } else {
+        _lsFromCfgDoc = null;
+      }
+      applyMergedLiveSession();
+    }, () => {});
+
     draw();
+    setTimeout(runCards, 400);
+    setInterval(() => {
+      if (tab === 'home' && LIVE_SESSION && ((LIVE_SESSION.sotdVote && LIVE_SESSION.sotdVote.active) || (LIVE_SESSION.sotmVote && LIVE_SESSION.sotmVote.active))) {
+        draw();
+      }
+    }, 1000);
+    setInterval(() => {
+      applyMergedLiveSession();
+    }, 60000);
+  } catch (err) {
+    $('#app').innerHTML = `<div class="c"><b>Could not initialize view</b><p class="m">${e(err && (err.message || err.code) || 'Unexpected error')}</p><p><button class="pri" onclick="location.reload()">↻ Reload</button></p></div>`;
   }
-}, 1000);
-
 });
 
 window.login=async()=>{
   if(!$('#cs')||!$('#cs').checked){showNotice('Please tick the consent box first.');return}
-  try{await signInWithPopup(auth,new GoogleAuthProvider())}
-  catch(x){showNotice('Sign-in failed ('+(x.code||'error')+'). Please open in Chrome and try again.')}
+  try{
+    const provider=new GoogleAuthProvider();
+    provider.setCustomParameters({prompt:'select_account'});
+    await signInWithPopup(auth,provider);
+  }
+  catch(x){
+    const code=x&&x.code?x.code:'error';
+    if(code==='auth/unauthorized-domain'){
+      const host=window.location.hostname;
+      const m=$('#custom-modal');
+      $('#custom-modal-body').innerHTML=`<h3>Domain Not Authorized in Firebase</h3>
+        <p style="margin:10px 0">Google Sign-In is blocked on this preview domain because it is not listed in your Firebase project (<b>${e(CFG.firebase.projectId)}</b>).</p>
+        <p style="margin:8px 0;font-size:13px">Add this domain in <b>Firebase Console → Authentication → Settings → Authorized domains</b>:</p>
+        <div style="display:flex;gap:6px;align-items:center;margin:8px 0 12px">
+          <input id="auth-host-copy" value="${e(host)}" readonly style="flex:1;font-size:12px">
+          <button class="pri" onclick="(function(){const i=$('#auth-host-copy');i.select();if(navigator.clipboard)navigator.clipboard.writeText(i.value).catch(()=>{});else try{document.execCommand('copy')}catch(_){}})()">Copy</button>
+        </div>
+        <p class="m" style="margin:0 0 14px">You can also sign in right now using Email / Phone + Password below without changing Firebase settings.</p>
+        <p style="text-align:right;margin:0"><button class="pri" onclick="closeModal()">OK</button></p>`;
+      m.style.display='flex';
+    }else if(code==='auth/popup-blocked'||code==='auth/operation-not-supported-in-this-environment'){
+      showNotice('Google Sign-In popup was blocked in this preview window ('+code+').\n\nPlease allow popups for this site, open the preview in a new browser tab, or sign in with Email / Phone + Password below.');
+    }else if(code==='auth/popup-closed-by-user'||code==='auth/cancelled-popup-request'){
+      showNotice('Sign-in popup was closed before finishing. Please try again, or open the preview in a new browser tab if the popup closes immediately.');
+    }else{
+      showNotice('Sign-in failed ('+code+'). Please open in Chrome and try again.');
+    }
+  }
 };
 window.out=()=>showConfirm('Are you sure you want to sign out of Sing From Home?', ()=>signOut(auth), 'Confirm Sign Out');
-window.refresh=async()=>{await load();if(P&&P.status=='approved'&&P.role=='admin'){IS_ADMIN=ADM=true;}if(tab=='adm'||tab=='rules')await loadAdm();draw()};
+window.refresh=async()=>{await load();IS_ADMIN=IS_SUPER||(P&&P.status=='approved'&&P.role=='admin');IS_JUDGE=Boolean(P&&P.status=='approved'&&isUserJudge(P));ADM=IS_ADMIN;if(PREVIEW_PARTICIPANT){await Promise.all([loadMsgs(),loadPlan()]);}if(tab=='adm'||tab=='rules')await loadAdm();draw()};
+window.toggleParticipantPreview=async()=>{
+  if(!IS_SUPER)return;
+  PREVIEW_PARTICIPANT=!PREVIEW_PARTICIPANT;
+  if(PREVIEW_PARTICIPANT){
+    if(!AU.length){
+      try{
+        const q=await getDocs(collection(fs,'users'));
+        AU=q.docs.map(x=>({id:x.id,...x.data()}));
+      }catch(_e){}
+    }
+    await Promise.all([loadMsgs(),loadPlan()]);
+    if(tab=='adm'||tab=='rules')tab='home';
+  }else{
+    PREVIEW_SINGER='';
+    if(tab=='today'||tab=='msg'||tab=='prof')tab='home';
+  }
+  draw();
+};
+window.setPreviewSinger=val=>{
+  if(!IS_SUPER||!PREVIEW_PARTICIPANT)return;
+  PREVIEW_SINGER=(val||'').trim().toUpperCase();
+  draw();
+};
 
 window.submitLiveBallot = async (kind, targetSinger, score) => {
   if (!U || !P || (P.status !== 'approved' && !ADM)) return;
+  const vp = curP();
   const todayStr = (LIVE_SESSION && LIVE_SESSION.date) ? LIVE_SESSION.date : tdy();
-  const voterName = ((P && P.singer) || (P && P.name) || (U && U.displayName) || '').trim().toUpperCase();
+  const voterName = ((vp && vp.singer) || (vp && vp.name) || (U && U.displayName) || '').trim().toUpperCase();
+  if (kind === 'sotd_pick' && voterName && voterName === String(targetSinger || '').trim().toUpperCase()) {
+    showNotice('You cannot vote for yourself. Please vote for another participant.');
+    return;
+  }
   try {
     const planRef = doc(fs, 'plans', `${todayStr}_${U.uid}`);
     if (kind === 'sotd_pick') {
@@ -603,26 +883,60 @@ window.go=async t=>{
   }
   tab=t;
   if(t=='adm'||t=='rules')await loadAdm();
+  if(t=='judge'){
+    try{
+      const sp=await getDoc(doc(fs,'vote','sotm_panel'));
+      if(sp.exists())SOTM_PANEL_CACHE=sp.data();
+    }catch(_e){}
+    if(IS_SUPER){
+      try{
+        const q=await getDocs(collection(fs,'users'));
+        AU=q.docs.map(x=>({id:x.id,...x.data()}));
+      }catch(_e){}
+      await loadPlans();
+    }else{
+      await loadPlan();
+    }
+  }
   if(t=='adm')setTimeout(()=>{seenAdm=Date.now();try{localStorage.setItem('sfh_seen_adm',String(seenAdm))}catch(x){}},500);
   if(t=='msg'){seenPrev=seen;seen=Date.now();try{localStorage.setItem('sfh_seen',String(seen))}catch(x){}}
   draw();
 };
 
+function renderPreviewBar(){
+  if(!IS_SUPER||!PREVIEW_PARTICIPANT)return '';
+  const singerSet=new Set();
+  if(PUB&&Array.isArray(PUB.singers))PUB.singers.forEach(s=>{const n=String(s||'').trim().toUpperCase();if(n)singerSet.add(n)});
+  AU.forEach(u=>{const n=String(u.singer||'').trim().toUpperCase();if(n)singerSet.add(n)});
+  const singerOpts=[...singerSet].sort();
+  return `<div class="c" style="border:2px solid #d97706;background:#fffbeb;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1;min-width:180px">
+      <span class="badge-warn" style="font-size:11px;white-space:nowrap">👁 PARTICIPANT PREVIEW</span>
+      <select aria-label="Preview as singer" onchange="setPreviewSinger(this.value)" style="padding:4px 8px;font-size:12.5px;min-width:160px;max-width:240px">
+        <option value="">My own account${P&&P.singer?' ('+e(P.singer)+')':''}</option>
+        ${singerOpts.map(s=>`<option value="${e(s)}" ${PREVIEW_SINGER===s?'selected':''}>${e(s)}</option>`).join('')}
+      </select>
+    </div>
+    ${IS_EMBED_PREVIEW ? '' : '<button class="warn" style="padding:5px 10px;font-size:12px" onclick="toggleParticipantPreview()">← Back to Super Admin</button>'}
+  </div>`;
+}
+
 function draw(){
-  $('#hb').innerHTML=U?'<a href="#" onclick="out();return false" style="color:var(--ac);font-size:14px;text-decoration:underline;cursor:pointer;white-space:nowrap">Sign out</a>':'';
+  $('#hb').innerHTML=U?`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">${IS_SUPER&&!IS_EMBED_PREVIEW?`<button class="${PREVIEW_PARTICIPANT?'warn':''}" style="padding:4px 8px;font-size:12px;white-space:nowrap" onclick="toggleParticipantPreview()">${PREVIEW_PARTICIPANT?'← Super Admin':'👁 Participant View'}</button>`:''}<a href="#" onclick="out();return false" style="color:var(--ac);font-size:14px;text-decoration:underline;cursor:pointer;white-space:nowrap">Sign out</a></div>`:'';
   if(showAbout){$('#app').innerHTML=vAbout(true);return}
   if(!U){$('#app').innerHTML=vLogin();return}
   if(loadErr){$('#app').innerHTML='<div class="c"><b>Could not load data</b><p class="m">'+e(loadErr)+'</p><p class="m">Check your internet and try again.</p><p><button class="pri" onclick="refresh()">↻ Try again</button></p></div>';return}
-  if(!ADM&&P.status!='approved'){$('#app').innerHTML=vWait();return}
-  $('#app').innerHTML=tabs()+(
+  if(!effAdm()&&curP().status!='approved'){$('#app').innerHTML=renderPreviewBar()+vWait();return}
+  $('#app').innerHTML=renderPreviewBar()+tabs()+(
     tab=='home'?vHome():
     tab=='sotd'?vSotd():
-    tab=='rules'&&IS_SUPER?vRules():
+    tab=='judge'&&(effJudge()||effSuper())?vJudge():
+    tab=='rules'&&effSuper()?vRules():
     tab=='prof'?vProf():
     tab=='today'?vToday():
     tab=='msg'?vMsg():
     tab=='about'?vAbout(false):
-    vAdm()
+    effAdm()?vAdm():vHome()
   );
 }
 const idOf=em=>(em||'').endsWith('@singfromhome-phone.app')?em.split('@')[0]:(em||'');
@@ -645,52 +959,109 @@ const vWait=()=>`<div class="c"><h2>${P.status=='pending'?'Waiting for approval'
 
 const tabs = () => {
   let list = [];
-  if (IS_SUPER) {
+  if (effSuper()) {
     list = [
       ['home', 'Home'],
       ['sotd', 'SOTD'],
+      ['judge', 'Judge'],
       ['rules', 'Rules'],
       ['about', 'About'],
       ['adm', 'Admin'],
-      ['live', 'Live Session'],
-      ['refresh', 'Refresh']
+      ['live', 'Live Session']
     ];
-  } else if (IS_ADMIN) {
+  } else if (effAdmin()) {
     list = [
       ['home', 'Home'],
       ['sotd', 'SOTD'],
       ['about', 'About'],
       ['adm', 'Admin'],
-      ['live', 'Live Session'],
-      ['refresh', 'Refresh']
+      ['live', 'Live Session']
     ];
   } else {
     list = [
       ['home', 'Home'],
       ['sotd', 'SOTD'],
+      ...(effJudge() ? [['judge', 'Judge']] : []),
       ['today', 'Today'],
       ['msg', 'Messages' + unread()],
       ['prof', 'My profile'],
-      ['about', 'About'],
-      ['refresh', 'Refresh']
+      ['about', 'About']
     ];
   }
 
-  return `<nav>${list.map(([k, t]) => k == 'refresh' ? `<button onclick="refresh()">${t}</button>` : `<button class="${tab == k ? 'on' : ''}" onclick="go('${k}')">${t}</button>`).join('')}${CONF.zoom ? `<button class="zm" onclick="joinZoom()">Start Zoom</button>` : ''}</nav>`;
+  return `<nav>${list.map(([k, t]) => `<button class="${tab == k ? 'on' : ''}" onclick="go('${k}')">${t}</button>`).join('')}${CONF.zoom ? `<button class="zm" onclick="joinZoom()">Start Zoom</button>` : ''}</nav>`;
 };
 
-const nmL = l => (l||[]).map(x => '<b>' + e(x.n) + '</b>' + (x.h === 'Special' ? ' (special)' : x.h === 'Quiz' ? ' (quiz)' : '')).join(', ');
+const nmL = l => (l||[]).map(x => '<b>' + e(canonSinger(x.n || x)) + '</b>' + (x.h === 'Special' ? ' (special)' : x.h === 'Quiz' ? ' (quiz)' : '')).join(', ');
+
+function getSOTDForDate(d) {
+  const target = normDate(d);
+  if (!target) return [];
+  const winners = [];
+  const pushW = (nameRaw, howRaw) => {
+    const nm = canonSinger(nameRaw);
+    if (!nm) return;
+    if (!winners.some(w => w.n === nm)) {
+      winners.push({ n: nm, h: howRaw || 'Score' });
+    }
+  };
+  ((PUB && PUB.sotd) || []).forEach(entry => {
+    if (normDate(entry.d) === target) {
+      (entry.l || []).forEach(w => {
+        if (typeof w === 'string') pushW(w, 'Score');
+        else if (w && w.n) pushW(w.n, w.h || 'Score');
+      });
+    }
+  });
+  Object.entries((PUB && PUB.stars) || {}).forEach(([nm, rec]) => {
+    if (rec && Array.isArray(rec.d) && rec.d.some(dt => normDate(dt) === target)) {
+      pushW(nm, 'Score');
+    }
+  });
+  if (LIVE_SESSION && normDate(LIVE_SESSION.date) === target && Array.isArray(LIVE_SESSION.sotdList)) {
+    LIVE_SESSION.sotdList.forEach(w => pushW(w && w.n, w && w.h));
+  }
+  return winners;
+}
+
+function getLatestDeclaredSOTD(maxDate) {
+  const cap = normDate(maxDate);
+  const dates = [...new Set([
+    ...((PUB && PUB.sotd) || []).filter(x => x.l && x.l.length).map(x => normDate(x.d)),
+    ...Object.values((PUB && PUB.stars) || {}).flatMap(rec => (rec && rec.d ? rec.d.map(normDate) : []))
+  ].filter(dt => /^\d{4}-\d{2}-\d{2}$/.test(dt) && (!cap || dt <= cap)))].sort();
+  for (let i = dates.length - 1; i >= 0; i--) {
+    const l = getSOTDForDate(dates[i]);
+    if (l.length) return { d: dates[i], l };
+  }
+  return null;
+}
 
 function sdates(){
   const st = new Set();
-  SONGS.forEach(r => st.add(r[1]));
-  ((PUB&&PUB.sotd)||[]).forEach(x => st.add(x.d));
+  SONGS.forEach(r => { const dt = normDate(r[1]); if (/^\d{4}-\d{2}-\d{2}$/.test(dt)) st.add(dt); });
+  ((PUB&&PUB.sotd)||[]).forEach(x => { const dt = normDate(x.d); if (/^\d{4}-\d{2}-\d{2}$/.test(dt) && x.l && x.l.length) st.add(dt); });
+  Object.values((PUB&&PUB.stars)||{}).forEach(rec => (rec && rec.d || []).forEach(x => { const dt = normDate(x); if (/^\d{4}-\d{2}-\d{2}$/.test(dt)) st.add(dt); }));
   return [...st].sort();
 }
 window.setHD=v=>{HDATE=v||'';draw()};
 window.stepHD=n=>{const ds=sdates(),cur=HDATE||ds[ds.length-1]||'';const c=n<0?ds.filter(x=>x<cur).pop():ds.find(x=>x>cur);if(c){HDATE=c;draw()}};
 
-const sTable=(rows,me)=>rows.length?`<div class="tbl"><table><tr><th class="n">#</th><th>Song ID</th><th>Singer name</th><th>Song name</th></tr>${rows.map((r,i)=>`<tr class="${me&&r[2]==me?'me':''}"><td class="n">${i+1}</td><td><b>${e(r[0])}</b></td><td><b>${e(r[2])}</b></td><td>${e(r[3])}</td></tr>`).join('')}</table></div>`:'';
+function getSessionMetaForDate(d) {
+  const target = normDate(d);
+  if (!target) return { theme: '', host: '' };
+  const fromPub = (PUB && PUB.sessionMeta && PUB.sessionMeta[target]) || {};
+  const fromLive = (LIVE_SESSION && normDate(LIVE_SESSION.date) === target)
+    ? { theme: LIVE_SESSION.theme || '', host: LIVE_SESSION.host || '' }
+    : {};
+  return {
+    theme: String(fromLive.theme || fromPub.theme || '').trim(),
+    host: String(fromLive.host || fromPub.host || '').trim().toUpperCase()
+  };
+}
+
+const sTable=(rows,me)=>rows.length?`<div class="tbl"><table><tr><th class="n">#</th><th>ID</th><th>Singer</th><th>Song</th></tr>${rows.map((r,i)=>`<tr class="${me&&r[2]==me?'me':''}"><td class="n">${i+1}</td><td><b>${e(r[0])}</b></td><td><b>${e(r[2])}</b></td><td>${renderArchiveSongCell(r[3])}</td></tr>`).join('')}</table></div>`:'';
+const sTableSelf=rows=>rows.length?`<div class="tbl"><table><tr><th class="n">#</th><th>ID</th><th>Song</th></tr>${rows.map((r,i)=>`<tr class="me"><td class="n">${i+1}</td><td><b>${e(r[0])}</b></td><td>${renderArchiveSongCell(r[3])}</td></tr>`).join('')}</table></div>`:'';
 
 
 function getSOTMData() {
@@ -845,7 +1216,7 @@ window.downloadSOTMPDF = () => {
 function renderSOTMBannerHTML() {
   const s = getSOTMData();
 
-  if (IS_SUPER) {
+  if (effSuper()) {
     return `
       <div class="c sotm-card">
         <div class="sotm-title">OFFICIAL SINGER OF THE MONTH (SOTM) RESULT - ${e(s.monthLabel)}</div>
@@ -858,16 +1229,16 @@ function renderSOTMBannerHTML() {
         ${s.rows && s.rows.length ? `
           <div class="tbl" style="background:var(--card)"><table>
             <tr>
-              <th class="n">RANK</th>
-              <th>FINALIST</th>
-              <th class="n">SUR (10)</th>
-              <th class="n">TAAL (10)</th>
-              <th class="n">SELECTIONS (10)</th>
-              <th class="n">PERFORMANCE (10)</th>
-              <th class="n">JUDGE TOTAL</th>
-              <th class="n">VOTE METER</th>
-              <th class="n">FINAL SCORE</th>
-              <th>REMARKS</th>
+              <th class="n">#</th>
+              <th>Singer</th>
+              <th class="n" title="Sur (10)">Sur</th>
+              <th class="n" title="Taal (10)">Taal</th>
+              <th class="n" title="Selections (10)">Choice</th>
+              <th class="n" title="Performance (10)">Perf</th>
+              <th class="n" title="Judge Total">Judge</th>
+              <th class="n" title="Vote Meter">Votes</th>
+              <th class="n" title="Final Score">Total</th>
+              <th>Remarks</th>
             </tr>
             ${s.rows.map(r => `
               <tr style="${r.rank === 1 ? 'background:rgba(22,163,74,0.08)' : ''}">
@@ -925,6 +1296,145 @@ window.setSongSearchKeyword = (kw) => {
   draw();
 };
 
+function hasSongMeta(m) {
+  return !!(m && ['orig', 'comp', 'lyr', 'mov', 'yr', 'act'].some(k => String(m[k] || '').trim()));
+}
+
+function getSongMeta(title) {
+  const key = String(title || '').trim().toUpperCase();
+  if (!key) return null;
+  if (PUB && PUB.songMeta && hasSongMeta(PUB.songMeta[key])) return PUB.songMeta[key];
+  if (LIVE_SESSION && Array.isArray(LIVE_SESSION.performances)) {
+    const lp = LIVE_SESSION.performances.find(p => String(p.song || '').trim().toUpperCase() === key && hasSongMeta(p.meta));
+    if (lp) return lp.meta;
+  }
+  return null;
+}
+
+function formatSongMetaSummary(m) {
+  if (!hasSongMeta(m)) return '';
+  const parts = [];
+  if (m.mov || m.yr) parts.push(`${m.mov || ''}${m.mov && m.yr ? ' (' + m.yr + ')' : (m.yr || '')}`.trim());
+  if (m.orig) parts.push(m.orig);
+  if (m.comp) parts.push(m.comp);
+  return parts.join(' · ');
+}
+
+function songMetaMatchesKeyword(title, kw) {
+  const m = getSongMeta(title);
+  if (!m) return false;
+  return ['orig', 'comp', 'lyr', 'mov', 'yr', 'act'].some(k => String(m[k] || '').toUpperCase().includes(kw));
+}
+
+function renderArchiveSongCell(title) {
+  const safeTitle = e(title || '').replace(/'/g, "\\'");
+  const m = getSongMeta(title);
+  const sub = formatSongMetaSummary(m);
+  return `<div style="white-space:normal;min-width:150px">
+    <span style="cursor:pointer;font-weight:700" onclick="openArchiveSongMeta('${safeTitle}')" title="View song metadata">${e(title)}</span>
+    ${sub ? `<div class="m" style="font-size:11px;line-height:1.3;margin-top:1px">${e(sub)}</div>` : ''}
+  </div>`;
+}
+
+window.fetchArchiveMetaAI = async (songTitle) => {
+  const statusEl = $('#arch_meta_status');
+  const btnEl = $('#btn_arch_meta_ai');
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'AI Loading…'; }
+  if (statusEl) { statusEl.style.color = 'var(--ac)'; statusEl.textContent = `Fetching metadata for "${songTitle}" with AI…`; }
+  try {
+    const resp = await fetch('/api/song-metadata', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ songTitle }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || `AI request failed (${resp.status})`);
+    const aiMeta = data.meta || {};
+    let filled = 0;
+    ['orig', 'comp', 'lyr', 'mov', 'yr', 'act'].forEach(k => {
+      const inp = $('#arch_meta_' + k);
+      if (inp && aiMeta[k]) { inp.value = String(aiMeta[k]).trim(); filled++; }
+    });
+    if (statusEl) {
+      statusEl.style.color = filled ? '#15803d' : '#d97706';
+      statusEl.textContent = filled ? `✓ AI filled ${filled} field${filled === 1 ? '' : 's'} — click Save to Archive.` : 'AI could not find verified details for this title.';
+    }
+  } catch (err) {
+    if (statusEl) { statusEl.style.color = '#dc2626'; statusEl.textContent = err?.message || 'AI lookup failed.'; }
+  } finally {
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = '✨ AI Fill'; }
+  }
+};
+
+window.saveArchiveSongMeta = async (songTitle) => {
+  if (!effAdm()) return;
+  const key = String(songTitle || '').trim().toUpperCase();
+  if (!key) return;
+  const metaObj = {
+    orig: ($('#arch_meta_orig')?.value || '').trim(),
+    comp: ($('#arch_meta_comp')?.value || '').trim(),
+    lyr: ($('#arch_meta_lyr')?.value || '').trim(),
+    mov: ($('#arch_meta_mov')?.value || '').trim(),
+    yr: ($('#arch_meta_yr')?.value || '').trim(),
+    act: ($('#arch_meta_act')?.value || '').trim(),
+  };
+  try {
+    await setDoc(doc(fs, 'pub', 'data'), { songMeta: { [key]: metaObj } }, { merge: true });
+    if (!PUB) PUB = {};
+    PUB.songMeta = { ...(PUB.songMeta || {}), [key]: metaObj };
+    closeModal();
+    draw();
+  } catch (err) {
+    const statusEl = $('#arch_meta_status');
+    if (statusEl) { statusEl.style.color = '#dc2626'; statusEl.textContent = 'Save failed (' + (err.code || err.message) + ')'; }
+  }
+};
+
+window.openArchiveSongMeta = (songTitle) => {
+  const key = String(songTitle || '').trim().toUpperCase();
+  const safeTitle = e(key).replace(/'/g, "\\'");
+  const meta = getSongMeta(key) || {};
+  const canEdit = effAdm();
+  const m = $('#custom-modal');
+
+  if (canEdit) {
+    $('#custom-modal-body').innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+        <h3 style="margin:0;font-size:15px">Song Metadata: ${e(key)}</h3>
+        <button id="btn_arch_meta_ai" class="pri" style="padding:4px 9px;font-size:11.5px;white-space:nowrap" onclick="fetchArchiveMetaAI('${safeTitle}')">✨ AI Fill</button>
+      </div>
+      <div id="arch_meta_status" class="m" style="font-size:11.5px;min-height:16px;margin-bottom:6px"></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <label style="font-size:12px;font-weight:600;color:var(--mut)">Original Singer<input id="arch_meta_orig" value="${e(meta.orig||'')}" placeholder="e.g. Kishore Kumar, Lata Mangeshkar" style="width:100%;margin-top:2px"></label>
+        <label style="font-size:12px;font-weight:600;color:var(--mut)">Music Composer<input id="arch_meta_comp" value="${e(meta.comp||'')}" placeholder="e.g. R. D. Burman" style="width:100%;margin-top:2px"></label>
+        <label style="font-size:12px;font-weight:600;color:var(--mut)">Lyricist<input id="arch_meta_lyr" value="${e(meta.lyr||'')}" placeholder="e.g. Anand Bakshi" style="width:100%;margin-top:2px"></label>
+        <label style="font-size:12px;font-weight:600;color:var(--mut)">Movie / Album Name<input id="arch_meta_mov" value="${e(meta.mov||'')}" placeholder="e.g. Sholay" style="width:100%;margin-top:2px"></label>
+        <label style="font-size:12px;font-weight:600;color:var(--mut)">Releasing Year<input id="arch_meta_yr" type="number" value="${e(meta.yr||'')}" placeholder="YYYY" style="width:100%;margin-top:2px"></label>
+        <label style="font-size:12px;font-weight:600;color:var(--mut)">Lead Actor / Star<input id="arch_meta_act" value="${e(meta.act||'')}" placeholder="e.g. Rajesh Khanna" style="width:100%;margin-top:2px"></label>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+        <button onclick="closeModal()">Close</button>
+        <button class="pri" onclick="saveArchiveSongMeta('${safeTitle}')">Save to Archive</button>
+      </div>
+    `;
+  } else {
+    const rows = [
+      ['Original Singer', meta.orig],
+      ['Music Composer', meta.comp],
+      ['Lyricist', meta.lyr],
+      ['Movie / Album', meta.mov],
+      ['Releasing Year', meta.yr],
+      ['Lead Actor / Star', meta.act],
+    ].filter(([, v]) => String(v || '').trim());
+    $('#custom-modal-body').innerHTML = `
+      <h3 style="margin:0 0 8px;font-size:15px">Song Details: ${e(key)}</h3>
+      ${rows.length ? `<div class="tbl"><table>${rows.map(([k, v]) => `<tr><th style="width:130px">${k}</th><td style="white-space:normal"><b>${e(v)}</b></td></tr>`).join('')}</table></div>` : '<p class="m">No metadata archived for this song yet.</p>'}
+      <p style="text-align:right;margin:12px 0 0"><button class="pri" onclick="closeModal()">Close</button></p>
+    `;
+  }
+  m.style.display = 'flex';
+};
+
 window.downloadSongListPDF = () => {
   if (!window.jspdf || !window.jspdf.jsPDF) {
     showNotice('PDF engine loading, please wait a moment.');
@@ -935,13 +1445,27 @@ window.downloadSongListPDF = () => {
   const curMo = nowM();
   const t = tdy();
   const asc = v => String(v == null ? '' : v).replace(/[^\x20-\xff]/g, '');
+  const songPdf = s => {
+    const sub = formatSongMetaSummary(getSongMeta(s));
+    return sub ? `${asc(s)}\n${asc(sub)}` : asc(s);
+  };
+  const datePdf = dt => {
+    const sm = getSessionMetaForDate(dt);
+    const parts = [];
+    if (sm.theme) parts.push(`Theme: ${asc(sm.theme)}`);
+    if (sm.host) parts.push(`Host: ${asc(sm.host)}`);
+    return parts.length ? `${fd(dt)}\n${parts.join(' | ')}` : fd(dt);
+  };
 
   let title = 'Song List';
   let head = [['#', 'Song ID', 'Date', 'Singer Name', 'Song Title']];
   let body = [];
+  let headerMetaLine = '';
 
   if (songListTab === 'today') {
     title = `Songs Performed Today (${fd(t)})`;
+    const smToday = getSessionMetaForDate(t);
+    headerMetaLine = `Theme: ${asc(smToday.theme || '-')}   |   Host: ${asc(smToday.host || '-')}`;
     head = [['#', 'Song ID', 'Round', 'Singer Name', 'Song Title']];
     let todayRows = [];
     if (LIVE_SESSION && LIVE_SESSION.date === t && LIVE_SESSION.performances) {
@@ -960,17 +1484,17 @@ window.downloadSongListPDF = () => {
       }));
     }
     todayRows.sort((a, b) => cmpBySongId([a.id], [b.id]));
-    body = todayRows.map((r, i) => [String(i + 1), asc(r.id), asc(r.round), asc(r.singer), asc(r.song)]);
+    body = todayRows.map((r, i) => [String(i + 1), asc(r.id), asc(r.round), asc(r.singer), songPdf(r.song)]);
   } else if (songListTab === 'month') {
     title = `Songs Performed in Month (${curMo})`;
     const rows = allArchive.filter(r => r[1] && r[1].startsWith(curMo));
-    body = rows.map((r, i) => [String(i + 1), asc(r[0]), fd(r[1]), asc(r[2]), asc(r[3])]);
+    body = rows.map((r, i) => [String(i + 1), asc(r[0]), datePdf(r[1]), asc(r[2]), songPdf(r[3])]);
   } else if (songListTab === 'singer') {
     const singersList = [...new Set(allArchive.map(r => r[2]))].filter(Boolean).sort();
     const activeSinger = selectedSingerFilter || singersList[0] || '';
     title = `Song Record: ${activeSinger || 'All'}`;
     const rows = activeSinger ? allArchive.filter(r => r[2] === activeSinger) : [];
-    body = rows.map((r, i) => [String(i + 1), asc(r[0]), fd(r[1]), asc(r[2]), asc(r[3])]);
+    body = rows.map((r, i) => [String(i + 1), asc(r[0]), datePdf(r[1]), asc(r[2]), songPdf(r[3])]);
   } else if (songListTab === 'unique') {
     title = 'Unique Song List (No Repetition)';
     head = [['#', 'First Song ID', 'Song Title', 'Sung By', 'Times Sung']];
@@ -987,12 +1511,12 @@ window.downloadSongListPDF = () => {
       }
     });
     const uniqueRows = [...songMap.values()].sort((a, b) => a.title.localeCompare(b.title));
-    body = uniqueRows.map((u, i) => [String(i + 1), asc(u.firstId), asc(u.title), asc([...u.singers].join(', ')), `${u.count}x`]);
+    body = uniqueRows.map((u, i) => [String(i + 1), asc(u.firstId), songPdf(u.title), asc([...u.singers].join(', ')), `${u.count}x`]);
   } else {
     title = 'Full Master Song Directory';
     const kw = (typeof searchSongKeyword !== 'undefined' && searchSongKeyword) ? searchSongKeyword : '';
-    const rows = kw ? allArchive.filter(r => (r[0]||'').includes(kw) || (r[2]||'').includes(kw) || (r[3]||'').includes(kw)) : allArchive;
-    body = rows.map((r, i) => [String(i + 1), asc(r[0]), fd(r[1]), asc(r[2]), asc(r[3])]);
+    const rows = kw ? allArchive.filter(r => (r[0]||'').includes(kw) || (r[2]||'').includes(kw) || (r[3]||'').includes(kw) || songMetaMatchesKeyword(r[3], kw)) : allArchive;
+    body = rows.map((r, i) => [String(i + 1), asc(r[0]), datePdf(r[1]), asc(r[2]), songPdf(r[3])]);
   }
 
   if (!body.length) {
@@ -1022,8 +1546,17 @@ window.downloadSongListPDF = () => {
   docPdf.setTextColor(100, 116, 139);
   docPdf.text(`Sorted by Song ID  |  Generated: ${fd(t)} ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}`, 14, 36.5);
 
+  let tableStartY = 40;
+  if (headerMetaLine) {
+    docPdf.setFont('helvetica', 'bold');
+    docPdf.setFontSize(9);
+    docPdf.setTextColor(15, 52, 96);
+    docPdf.text(headerMetaLine, 14, 41.5);
+    tableStartY = 45;
+  }
+
   docPdf.autoTable({
-    startY: 40,
+    startY: tableStartY,
     head,
     body,
     theme: 'striped',
@@ -1086,10 +1619,10 @@ function renderBottomSongListHTML() {
         <div class="tbl" id="participant_song_table_wrap"><table>
           <tr>
             <th class="n">#</th>
-            <th>Song ID</th>
+            <th>ID</th>
             <th>Round</th>
-            <th>Singer Name</th>
-            <th>Song Title</th>
+            <th>Singer</th>
+            <th>Song</th>
           </tr>
           ${todayRows.map((r, i) => `
             <tr>
@@ -1097,7 +1630,7 @@ function renderBottomSongListHTML() {
               <td><b>${e(r.id)}</b></td>
               <td>${r.round}</td>
               <td><b>${e(r.singer)}</b></td>
-              <td><b>${e(r.song)}</b></td>
+              <td>${renderArchiveSongCell(r.song)}</td>
             </tr>
           `).join('')}
         </table></div>
@@ -1109,10 +1642,10 @@ function renderBottomSongListHTML() {
         <div class="tbl" id="participant_song_table_wrap"><table>
           <tr>
             <th class="n">#</th>
-            <th>Song ID</th>
+            <th>ID</th>
             <th>Date</th>
-            <th>Singer Name</th>
-            <th>Song Title</th>
+            <th>Singer</th>
+            <th>Song</th>
           </tr>
           ${monthRows.map((r, i) => `
             <tr>
@@ -1120,7 +1653,7 @@ function renderBottomSongListHTML() {
               <td><b>${e(r[0])}</b></td>
               <td><span class="m">${fd(r[1])}</span></td>
               <td><b>${e(r[2])}</b></td>
-              <td><b>${e(r[3])}</b></td>
+              <td>${renderArchiveSongCell(r[3])}</td>
             </tr>
           `).join('')}
         </table></div>
@@ -1146,16 +1679,16 @@ function renderBottomSongListHTML() {
         <div class="tbl" id="participant_song_table_wrap"><table>
           <tr>
             <th class="n">#</th>
-            <th>Song ID</th>
+            <th>ID</th>
             <th>Date</th>
-            <th>Song Title</th>
+            <th>Song</th>
           </tr>
           ${singerRows.map((r, i) => `
             <tr>
               <td class="n"><b>${i + 1}</b></td>
               <td><b>${e(r[0])}</b></td>
               <td><span class="m">${fd(r[1])}</span></td>
-              <td><b>${e(r[3])}</b></td>
+              <td>${renderArchiveSongCell(r[3])}</td>
             </tr>
           `).join('')}
         </table></div>
@@ -1177,20 +1710,20 @@ function renderBottomSongListHTML() {
       const uniqueList = Array.from(uniqueMap.values()).sort((a,b) => parseSongNum(a.firstId) - parseSongNum(b.firstId));
 
       tableHTML = uniqueList.length ? `
-        <p class="m" style="margin:2px 0 6px">Showing <b>${uniqueList.length}</b> distinct songs.</p>
+        <p class="m" style="margin:2px 0 6px">Showing <b>${uniqueList.length}</b> distinct songs. Tap any song title to view full metadata.</p>
         <div class="tbl" id="participant_song_table_wrap"><table>
           <tr>
             <th class="n">#</th>
-            <th>Song ID</th>
-            <th>Song Title (No Repetition)</th>
+            <th>ID</th>
+            <th>Song</th>
             <th style="width:65px;text-align:center">Sung</th>
-            <th>Performers with Song ID</th>
+            <th>Performers</th>
           </tr>
           ${uniqueList.map((u, i) => `
             <tr>
               <td class="n"><b>${i + 1}</b></td>
               <td><b>${e(u.firstId)}</b></td>
-              <td><b>${e(u.title)}</b></td>
+              <td>${renderArchiveSongCell(u.title)}</td>
               <td style="text-align:center"><b>${u.count}x</b></td>
               <td style="font-size:12px">
                 ${u.singers.map(s => `<span><b>${e(s.singer)}</b> (${e(s.id)})</span>`).join(', ')}
@@ -1203,25 +1736,25 @@ function renderBottomSongListHTML() {
     else if (songListTab === 'all') {
       subControls = `
         <div class="row" style="margin-bottom:6px;justify-content:space-between">
-          <input placeholder="Search title or singer..." value="${e(searchSongKeyword)}" oninput="setSongSearchKeyword(this.value)" style="max-width:220px">
+          <input placeholder="Search song, singer, movie, composer..." value="${e(searchSongKeyword)}" oninput="setSongSearchKeyword(this.value)" style="max-width:260px">
           <button class="pri" onclick="downloadSongListPDF()">Download PDF</button>
         </div>
       `;
 
       let filtered = allArchive.slice().sort(cmpBySongId);
       if(searchSongKeyword){
-        filtered = filtered.filter(r => String(r[3]||'').toUpperCase().includes(searchSongKeyword) || String(r[2]||'').toUpperCase().includes(searchSongKeyword) || String(r[0]||'').toUpperCase().includes(searchSongKeyword));
+        filtered = filtered.filter(r => String(r[3]||'').toUpperCase().includes(searchSongKeyword) || String(r[2]||'').toUpperCase().includes(searchSongKeyword) || String(r[0]||'').toUpperCase().includes(searchSongKeyword) || songMetaMatchesKeyword(r[3], searchSongKeyword));
       }
 
       tableHTML = filtered.length ? `
-        <p class="m" style="margin:2px 0 6px">Showing <b>${filtered.length}</b> songs.</p>
+        <p class="m" style="margin:2px 0 6px">Showing <b>${filtered.length}</b> songs. Tap any song title to view full metadata.</p>
         <div class="tbl" id="participant_song_table_wrap"><table>
           <tr>
             <th class="n">#</th>
-            <th>Song ID</th>
+            <th>ID</th>
             <th>Date</th>
-            <th>Singer Name</th>
-            <th>Song Title</th>
+            <th>Singer</th>
+            <th>Song</th>
           </tr>
           ${filtered.map((r, i) => `
             <tr>
@@ -1229,7 +1762,7 @@ function renderBottomSongListHTML() {
               <td><b>${e(r[0])}</b></td>
               <td><span class="m">${fd(r[1])}</span></td>
               <td><b>${e(r[2])}</b></td>
-              <td><b>${e(r[3])}</b></td>
+              <td>${renderArchiveSongCell(r[3])}</td>
             </tr>
           `).join('')}
         </table></div>
@@ -1262,21 +1795,21 @@ function renderBottomSongListHTML() {
 
 function vHome(){
   if(!PUB)return '<div class="c"><p class="m">No data has been published yet.</p></div>';
-  const ds=sdates(),d=HDATE||ds[ds.length-1]||tdy(),sk=(P.singer||'').toUpperCase(),s=(PUB.stars||{})[sk],mo=nowM();
+  const vp=curP(),ds=sdates(),d=HDATE||ds[ds.length-1]||tdy(),sk=(vp.singer||'').toUpperCase(),s=(PUB.stars||{})[sk],mo=nowM();
   const som=Object.entries(PUB.som||{}).sort().reverse();
   let h='';
-  const un=MSGS.filter(m=>m.ts>seen).length;if(!ADM&&un)h+=`<div class="c" style="border-left:4px solid var(--ac)">📩 You have <b>${un}</b> new message${un>1?'s':''} <button style="margin-left:8px" onclick="go('msg')">Read</button></div>`;
+  const un=MSGS.filter(m=>m.ts>seen).length;if(!effAdm()&&un)h+=`<div class="c" style="border-left:4px solid var(--ac)">📩 You have <b>${un}</b> new message${un>1?'s':''} <button style="margin-left:8px" onclick="go('msg')">Read</button></div>`;
   h+=bdCard();
 
   h+=`<div class="c" style="padding:10px 14px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
         <div style="flex:1;min-width:0">
           <b>Your position</b>
-          ${sk?`<p class="big" style="margin:3px 0 2px 0">${e(sk)}${IS_SUPER?' <span style="font-size:12px;color:#b30000;font-weight:700">(Superadmin)</span>':(IS_ADMIN?' <span style="font-size:12px;color:var(--ac);font-weight:700">(Admin)</span>':'')}</p>
+          ${sk?`<p class="big" style="margin:3px 0 2px 0">${e(sk)}${effSuper()?' <span style="font-size:12px;color:var(--ac);font-weight:700">(Superadmin)</span>':(effAdmin()?' <span style="font-size:12px;color:var(--ac);font-weight:700">(Admin)</span>':'')}</p>
           <p style="margin:2px 0 0 0;line-height:1.35">Your stars: <b>${s?s.t:0}</b>${(s&&s.t>=4)?' <span style="color:var(--ac);font-weight:600">– eligible for the Singer of the Month round</span>':''}${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m" style="margin:3px 0 0">Your name is not linked yet. Please ask the host.</p>'}
         </div>
         <div class="ph" style="width:52px;height:52px;border-radius:50%;flex:none">
-          ${okImg(P.photo)?`<img src="${P.photo}">`:'<span class="m" style="font-size:10px;text-align:center">No photo</span>'}
+          ${okImg(vp.photo)?`<img src="${vp.photo}">`:'<span class="m" style="font-size:10px;text-align:center">No photo</span>'}
         </div>
       </div>
     </div>`;
@@ -1285,30 +1818,33 @@ function vHome(){
   h+=renderSOTMBannerHTML();
 
 
-  if (LIVE_SESSION && LIVE_SESSION.sotdVote && LIVE_SESSION.sotdVote.active) {
+  const allowLiveVoting = !(effAdmin() && !effSuper());
+  if (allowLiveVoting && LIVE_SESSION && LIVE_SESSION.sotdVote && LIVE_SESSION.sotdVote.active) {
     const sv = LIVE_SESSION.sotdVote;
     const cands = Array.isArray(sv.candidates) ? sv.candidates : [];
     const myPick = PLAN && PLAN.sotdPick;
     const secsLeft = sv.endsAt ? Math.max(1, Math.min(30, Math.ceil((sv.endsAt - Date.now()) / 1000))) : (sv.remaining || 30);
     h += `<div class="c" style="border:2px solid #d97706;background:#fffbeb">
       <div class="row" style="justify-content:space-between">
-        <b style="color:#b45309">⏱️ LIVE 30s SOTD VOTE — Select 1 of 4 Suggested Singers</b>
+        <b style="color:#b45309">⏱️ LIVE 30s SOTD VOTE METER — Vote for Another Singer</b>
         <span class="badge-round" style="background:#d97706;color:#fff">${secsLeft}s</span>
       </div>
-      <p class="m" style="margin:4px 0 8px">Tap your choice for today's Singer of the Day:</p>
+      <p class="m" style="margin:4px 0 8px">Tap your choice for today's Singer of the Day (self-voting is disabled):</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px">
-        ${cands.map((c, idx) => `
-          <button class="${myPick === c.name ? 'pri' : ''}" style="padding:8px 10px;text-align:left;display:flex;flex-direction:column;align-items:flex-start;gap:2px" onclick="submitLiveBallot('sotd_pick','${e(c.name).replace(/'/g, "\\'")}',1)">
-            <b>${idx + 1}. ${e(c.name)}</b>
-            <span style="font-size:11px;opacity:0.85">${c.totalPts} pts (Avg: ${c.avgPts})</span>
-          </button>
-        `).join('')}
+        ${cands.map((c, idx) => {
+          const isSelf = sk && c.name === sk;
+          return `
+          <button class="${myPick === c.name ? 'pri' : ''}" ${isSelf ? 'disabled style="opacity:0.55;cursor:not-allowed;padding:8px 10px;text-align:left;display:flex;flex-direction:column;align-items:flex-start;gap:2px"' : 'style="padding:8px 10px;text-align:left;display:flex;flex-direction:column;align-items:flex-start;gap:2px"'} onclick="submitLiveBallot('sotd_pick','${e(c.name).replace(/'/g, "\\'")}',1)">
+            <b>${idx + 1}. ${e(c.name)}${isSelf ? ' (You)' : ''}</b>
+            ${effSuper() ? `<span style="font-size:11px;opacity:0.85">Final: ${c.finalScore != null ? c.finalScore : c.totalPts} pts</span>` : ''}
+          </button>`;
+        }).join('')}
       </div>
       ${myPick ? `<p class="m" style="margin:6px 0 0;color:#15803d;font-weight:700">✓ Your vote for <b>${e(myPick)}</b> is locked in.</p>` : ''}
     </div>`;
   }
 
-  if (LIVE_SESSION && LIVE_SESSION.sotmVote && LIVE_SESSION.sotmVote.active) {
+  if (allowLiveVoting && LIVE_SESSION && LIVE_SESSION.sotmVote && LIVE_SESSION.sotmVote.active) {
     const mv = LIVE_SESSION.sotmVote;
     const myBallot = PLAN && PLAN.sotmBallots && PLAN.sotmBallots[mv.singer];
     const secsLeft = mv.endsAt ? Math.max(1, Math.min(30, Math.ceil((mv.endsAt - Date.now()) / 1000))) : (mv.remaining || 30);
@@ -1327,13 +1863,22 @@ function vHome(){
 
   if (LIVE_SESSION && LIVE_SESSION.singers && LIVE_SESSION.singers.length) {
     const ls = LIVE_SESSION;
+    const liveMeta = getSessionMetaForDate(ls.date || tdy());
     h += `<div class="c" style="border:2px solid var(--ac);background:var(--ac-light)">
       <div class="row" style="justify-content:space-between">
         <div>
           <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#16a34a;margin-right:6px"></span>
           <b style="color:var(--ac)">Live Session in Progress</b>
         </div>
-        <span class="badge-round" style="background:var(--ac);color:#fff">Round ${ls.currentRound || 1}</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="badge-round" style="background:var(--ac);color:#fff">Round ${ls.currentRound || 1}</span>
+          ${effSuper() ? `<button class="danger" style="padding:2px 8px;font-size:11px" onclick="clearStaleLiveBanner()">Close</button>` : ''}
+        </div>
+      </div>
+
+      <div style="margin-top:8px;padding:6px 10px;background:var(--card);border-radius:8px;border:1px solid var(--bd);display:flex;gap:14px;flex-wrap:wrap;font-size:13px">
+        <span><span class="m">Theme:</span> <b>${e(liveMeta.theme || '—')}</b></span>
+        <span><span class="m">Host:</span> <b>${e(liveMeta.host || '—')}</b></span>
       </div>
 
       ${ls.sotdList && ls.sotdList.length ? `
@@ -1346,9 +1891,9 @@ function vHome(){
       <div class="tbl" style="margin-top:10px;background:var(--card)"><table>
         <tr>
           <th class="n">#</th>
-          <th>Singer Name</th>
-          <th>Song Title (Round ${ls.currentRound || 1})</th>
-          <th style="text-align:center">Score</th>
+          <th>Singer</th>
+          <th title="Song Title (Round ${ls.currentRound || 1})">Song</th>
+          ${effSuper() ? '<th style="text-align:center">Score</th>' : ''}
         </tr>
         ${ls.singers.map((sg, idx) => {
           const perf = (ls.performances || []).find(p => p.singer === sg.name && p.round === (ls.currentRound || 1));
@@ -1358,21 +1903,29 @@ function vHome(){
             <td><b>${e(sg.name)}</b></td>
             <td>
               ${perf && perf.song ? `<b>${e(perf.song)}</b>` : '<span class="m">Waiting...</span>'}
-              ${perf && perf.repeatCount > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${perf.repeatCount})</span>` : ''}
             </td>
-            <td style="text-align:center">
+            ${effSuper() ? `<td style="text-align:center">
               ${perf && perf.song && stars ? `<span style="color:#f59e0b;letter-spacing:1px">${'★'.repeat(stars)}</span>` : '<span class="m">-</span>'}
-            </td>
+            </td>` : ''}
           </tr>`;
         }).join('')}
       </table></div>
     </div>`;
   }
 
-  h+=`<div class="c"><div class="row" style="justify-content:center;flex-wrap:nowrap"><button onclick="stepHD(-1)">◀</button><input type="date" value="${e(d)}" min="${e(ds[0]||'')}" max="${e(ds[ds.length-1]||'')}" onchange="setHD(this.value)"><button onclick="stepHD(1)">▶</button><button onclick="setHD('')">Latest</button></div><p class="m" style="text-align:center;margin:6px 0 0">${fd(d)}</p></div>`;
-  const ls=SONGS.filter(r=>r[1]==d).slice().sort(cmpBySongId),mine=ls.filter(r=>r[2]==sk),sd=(PUB.sotd||[]).find(x=>x.d==d);
-  h+=`<div class="c"><b>Singer of the Day</b><p class="big" style="margin:6px 0">${sd?nmL(sd.l):'<span class="m" style="font-weight:normal;font-size:15px">Not declared</span>'}</p></div>`;
-  if(!ADM)h+=`<div class="c"><b>Your songs on this day</b>${mine.length?sTable(mine,sk):'<p class="m">No songs of yours in the published data for this day.</p>'}</div>`;
+  const dayMeta = getSessionMetaForDate(d);
+  h+=`<div class="c"><div class="row" style="justify-content:center;flex-wrap:nowrap"><button onclick="stepHD(-1)">◀</button><input type="date" value="${e(d)}" min="${e(ds[0]||'')}" max="${e(ds[ds.length-1]||'')}" onchange="setHD(this.value)"><button onclick="stepHD(1)">▶</button><button onclick="setHD('')">Latest</button></div><p class="m" style="text-align:center;margin:6px 0 4px">${fd(d)}</p><div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;font-size:13px;padding-top:4px;border-top:1px solid var(--bd)"><span><span class="m">Theme:</span> <b>${e(dayMeta.theme || '—')}</b></span><span><span class="m">Host:</span> <b>${e(dayMeta.host || '—')}</b></span></div></div>`;
+  const ls=SONGS.filter(r=>r[1]==d).slice().sort(cmpBySongId),mine=ls.filter(r=>r[2]==sk);
+  const sotdWinners = getSOTDForDate(d);
+  const fallbackSotd = (!sotdWinners.length && !HDATE) ? getLatestDeclaredSOTD(d) : null;
+  h+=`<div class="c"><b>Singer of the Day</b><p class="big" style="margin:6px 0">${
+    sotdWinners.length
+      ? nmL(sotdWinners)
+      : (fallbackSotd
+          ? `${nmL(fallbackSotd.l)}<span class="m" style="display:block;font-weight:normal;font-size:12px;margin-top:2px">Declared on ${fd(fallbackSotd.d)}</span>`
+          : '<span class="m" style="font-weight:normal;font-size:15px">Not declared</span>')
+  }</p></div>`;
+  if(!effAdm())h+=`<div class="c"><b>Your songs on this day</b>${mine.length?sTableSelf(mine):'<p class="m">No songs of yours in the published data for this day.</p>'}</div>`;
   h+=`<div class="c"><b>All songs performed</b><p class="m" style="margin:2px 0 0">${ls.length} songs, in song ID order</p>${ls.length?sTable(ls,sk):'<p class="m">No songs published for this day.</p>'}</div>`;
 
   h+=renderBottomSongListHTML();
@@ -1423,7 +1976,7 @@ function vSotd(){
   if(!PUB)return '<div class="c"><p class="m">No data has been published yet.</p></div>';
   const L=PUB.sotd||[],somd=PUB.somd||{},somE=Object.entries(PUB.som||{}).sort().reverse(),lm=somE.length?somE[0][0]:'',ld=somd[lm]||'';
   const cyc=L.filter(x=>ld?x.d>ld:(!lm||x.d.slice(0,7)>lm)).slice().reverse();
-  const sk=(P.singer||'').toUpperCase();
+  const sk=(curP().singer||'').toUpperCase();
 
   const singerMap = new Map();
 
@@ -1478,15 +2031,15 @@ function vSotd(){
     <p class="m" style="margin:3px 0 0;line-height:1.5">Qualify with 4 stars to enter the monthly SOTM competition. Winner receives a custom-crafted stainless steel <b>G-Clef Memento Award</b> by Tikariya’s School of Music.</p>
   </div>`;
 
-  h+=`<div class="c"><b>Singer of the Month</b>${somE.length?`<div class="tbl"><table><tr><th style="width:110px">Month</th><th>Singer of the Month</th><th>Declared date</th></tr>${somE.slice(0,6).map(([m,n])=>`<tr><td><b>${e(fm(m))}</b></td><td><b>${e(n)}</b></td><td><span class="m">${somd[m]?fd(somd[m]):'-'}</span></td></tr>`).join('')}</table></div>`:'<p class="m">Not declared yet.</p>'}</div>`;
+  h+=`<div class="c"><b>Singer of the Month</b>${somE.length?`<div class="tbl"><table><tr><th style="width:110px">Month</th><th>Winner</th><th>Declared</th></tr>${somE.slice(0,6).map(([m,n])=>`<tr><td><b>${e(fm(m))}</b></td><td><b>${e(n)}</b></td><td><span class="m">${somd[m]?fd(somd[m]):'-'}</span></td></tr>`).join('')}</table></div>`:'<p class="m">Not declared yet.</p>'}</div>`;
 
-  h+=`<div class="c"><b>Singers of the Day${lm?' since the Singer of the Month '+e(fm(lm))+(ld?' ('+fd(ld)+')':''):''}</b><p class="m" style="margin:2px 0 6px">Current SOTM qualification cycle.</p>${cyc.length?`<div class="tbl"><table><tr><th style="width:95px;min-width:95px">Date</th><th>Singer name</th></tr>${cyc.map(x=>`<tr><td style="width:95px;min-width:95px"><span class="m">${fd(x.d)}</span></td><td>${nmL(x.l)}</td></tr>`).join('')}</table></div>`:'<p class="m">None yet in this new round.</p>'}</div>`;
+  h+=`<div class="c"><b>Singers of the Day${lm?' since the Singer of the Month '+e(fm(lm))+(ld?' ('+fd(ld)+')':''):''}</b><p class="m" style="margin:2px 0 6px">Current SOTM qualification cycle.</p>${cyc.length?`<div class="tbl"><table><tr><th style="width:95px;min-width:95px">Date</th><th>Singer</th></tr>${cyc.map(x=>`<tr><td style="width:95px;min-width:95px"><span class="m">${fd(x.d)}</span></td><td>${nmL(x.l)}</td></tr>`).join('')}</table></div>`:'<p class="m">None yet in this new round.</p>'}</div>`;
 
   // Merged Star Singers & All Past SOTD Table (4 Columns)
   h+=`<div class="c">
     <div class="row" style="justify-content:space-between">
       <b>Star Singers & SOTD History (${mergedList.length})</b>
-      ${IS_SUPER ? `<button class="pri" style="font-size:11px;padding:3px 8px" onclick="syncHistoricalSOTD()">Save History to Cloud</button>` : ''}
+      ${effSuper() ? `<button class="pri" style="font-size:11px;padding:3px 8px" onclick="syncHistoricalSOTD()">Save History to Cloud</button>` : ''}
     </div>
     <p class="m" style="margin:2px 0 6px">
       <span style="color:#f59e0b;font-weight:700">★</span> Genuine Active Star &nbsp;·&nbsp;
@@ -1494,10 +2047,10 @@ function vSotd(){
     </p>
     ${mergedList.length?`<div class="tbl"><table>
       <tr>
-        <th>Singer's Name</th>
-        <th>Dates Stars Earned</th>
-        <th style="min-width:110px">Stars Count</th>
-        <th class="n" style="width:85px">Genuine Stars</th>
+        <th>Singer</th>
+        <th>Dates</th>
+        <th style="min-width:110px">Stars</th>
+        <th class="n" style="width:85px">Genuine</th>
       </tr>
       ${mergedList.map(rec => {
         const activeStarsHTML = '<span style="color:#f59e0b;letter-spacing:1px">' + '★'.repeat(Math.min(rec.genuineStars, 10)) + '</span>';
@@ -2040,7 +2593,7 @@ function vRules() {
     ${HOLIDAYS.length ? `
       <div class="row" style="margin-top:10px;gap:6px">
         ${HOLIDAYS.map(hd => `<span class="badge-ok" style="display:inline-flex;align-items:center;gap:6px;padding:4px 8px">
-          ${fd(hd)} <a href="#" onclick="removeHolidayDate('${hd}');return false" style="color:#b91c1c;text-decoration:none;font-weight:900">✕</a>
+          ${fd(hd)} <a href="#" onclick="removeHolidayDate('${hd}');return false" style="color:#64748b;text-decoration:none;font-weight:900">✕</a>
         </span>`).join('')}
       </div>
     ` : '<p class="m" style="margin-top:8px">No holidays declared yet.</p>'}
@@ -2067,10 +2620,10 @@ function vRules() {
         ${ruleEvalPreview.results.length ? `
           <div class="tbl" style="background:var(--card);margin-top:8px"><table>
             <tr>
-              <th>Singer Name</th>
+              <th>Singer</th>
               <th class="n">Stars</th>
               <th class="n">Attended</th>
-              <th>Rule Outcome</th>
+              <th>Outcome</th>
             </tr>
             ${ruleEvalPreview.results.map(r => `
               <tr>
@@ -2100,14 +2653,19 @@ function vRules() {
 }
 
 function grab(){if($('#pp')){P.phone=$('#pp').value;P.city=$('#pc').value;P.note=$('#pn').value;P.dob=bdRead('pb');P.bshow=$('#pbs').checked}}
-function vProf(){const p=P;return`<div class="c"><div class="row"><div class="ph">${okImg(p.photo)?`<img src="${p.photo}">`:'<span class="m">No photo</span>'}</div>
-<div><h2>${e(p.singer||p.name||'')}</h2><label class="up">📷 ${p.photo?'Change':'Add'} photo<input type="file" accept="image/*" hidden onchange="pic(this)"></label></div></div>
-<div class="f"><label>Phone / WhatsApp<input id="pp" value="${e(p.phone||'')}"></label><label>City<input id="pc" value="${e(p.city||'')}"></label>${bdSel('pb',p.dob)}</div>
-<label class="m" style="flex-direction:row;align-items:center;gap:10px;margin:8px 0"><input type="checkbox" id="pbs" class="chk" ${(p.bshow!==undefined?p.bshow:BD.some(b=>b.id==U.uid))?'checked':''}><span>Show my birthday (day and month only) to everyone in the app, so they can wish me.</span></label>
-<label class="m">Notes<textarea id="pn" rows="3">${e(p.note||'')}</textarea></label>
-<p><button class="pri" onclick="saveP()">Save profile</button></p><p class="m">Only you and the host can see your profile.</p></div>`}
-window.pic=el=>{const f=el.files[0];if(!f)return;grab();const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const S=240,c=document.createElement('canvas');c.width=c.height=S;const m=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)*0.2,m,m,0,0,S,S);P.photo=c.toDataURL('image/jpeg',0.75);draw()};im.src=r.result};r.readAsDataURL(f)};
-window.saveP=async()=>{grab();try{await updateDoc(doc(fs,'users',U.uid),{phone:P.phone||'',city:P.city||'',note:P.note||'',photo:P.photo||'',dob:P.dob||'',updatedAt:Date.now()});await setBd(U.uid,P.singer||P.name||'',P.dob,P.bshow);showNotice('Saved');}catch(x){showNotice('Could not save ('+(x.code||'error')+')')}};
+function vProf(){const p=curP();const ro=PREVIEW_PARTICIPANT&&!!PREVIEW_SINGER;return`<div class="c"><div class="row"><div class="ph">${okImg(p.photo)?`<img src="${p.photo}">`:'<span class="m">No photo</span>'}</div>
+<div><h2>${e(p.singer||p.name||'')}</h2>
+<div class="row" style="gap:6px;margin-top:4px">${ro
+  ? `<button class="pri" onclick="showNotice('Switch preview to &quot;My own account&quot; to update your own photo, or edit this singer via Admin → Profile.')">📷 ${p.photo?'Change':'Upload'} Photo</button>`
+  : `<label class="up" style="background:var(--btn-pri-bg);color:#fff;border-color:transparent">📷 ${p.photo?'Change':'Upload'} Photo<input type="file" accept="image/*" hidden onchange="pic(this)"></label>${p.photo?'<button onclick="rmPic()">Remove</button>':''}`
+}</div>${ro?'<span class="m" style="display:block;margin-top:4px">Previewing participant profile</span>':''}</div></div>
+<div class="f"><label>Phone / WhatsApp<input id="pp" value="${e(p.phone||'')}" ${ro?'readonly':''}></label><label>City<input id="pc" value="${e(p.city||'')}" ${ro?'readonly':''}></label>${bdSel('pb',p.dob)}</div>
+<label class="m" style="flex-direction:row;align-items:center;gap:10px;margin:8px 0"><input type="checkbox" id="pbs" class="chk" ${(p.bshow!==undefined?p.bshow:BD.some(b=>b.id==(p.id||U.uid)))?'checked':''} ${ro?'disabled':''}><span>Show my birthday (day and month only) to everyone in the app, so they can wish me.</span></label>
+<label class="m">Notes<textarea id="pn" rows="3" ${ro?'readonly':''}>${e(p.note||'')}</textarea></label>
+<p><button class="pri" onclick="saveP()">Save profile</button></p><p class="m">${ro?'Saving is paused while previewing another singer so no live profile is overwritten.':'Only you and the host can see your profile.'}</p></div>`}
+window.pic=el=>{const f=el.files[0];if(!f)return;grab();const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=async()=>{const S=240,c=document.createElement('canvas');c.width=c.height=S;const m=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)*0.2,m,m,0,0,S,S);P.photo=c.toDataURL('image/jpeg',0.75);draw();try{await updateDoc(doc(fs,'users',U.uid),{photo:P.photo,updatedAt:Date.now()});showNotice('Photo updated!')}catch(_pe){showNotice('Photo preview ready — tap Save profile to save.')}};im.src=r.result};r.readAsDataURL(f)};
+window.rmPic=async()=>{if(PREVIEW_PARTICIPANT&&PREVIEW_SINGER)return;grab();P.photo='';draw();try{await updateDoc(doc(fs,'users',U.uid),{photo:'',updatedAt:Date.now()});showNotice('Photo removed')}catch(_pe){}};
+window.saveP=async()=>{if(PREVIEW_PARTICIPANT&&PREVIEW_SINGER){showNotice('Profile saving is disabled while previewing another singer. Switch the preview dropdown to "My own account" or exit preview to edit your profile.');return}grab();try{await updateDoc(doc(fs,'users',U.uid),{phone:P.phone||'',city:P.city||'',note:P.note||'',photo:P.photo||'',dob:P.dob||'',updatedAt:Date.now()});await setBd(U.uid,P.singer||P.name||'',P.dob,P.bshow);showNotice('Saved');}catch(x){showNotice('Could not save ('+(x.code||'error')+')')}};
 
 const vPdf=()=>`<div class="c"><b>PDF downloads</b><p class="m">Both PDFs show your position (Singer of the Day, Singer of the Month and stars).</p>
 <p><button class="pri" onclick="pdf('all')">⬇ All songs list till now</button></p><p><button class="pri" onclick="pdf('my')">⬇ My songs till now</button></p></div>`;
@@ -2118,6 +2676,7 @@ window.pdf=kind=>{
   const sk=(P.singer||'').toUpperCase(),s=(PUB.stars||{})[sk]||{t:0,m:{},d:[]},mo=nowM();
   const som=Object.entries(PUB.som||{}).filter(x=>x[1]==sk).map(x=>fm(x[0]));
   const rows=SONGS.filter(r=>kind=='all'||r[2]==sk).slice().sort(cmpBySongId);
+  const dsAll=sdates(),latestDt=HDATE||dsAll[dsAll.length-1]||tdy(),latMeta=getSessionMetaForDate(latestDt);
   d.setFontSize(20);d.text('SING FROM HOME',105,14,{align:'center'});
   d.setFontSize(9);d.text('Online Singing Session on Zoom',105,19,{align:'center'});
   d.text("Conducted by TIKARIYA'S SCHOOL OF MUSIC - Director: Manoj Tikariya",105,23.5,{align:'center'});
@@ -2127,9 +2686,10 @@ window.pdf=kind=>{
   d.text('A Project of B. S. Tikariya Cultural Foundation \xAE - CIN: U88900MH2025NPL454435',105,yp,{align:'center'});
   d.setFontSize(13);d.text(kind=='all'?'All Songs List (Sorted by Song ID)':'My Songs (Sorted by Song ID)',14,yp+9);
   d.setFontSize(9);
-  const info=[sk?'Singer: '+sk:'',sk?'Stars: '+s.t:'',sk?'Singer of the Day: '+((s.d&&s.d.length)||0)+' time(s)'+(s.d&&s.d.length?' - '+s.d.map(fd).join(', '):''):'',sk?'Singer of the Month: '+(som.length?som.join(', '):'-'):'','Total songs: '+rows.length+'   Date: '+fd(new Date().toISOString().slice(0,10))].filter(Boolean);
+  const info=[sk?'Singer: '+sk:'',sk?'Stars: '+s.t:'',sk?'Singer of the Day: '+((s.d&&s.d.length)||0)+' time(s)'+(s.d&&s.d.length?' - '+s.d.map(fd).join(', '):''):'',sk?'Singer of the Month: '+(som.length?som.join(', '):'-'):'','Theme: '+(latMeta.theme||'-')+'   |   Host: '+(latMeta.host||'-'),'Total songs: '+rows.length+'   Date: '+fd(new Date().toISOString().slice(0,10))].filter(Boolean);
   let y=yp+15;info.forEach(t=>{const ls=d.splitTextToSize(a(t),182);d.text(ls,14,y);y+=ls.length*4.5});
-  d.autoTable({startY:y+2,head:[['Order','Song ID','Date','Singer name','Song name']],body:rows.map((r,i)=>[String(i+1),r[0],fd(r[1]),r[2],r[3]].map(a)),styles:{fontSize:8,cellPadding:1.5,minCellHeight:8,valign:'middle',overflow:'ellipsize'},columnStyles:{0:{cellWidth:14,halign:'center'},1:{cellWidth:26},2:{cellWidth:24},3:{cellWidth:48},4:{cellWidth:70}},headStyles:{fillColor:[15,52,96]},didDrawPage:()=>{d.setFontSize(8);d.text('Page '+d.internal.getNumberOfPages(),105,291,{align:'center'})}});
+  const fmtDtCell=dt=>{const sm=getSessionMetaForDate(dt);const pts=[];if(sm.theme)pts.push('Theme: '+sm.theme);if(sm.host)pts.push('Host: '+sm.host);return pts.length?fd(dt)+'\n'+pts.join(' | '):fd(dt)};
+  d.autoTable({startY:y+2,head:[['Order','Song ID','Date','Singer name','Song name']],body:rows.map((r,i)=>[String(i+1),r[0],fmtDtCell(r[1]),r[2],r[3]].map(a)),styles:{fontSize:8,cellPadding:1.5,minCellHeight:8,valign:'middle'},columnStyles:{0:{cellWidth:14,halign:'center'},1:{cellWidth:22},2:{cellWidth:32},3:{cellWidth:44},4:{cellWidth:70}},headStyles:{fillColor:[15,52,96]},didDrawPage:()=>{d.setFontSize(8);d.text('Page '+d.internal.getNumberOfPages(),105,291,{align:'center'})}});
   const who=(P.singer||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''),base=kind=='all'?'all_songs':(who||'my_songs');
   let cn=1;try{const m=JSON.parse(localStorage.getItem('sfh_pdfn')||'{}');cn=(m[base]||0)+1;m[base]=cn;localStorage.setItem('sfh_pdfn',JSON.stringify(m))}catch(x){cn=Math.floor(Date.now()/1000)%100000}
   d.save(base+'_'+cn+'.pdf');
@@ -2220,7 +2780,7 @@ function vAbout(pub){
   +sec('About the Foundation',F.about)
   +((F.director||F.address)?`<div class="c">${F.director?`<b>${e(F.director.role||'Director')}</b><p style="margin:4px 0 10px">${e(F.director.name)}</p>`:''}${F.address?`<b>Registered office</b><p style="margin:4px 0">${e(F.address)}</p>`:''}</div>`:'')
   +sec('Our agenda',A.agenda,A.agendaPoints)+sec('How we work',A.how,A.howPoints)+sec('Registrations',null,A.registrations)
-  +((S.intro||S.schedule||(S.rules&&S.rules.length)||(S.committee&&S.committee.length))?`<div class="c"><b>SING FROM HOME</b>${PP(S.intro)}${'<p><b>When:</b> '+e(formatScheduleText(getSchedule()))+'</p>'}${UL(S.rules)}${(S.committee&&S.committee.length)?`<p style="font-size:12px;line-height:1.6;margin:10px 0 0"><b>Core Committee:</b> ${S.committee.map(x=>e(x)).join(' · ')}</p>`:''}</div>`:'')
+  +((S.intro||S.schedule||(S.rules&&S.rules.length)||(S.committee&&S.committee.length))?`<div class="c"><b>SING FRO<span style="color:#8b0000;font-weight:900">M</span> HO<span style="color:#8b0000;font-weight:900">M</span>E</b>${PP(S.intro)}${'<p><b>When:</b> '+e(formatScheduleText(getSchedule()))+'</p>'}${UL(S.rules)}${(S.committee&&S.committee.length)?`<p style="font-size:12px;line-height:1.6;margin:10px 0 0"><b>Core Committee:</b> ${S.committee.map(x=>e(x)).join(' · ')}</p>`:''}</div>`:'')
   +(SP.upi?`<div class="c"><b>Support our work (voluntary)</b>${PP(SP.intro)}<p style="margin:6px 0"><b>UPI ID:</b> ${e(SP.upi)}</p>${SP.qrImage?`<p><img src="${e(SP.qrImage)}" alt="UPI QR code" style="width:200px;max-width:100%;border:1px solid var(--bd);border-radius:10px;background:#fff"></p>`:''}<p><a class="zm" style="background:var(--ac);border-color:var(--ac);color:#ffffff;font-weight:700" href="upi://pay?pa=${encodeURIComponent(SP.upi)}&amp;pn=${encodeURIComponent(SP.payeeName||F.name)}&amp;cu=INR">Pay with a UPI app</a></p>${SP.note?'<p class="m">'+e(SP.note)+'</p>':''}</div>`:'')
   +sec('Message from the Director',A.message)
   +((A.faq&&A.faq.length)?`<div class="c"><b>Questions</b>${A.faq.map(x=>`<p><b>${e(x.q)}</b><br>${e(x.a)}</p>`).join('')}</div>`:'')
@@ -2265,7 +2825,7 @@ const FEST=[
 {i:'🙏',t:'Happy Guru Purnima!',h:'गुरु पौर्णिमा',x:'With gratitude to all our teachers and gurus of music.'},
 {i:'🎄',t:'Merry Christmas!',h:'',x:'Wishing you joy, peace and beautiful music this Christmas.'}];
 async function loadGreet(){try{const q=await getDocs(collection(fs,'greet'));GRT=q.docs.map(x=>({id:x.id,...x.data()}))}catch(x){GRT=[]}}
-async function loadBd(){try{const q=await getDocs(collection(fs,'birthdays'));BD=q.docs.map(x=>({id:x.id,...x.data()}))}catch(x){BD=[]}}
+async function loadBd(){try{const q=await getDocs(collection(fs,'birthdays'));BD=q.docs.map(x=>{const d=x.data();return {id:x.id,...d,singer:canonSinger(d.singer)}})}catch(x){BD=[]}}
 const mdOf=d=>String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 function showCard(o){const old=document.getElementById('dw');if(old)old.remove();
   const d=document.createElement('div');d.id='dw';
@@ -2303,9 +2863,39 @@ function vAdm(){
   const names=(PUB&&PUB.singers)||[],opt='<option value="">Link to singer…</option>'+names.map(n=>`<option>${e(n)}</option>`).join('');
   const pend=AU.filter(u=>u.status!='approved'),ok=AU.filter(u=>u.status=='approved');
   const img=u=>okImg(u.photo)?`<div class="ph" style="width:44px;height:44px"><img src="${u.photo}"></div>`:'';
-  return `${EDU?vEdU():''}<div class="c"><b>Publish Data / Restore Master Backup</b><p class="m">${PUB?'Last updated: '+e(PUB.ts||''):'Nothing published yet.'} (${SONGS.length} songs). Upload any timestamped <code>SFH_Master_Backup_*.json</code> file here to restore all data even after a full flush.</p>
-<label class="up">⬆ Choose Master Backup or Host JSON File<input type="file" accept=".json,application/json" hidden onchange="pubUp(this)"></label></div>
-<div class="c"><b>Zoom link</b><input id="zl" style="width:100%" value="${e(CONF.zoom||'')}"><p style="margin-top:10px"><button onclick="saveZ()">Save link</button></p></div>
+  const allRawSingers = [...new Set([
+    ...RAW_SINGERS_BEFORE_ALIAS,
+    ...names,
+    ...AU.map(u => String(u.singer || '').trim().toUpperCase()).filter(Boolean)
+  ])].sort();
+  const hasRawNandu = allRawSingers.includes('NANDU GHADSING');
+  const activeAliases = getSingerAliases();
+  const aliasEntries = Object.entries(activeAliases);
+  const mergeCard = effSuper() ? `<div class="c" style="border-left:4px solid var(--ac)">
+    <b>Merge Duplicate Singers</b>
+    <p class="m" style="margin:3px 0 8px">Combine two names for the same participant across all songs, SOTD history, stars, birthdays, linked accounts, and future live sessions.</p>
+    ${hasRawNandu ? `<p style="margin:0 0 8px"><button class="pri" onclick="mergeSingersInCloud('NANDU GHADSING','SURESH GHADSING')">Merge NANDU GHADSING → SURESH GHADSING in Cloud</button></p>` : ''}
+    <div class="f">
+      <label>Duplicate / Old Name
+        <select id="merge_from">
+          <option value="">Select duplicate singer…</option>
+          ${allRawSingers.map(n => `<option value="${e(n)}"${n==='NANDU GHADSING'?' selected':''}>${e(n)}</option>`).join('')}
+        </select>
+      </label>
+      <label>Keep / Primary Name
+        <select id="merge_to">
+          <option value="">Select primary singer…</option>
+          ${allRawSingers.map(n => `<option value="${e(n)}"${n==='SURESH GHADSING'?' selected':''}>${e(n)}</option>`).join('')}
+        </select>
+      </label>
+    </div>
+    <p style="margin-top:8px"><button class="pri" onclick="mergeSingersInCloud()">Merge Permanently</button></p>
+    ${aliasEntries.length ? `<p class="m" style="margin:8px 0 0"><b>Active Auto-Merge Rules:</b> ${aliasEntries.map(([k, v]) => `${e(k)} → <b>${e(v)}</b>`).join(' · ')}</p>` : ''}
+  </div>` : '';
+  return `${EDU?vEdU():''}${effSuper()?`<div class="c"><b>Publish Data / Restore Master Backup</b><p class="m">${PUB?'Last updated: '+e(PUB.ts||''):'Nothing published yet.'} (${SONGS.length} songs). Upload any timestamped <code>SFH_Master_Backup_*.json</code> file here to restore all data even after a full flush.</p>
+<label class="up">⬆ Choose Master Backup or Host JSON File<input type="file" accept=".json,application/json" hidden onchange="pubUp(this)"></label></div>`:''}
+${mergeCard}
+${effSuper()?`<div class="c"><b>Zoom link</b><input id="zl" style="width:100%" value="${e(CONF.zoom||'')}"><p style="margin-top:10px"><button onclick="saveZ()">Save link</button></p></div>`:''}
 <div class="c"><b>Festival greetings</b><select id="gf" onchange="fillFest(this.value)"><option value="">Choose a festival…</option>${FEST.map((f,i)=>`<option value="${i}">${e(f.t)}</option>`).join('')}</select><input id="gt" placeholder="Title" style="width:100%;margin-top:8px"><input id="gh" placeholder="Hindi / Marathi line (optional)" style="width:100%;margin-top:8px"><textarea id="gx" rows="3" placeholder="Message" style="width:100%;margin-top:8px"></textarea><div class="f"><label>Show from<input type="date" id="gfrom" value="${tdy()}"></label><label>Show until<input type="date" id="gto" value="${tdy()}"></label></div><p style="margin-top:10px"><button class="pri" onclick="addGreet()">Add greeting</button> <button onclick="prevGreet()">Preview</button></p>${GRT.length?GRT.slice().sort((a,b)=>a.from<b.from?1:-1).map(g=>`<p style="margin:6px 0"><b>${e(g.title)}</b> <span class="m">${fd(g.from)} – ${fd(g.to)}</span> <button onclick="delGreet('${e(g.id)}')">Delete</button></p>`).join(''):'<p class="m">No greetings added yet. The Diwali greeting for 5 to 12 Nov 2026 is built in.</p>'}</div>
 <div class="c"><b>Songs declared by participants</b><div class="f"><input type="date" value="${PD||tdy()}" onchange="setPD(this.value)"></div>${PL.length?PL.map((p,i)=>`<p style="margin:6px 0"><b>${i+1}. ${e(p.singer)}</b> <span class="m">${fdt(p.ts)}</span><br>${(p.songs||[]).map(x=>e(x)).join(' / ')}</p>`).join(''):'<p class="m">Nothing declared for this date.</p>'}<button onclick="copyPlans()">Copy list</button></div>
 <div class="c"><b>Messages from participants (${AIN.length})</b>${AIN.slice(0,30).map(m=>`<div style="margin:8px 0;border-top:1px solid var(--bd);padding-top:8px"><b>${e(m.name||'?')}</b> <span class="m">${fdt(m.ts)}</span>${m.ts>seenAdm?' <span class="zm" style="padding:1px 6px;font-size:11px;border-radius:6px">NEW</span>':''}<div style="white-space:pre-wrap">${e(m.text)}</div><p style="margin-top:6px"><button onclick="replyTo('${e(m.uid)}')">Reply</button> <button onclick="delIn('${e(m.id)}')">Delete</button></p></div>`).join('')||'<p class="m">No messages yet.</p>'}</div>
@@ -2315,22 +2905,29 @@ ${AM.length?`<div class="c"><b>Sent messages</b>${AM.slice(0,20).map(m=>`<p styl
 ${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b><br><span class="m">${e(idOf(u.email))} · ${e(u.status||'')}</span></div></div>
 <div class="f"><select id="lk_${e(u.id)}">${opt}</select><input id="lt_${e(u.id)}" placeholder="or type singer name"></div>
 <p style="margin-top:8px"><button class="pri" onclick="appr('${e(u.id)}')">Approve</button> <button onclick="rej('${e(u.id)}')">Reject</button> <button onclick="editU('${e(u.id)}')">Profile</button></p></div>`).join('')}
-<div class="c">
+${effSuper()?`<div class="c">
   <div class="row" style="justify-content:space-between">
     <b>Approved Participants (${ok.length})</b>
     <button onclick="toggleApprovedList()" style="font-size:11.5px;padding:4px 9px">${approvedListExpanded ? 'Collapse ▲' : 'Expand List ▼'}</button>
   </div>
   ${approvedListExpanded ? (ok.length ? `<div class="tbl"><table>
   <tr>
-    <th>Singer name</th>
-    <th>Login / Phone</th>
+    <th>Singer</th>
+    <th>Contact</th>
     <th>Role</th>
     <th style="text-align:center">Actions</th>
   </tr>
   ${ok.map(u => {
     const isSup = (CFG.superadmins || []).map(x => x.toLowerCase()).includes((u.email || '').toLowerCase());
-    const roleTxt = isSup ? 'Superadmin' : (u.role == 'admin' ? 'Admin' : 'Participant');
-    const roleStyle = isSup ? 'color:#b30000;font-weight:800' : (u.role == 'admin' ? 'color:var(--ac);font-weight:700' : 'color:var(--mut)');
+    const isAdm = u.role == 'admin';
+    const isJdg = isUserJudge(u);
+    const roleTxt = isSup
+      ? 'Superadmin'
+      : (isAdm && isJdg ? 'Admin · Judge' : (isAdm ? 'Admin' : (isJdg ? 'Judge' : 'Participant')));
+    const roleStyle = isSup
+      ? 'color:var(--ac);font-weight:800'
+      : (isAdm ? 'color:var(--ac);font-weight:700' : (isJdg ? 'color:#b45309;font-weight:700' : 'color:var(--mut)'));
+    const dispName = String(u.singer || u.name || idOf(u.email) || '').replace(/'/g, "\\'");
     return `<tr>
       <td><b>${e(u.singer || '(not linked)')}</b></td>
       <td><span class="m">${e(idOf(u.email))}</span></td>
@@ -2338,9 +2935,14 @@ ${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b>
       <td style="text-align:center;white-space:nowrap">
         ${isSup ? `<button onclick="editU('${e(u.id)}')">Profile</button>` : `
           ${IS_SUPER ? (
-            u.role == 'admin'
-              ? `<button onclick="revokeAdmin('${e(u.id)}','${e(u.singer || u.name)}')">Revoke Admin</button> `
-              : `<button onclick="makeAdmin('${e(u.id)}','${e(u.singer || u.name)}')">Make Admin</button> `
+            isAdm
+              ? `<button onclick="revokeAdmin('${e(u.id)}','${e(dispName)}')">Revoke Admin</button> `
+              : `<button onclick="makeAdmin('${e(u.id)}','${e(dispName)}')">Make Admin</button> `
+          ) : ''}
+          ${IS_SUPER ? (
+            isJdg
+              ? `<button style="border-color:#d97706;color:#b45309" onclick="revokeJudge('${e(u.id)}','${e(dispName)}')">Revoke Judge</button> `
+              : `<button onclick="makeJudge('${e(u.id)}','${e(dispName)}')">Make Judge</button> `
           ) : ''}
           <button onclick="editU('${e(u.id)}')">Profile</button>
           <button onclick="rej('${e(u.id)}')">Revoke Access</button>
@@ -2348,13 +2950,482 @@ ${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b>
       </td>
     </tr>`;
   }).join('')}
-</table></div>` : '<p class="m">No approved participants yet.</p>') : `<p class="m" style="margin:4px 0 0">Tap "Expand List" to view or manage ${ok.length} approved participant(s).</p>`}</div>`;
+</table></div>` : '<p class="m">No approved participants yet.</p>') : `<p class="m" style="margin:4px 0 0">Tap "Expand List" to view or manage ${ok.length} approved participant(s).</p>`}</div>`:''}`;
 }
 
 
 window.toggleApprovedList = () => {
   approvedListExpanded = !approvedListExpanded;
   draw();
+};
+
+window.clearStaleLiveBanner = async () => {
+  if (!IS_SUPER) return;
+  showConfirm("Close the Live Session in Progress banner for all participants?", async () => {
+    try {
+      const payload = {
+        date: tdy(),
+        active: false,
+        practice: false,
+        singers: [],
+        performances: [],
+        sotdList: [],
+        sotdVote: null,
+        sotmVote: null,
+        sessionClearedAt: Date.now(),
+        endedAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      await Promise.allSettled([
+        setDoc(doc(fs, 'live', 'session'), payload),
+        setDoc(doc(fs, 'config', 'app'), { liveSession: payload }, { merge: true })
+      ]);
+      LIVE_SESSION = null;
+      draw();
+      showNotice("Live Session banner closed for all participants.");
+    } catch (err) {
+      showNotice("Failed to close live banner: " + (err.code || err.message));
+    }
+  }, "Close Live Banner");
+};
+
+window.mergeSingersInCloud = async (fromArg, toArg) => {
+  if (!IS_SUPER) return;
+  const fromName = String(fromArg || ($('#merge_from') ? $('#merge_from').value : '') || '').trim().toUpperCase();
+  const toName = String(toArg || ($('#merge_to') ? $('#merge_to').value : '') || '').trim().toUpperCase();
+  if (!fromName || !toName) {
+    showNotice("Please select both the duplicate singer name and the primary singer name to keep.");
+    return;
+  }
+  if (fromName === toName) {
+    showNotice("Duplicate name and Primary name must be different.");
+    return;
+  }
+
+  showConfirm(
+    `Permanently merge "${fromName}" into "${toName}" across all cloud records?\n\n` +
+    `• All songs by ${fromName} will be reassigned to ${toName}\n` +
+    `• SOTD history, SOM records & stars will be merged without double-counting dates\n` +
+    `• Linked participant accounts & birthdays will point to ${toName}\n` +
+    `• Future entries as ${fromName} will automatically resolve to ${toName}`,
+    async () => {
+      try {
+        let songsMoved = 0;
+        let monthsUpdated = 0;
+
+        // 1. Update all monthly song docs (or legacy pub/songs)
+        const ixRef = doc(fs, 'pub', 'idx');
+        const ixSnap = await getDoc(ixRef);
+        if (ixSnap.exists()) {
+          const idxData = ixSnap.data();
+          const monthsMap = { ...(idxData.months || {}) };
+          const ms = Object.keys(monthsMap).sort();
+          for (const m of ms) {
+            const mRef = doc(fs, 'pub', 'songs_' + m);
+            const mSnap = await getDoc(mRef);
+            if (!mSnap.exists()) continue;
+            const list = JSON.parse(mSnap.data().json || '[]');
+            let changed = false;
+            list.forEach(row => {
+              if (String(row[2] || '').trim().toUpperCase() === fromName) {
+                row[2] = toName;
+                songsMoved++;
+                changed = true;
+              }
+            });
+            if (changed) {
+              const mJson = JSON.stringify(list);
+              const mHash = hsh(mJson);
+              await setDoc(mRef, { ...mSnap.data(), json: mJson, n: list.length, h: mHash, ts: tdy() });
+              monthsMap[m] = { n: list.length, h: mHash };
+              monthsUpdated++;
+            }
+          }
+          if (monthsUpdated > 0) {
+            await setDoc(ixRef, { ...idxData, months: monthsMap, ts: tdy() });
+          }
+        } else {
+          const bRef = doc(fs, 'pub', 'songs');
+          const bSnap = await getDoc(bRef);
+          if (bSnap.exists()) {
+            const list = bSnap.data().json ? JSON.parse(bSnap.data().json) : (bSnap.data().list || []);
+            let changed = false;
+            list.forEach(row => {
+              if (String(row[2] || '').trim().toUpperCase() === fromName) {
+                row[2] = toName;
+                songsMoved++;
+                changed = true;
+              }
+            });
+            if (changed) {
+              await setDoc(bRef, { ...bSnap.data(), json: JSON.stringify(list), ts: tdy() });
+              monthsUpdated++;
+            }
+          }
+        }
+
+        // 2. Update pub/data (singers, sotd, som, stars)
+        const dataRef = doc(fs, 'pub', 'data');
+        const dataSnap = await getDoc(dataRef);
+        let sotdMoved = 0;
+        let starsMerged = false;
+        if (dataSnap.exists()) {
+          const pData = dataSnap.data();
+          const singersSet = new Set((pData.singers || []).map(s => {
+            const u = String(s || '').trim().toUpperCase();
+            return u === fromName ? toName : u;
+          }).filter(Boolean));
+          singersSet.add(toName);
+
+          const sotdOut = (pData.sotd || []).map(entry => {
+            const dedup = [];
+            (entry.l || []).forEach(w => {
+              const rawN = String((w && w.n) || w || '').trim().toUpperCase();
+              const finalN = rawN === fromName ? toName : rawN;
+              if (rawN === fromName) sotdMoved++;
+              if (finalN && !dedup.some(x => x.n === finalN)) {
+                dedup.push({ n: finalN, h: (w && w.h) || 'Score' });
+              }
+            });
+            return { d: entry.d, l: dedup };
+          });
+
+          const somOut = { ...(pData.som || {}) };
+          Object.keys(somOut).forEach(k => {
+            if (String(somOut[k] || '').trim().toUpperCase() === fromName) somOut[k] = toName;
+          });
+
+          const starsOut = { ...(pData.stars || {}) };
+          const matchingFromKeys = Object.keys(starsOut).filter(k => k.trim().toUpperCase() === fromName);
+          if (matchingFromKeys.length) {
+            let targetRec = starsOut[toName] || null;
+            matchingFromKeys.forEach(k => {
+              targetRec = mergeStarRecords(targetRec, starsOut[k]);
+              delete starsOut[k];
+            });
+            starsOut[toName] = targetRec;
+            starsMerged = true;
+          }
+
+          await setDoc(dataRef, {
+            ...pData,
+            singers: [...singersSet].sort(),
+            sotd: sotdOut,
+            som: somOut,
+            stars: starsOut,
+            ts: tdy()
+          });
+        }
+
+        // 3. Update linked users & birthdays
+        let usersUpdated = 0;
+        try {
+          const uSnap = await getDocs(collection(fs, 'users'));
+          for (const d of uSnap.docs) {
+            if (String(d.data().singer || '').trim().toUpperCase() === fromName) {
+              await updateDoc(doc(fs, 'users', d.id), { singer: toName });
+              usersUpdated++;
+            }
+          }
+        } catch (_ue) {}
+
+        try {
+          const bdSnap = await getDocs(collection(fs, 'birthdays'));
+          for (const d of bdSnap.docs) {
+            if (String(d.data().singer || '').trim().toUpperCase() === fromName) {
+              await updateDoc(doc(fs, 'birthdays', d.id), { singer: toName });
+            }
+          }
+        } catch (_bde) {}
+
+        // 4. Save permanent alias in config/app so future entries/backups auto-resolve
+        const nextAliases = { ...(CONF.singerAliases || {}), [fromName]: toName };
+        await setDoc(doc(fs, 'config', 'app'), { singerAliases: nextAliases }, { merge: true });
+        CONF.singerAliases = nextAliases;
+
+        await load();
+        await loadAdm();
+        draw();
+        showNotice(
+          `Merged "${fromName}" → "${toName}" successfully!\n\n` +
+          `• Songs updated: ${songsMoved} (${monthsUpdated} month archive(s))\n` +
+          `• SOTD records updated: ${sotdMoved}\n` +
+          `• Stars merged: ${starsMerged ? 'Yes' : 'No separate record'}\n` +
+          `• Participant accounts updated: ${usersUpdated}\n` +
+          `• Auto-merge alias saved permanently`,
+          "Singers Merged"
+        );
+      } catch (err) {
+        showNotice("Merge failed: " + (err.code || err.message), "Error");
+      }
+    },
+    "Merge Duplicate Singers"
+  );
+};
+
+function getSOTMJudgeFinalists() {
+  const fromPanel = (SOTM_PANEL_CACHE && Array.isArray(SOTM_PANEL_CACHE.finalists) && SOTM_PANEL_CACHE.finalists.length)
+    ? SOTM_PANEL_CACHE.finalists.map(f => canonSinger(f.name)).filter(Boolean)
+    : [];
+  if (fromPanel.length) return [...new Set(fromPanel)];
+  const fourStar = Object.entries((PUB && PUB.stars) || {})
+    .filter(([, o]) => (o && o.t >= 4))
+    .map(([nm]) => canonSinger(nm))
+    .filter(Boolean)
+    .sort();
+  return [...new Set(fourStar)];
+}
+
+window.openApprovedJudges = async () => {
+  approvedListExpanded = true;
+  await go('adm');
+  setTimeout(() => {
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  }, 120);
+};
+
+window.syncJudgeFinalistsFromStars = async () => {
+  if (!IS_SUPER) return;
+  const fourStar = Object.entries((PUB && PUB.stars) || {})
+    .filter(([, o]) => (o && o.t >= 4))
+    .map(([nm]) => canonSinger(nm))
+    .filter(Boolean)
+    .sort();
+  const existing = (SOTM_PANEL_CACHE && Array.isArray(SOTM_PANEL_CACHE.finalists)) ? SOTM_PANEL_CACHE.finalists : [];
+  const nextFinalists = [...new Set(fourStar)].map(nm => {
+    const prev = existing.find(f => canonSinger(f.name) === nm);
+    return prev || { name: nm, sur: 0, taal: 0, sel: 0, perf: 0, audience: 0 };
+  });
+  const nextPanel = {
+    monthLabel: (SOTM_PANEL_CACHE && SOTM_PANEL_CACHE.monthLabel) || fm(nowM()).toUpperCase(),
+    judges: (CONF && Array.isArray(CONF.sotmJudges) && CONF.sotmJudges.length)
+      ? CONF.sotmJudges.slice()
+      : ((SOTM_PANEL_CACHE && SOTM_PANEL_CACHE.judges) || ['SOHAN KUMAR']),
+    votersCount: (SOTM_PANEL_CACHE && SOTM_PANEL_CACHE.votersCount) || 0,
+    finalists: nextFinalists,
+    updatedAt: Date.now()
+  };
+  try {
+    await setDoc(doc(fs, 'vote', 'sotm_panel'), nextPanel, { merge: true });
+    SOTM_PANEL_CACHE = nextPanel;
+    draw();
+    showNotice(`Synced ${nextFinalists.length} 4-Star finalist(s) into the Judges Panel.`);
+  } catch (err) {
+    showNotice('Sync failed: ' + (err.code || err.message));
+  }
+};
+
+function vJudge() {
+  const vp = curP();
+  const viewerName = canonSinger(vp.singer || vp.name || (U && U.displayName) || 'JUDGE');
+  const finalists = getSOTMJudgeFinalists();
+  const panelFinalists = (SOTM_PANEL_CACHE && Array.isArray(SOTM_PANEL_CACHE.finalists)) ? SOTM_PANEL_CACHE.finalists : [];
+  const savedScores = (PLAN && PLAN.sotmJudgeScores) || {};
+  const monthLabel = (SOTM_PANEL_CACHE && SOTM_PANEL_CACHE.monthLabel) || fm(nowM()).toUpperCase();
+
+  const appointedJudges = [...new Set([
+    ...((CONF && Array.isArray(CONF.sotmJudges)) ? CONF.sotmJudges : []),
+    ...AU.filter(u => u.status === 'approved' && isUserJudge(u)).map(u => canonSinger(u.singer || u.name || idOf(u.email))),
+    ...((SOTM_PANEL_CACHE && Array.isArray(SOTM_PANEL_CACHE.judges)) ? SOTM_PANEL_CACHE.judges : [])
+  ].map(canonSinger).filter(Boolean))];
+
+  const submittedJudgeDocs = effSuper()
+    ? (PL || []).filter(p => p && p.sotmJudgeScores && typeof p.sotmJudgeScores === 'object' && Object.keys(p.sotmJudgeScores).length > 0)
+    : [];
+
+  return `<div class="c" style="border-left:4px solid #d97706">
+    <div class="row" style="justify-content:space-between;align-items:flex-start">
+      <div>
+        <b style="font-size:15px">SOTM Judges Panel — ${e(monthLabel)}</b>
+        <p class="m" style="margin:3px 0 0">Appointed Judge${appointedJudges.length > 1 ? 's' : ''}: <b>${appointedJudges.length ? appointedJudges.map(e).join(' · ') : 'Not appointed yet'}</b></p>
+      </div>
+      ${effSuper() ? `<div class="row" style="gap:6px">
+        <button style="padding:4px 9px;font-size:12px" onclick="openApprovedJudges()">Appoint Judge</button>
+        <button style="padding:4px 9px;font-size:12px" onclick="syncJudgeFinalistsFromStars()">↻ Sync 4★</button>
+        <button class="pri" style="padding:4px 9px;font-size:12px" onclick="go('live')">Live Console</button>
+      </div>` : ''}
+    </div>
+  </div>
+  <div class="c">
+    <b>Judge Scorecard (Out of 10 each · Max 40)</b>
+    <p class="m" style="margin:2px 0 8px">${effSuper() ? 'Enter or review Judge marks for each SOTM finalist. Saving updates the Live SOTM Panel immediately.' : `Scoring as Appointed Judge: ${e(viewerName)}. Enter marks for each finalist and tap Submit.`}</p>
+    ${finalists.length ? `<div class="tbl"><table>
+      <tr>
+        <th class="n">#</th>
+        <th>Singer</th>
+        <th class="n">Sur</th>
+        <th class="n">Taal</th>
+        <th class="n">Choice</th>
+        <th class="n">Perf</th>
+        <th class="n">Total</th>
+        ${effSuper() ? '<th class="n">Votes</th><th class="n">Grand</th>' : ''}
+      </tr>
+      ${finalists.map((nm, idx) => {
+        const panelRec = panelFinalists.find(f => canonSinger(f.name) === nm);
+        const cur = effSuper()
+          ? (panelRec ? { sur: panelRec.sur, taal: panelRec.taal, sel: panelRec.sel, perf: panelRec.perf } : { sur: 0, taal: 0, sel: 0, perf: 0 })
+          : (savedScores[nm] || { sur: '', taal: '', sel: '', perf: '' });
+        const tot = parseFloat(((Number(cur.sur)||0)+(Number(cur.taal)||0)+(Number(cur.sel)||0)+(Number(cur.perf)||0)).toFixed(1));
+        const aud = panelRec ? (Number(panelRec.audience) || 0) : 0;
+        const grand = parseFloat((tot + aud).toFixed(1));
+        return `<tr>
+          <td class="n">${idx + 1}</td>
+          <td><b>${e(nm)}</b></td>
+          <td class="n"><input id="jdg_sur_${idx}" type="number" step="0.5" min="0" max="10" value="${cur.sur !== '' && cur.sur != null ? e(cur.sur) : ''}" oninput="recalcJudgeRow(${idx},${aud})" style="width:56px;padding:4px 6px;text-align:center"></td>
+          <td class="n"><input id="jdg_taal_${idx}" type="number" step="0.5" min="0" max="10" value="${cur.taal !== '' && cur.taal != null ? e(cur.taal) : ''}" oninput="recalcJudgeRow(${idx},${aud})" style="width:56px;padding:4px 6px;text-align:center"></td>
+          <td class="n"><input id="jdg_sel_${idx}" type="number" step="0.5" min="0" max="10" value="${cur.sel !== '' && cur.sel != null ? e(cur.sel) : ''}" oninput="recalcJudgeRow(${idx},${aud})" style="width:56px;padding:4px 6px;text-align:center"></td>
+          <td class="n"><input id="jdg_perf_${idx}" type="number" step="0.5" min="0" max="10" value="${cur.perf !== '' && cur.perf != null ? e(cur.perf) : ''}" oninput="recalcJudgeRow(${idx},${aud})" style="width:56px;padding:4px 6px;text-align:center"></td>
+          <td class="n"><b id="jdg_tot_${idx}" style="color:var(--ac)">${tot}</b></td>
+          ${effSuper() ? `<td class="n" style="color:#0369a1;font-weight:700">${aud}</td><td class="n" id="jdg_grand_${idx}" style="color:#15803d;font-weight:900">${grand}</td>` : ''}
+        </tr>`;
+      }).join('')}
+    </table></div>
+    <p style="margin-top:12px"><button class="pri" onclick="submitJudgeScores()">${effSuper() ? 'Save Judge Scores to Panel' : 'Submit Judge Scores'}</button></p>` : '<p class="m">No SOTM finalists are currently listed. Tap <b>↻ Sync 4★</b> above to load current 4-Star qualifiers.</p>'}
+  </div>
+  ${effSuper() ? `<div class="c">
+    <b>Submitted Judge Ballots (${submittedJudgeDocs.length})</b>
+    ${submittedJudgeDocs.length ? submittedJudgeDocs.map(docItem => {
+      const entries = Object.entries(docItem.sotmJudgeScores || {});
+      return `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bd)">
+        <b>${e(canonSinger(docItem.singer || 'JUDGE'))}</b> <span class="m">· ${fdt(docItem.upd || docItem.ts)}</span>
+        <div class="tbl" style="margin-top:6px"><table>
+          <tr><th>Singer</th><th class="n">Sur</th><th class="n">Taal</th><th class="n">Choice</th><th class="n">Perf</th><th class="n">Total</th></tr>
+          ${entries.map(([sn, sc]) => {
+            const t = parseFloat(((Number(sc.sur)||0)+(Number(sc.taal)||0)+(Number(sc.sel)||0)+(Number(sc.perf)||0)).toFixed(1));
+            return `<tr><td><b>${e(canonSinger(sn))}</b></td><td class="n">${sc.sur}</td><td class="n">${sc.taal}</td><td class="n">${sc.sel}</td><td class="n">${sc.perf}</td><td class="n"><b>${t}</b></td></tr>`;
+          }).join('')}
+        </table></div>
+      </div>`;
+    }).join('') : '<p class="m" style="margin:4px 0 0">No remote Judge scorecards submitted today yet. Appointed judges see the <b>Judge</b> tab in their window once logged in.</p>'}
+  </div>` : ''}`;
+}
+
+window.recalcJudgeRow = (idx, aud = 0) => {
+  const g = id => parseFloat(($('#' + id) && $('#' + id).value) || '0') || 0;
+  const tot = parseFloat((g('jdg_sur_' + idx) + g('jdg_taal_' + idx) + g('jdg_sel_' + idx) + g('jdg_perf_' + idx)).toFixed(1));
+  const el = $('#jdg_tot_' + idx);
+  if (el) el.textContent = String(tot);
+  const gr = $('#jdg_grand_' + idx);
+  if (gr) gr.textContent = String(parseFloat((tot + (Number(aud) || 0)).toFixed(1)));
+};
+
+window.submitJudgeScores = async () => {
+  if (!U || (!effJudge() && !effSuper())) return;
+  const finalists = getSOTMJudgeFinalists();
+  if (!finalists.length) return;
+  const vp = curP();
+  const judgeName = canonSinger(vp.singer || vp.name || (U && U.displayName) || 'JUDGE');
+  const todayStr = (LIVE_SESSION && LIVE_SESSION.date) ? LIVE_SESSION.date : tdy();
+  const scoresMap = {};
+  const panelFinalists = (SOTM_PANEL_CACHE && Array.isArray(SOTM_PANEL_CACHE.finalists)) ? SOTM_PANEL_CACHE.finalists : [];
+  const nextFinalists = [];
+  finalists.forEach((nm, idx) => {
+    const readVal = id => {
+      const raw = $('#' + id) ? $('#' + id).value : '';
+      if (raw === '') return 0;
+      const n = parseFloat(raw);
+      return isNaN(n) ? 0 : Math.max(0, Math.min(10, n));
+    };
+    const sur = readVal('jdg_sur_' + idx);
+    const taal = readVal('jdg_taal_' + idx);
+    const sel = readVal('jdg_sel_' + idx);
+    const perf = readVal('jdg_perf_' + idx);
+    scoresMap[nm] = { sur, taal, sel, perf, judge: judgeName, ts: Date.now() };
+    const existing = panelFinalists.find(f => canonSinger(f.name) === nm);
+    nextFinalists.push({
+      name: nm,
+      sur,
+      taal,
+      sel,
+      perf,
+      audience: existing ? (Number(existing.audience) || 0) : 0
+    });
+  });
+  try {
+    if (effSuper()) {
+      const nextPanel = {
+        ...(SOTM_PANEL_CACHE || {}),
+        monthLabel: (SOTM_PANEL_CACHE && SOTM_PANEL_CACHE.monthLabel) || fm(nowM()).toUpperCase(),
+        judges: (CONF && Array.isArray(CONF.sotmJudges) && CONF.sotmJudges.length)
+          ? CONF.sotmJudges.slice()
+          : ((SOTM_PANEL_CACHE && SOTM_PANEL_CACHE.judges) || ['SOHAN KUMAR']),
+        finalists: nextFinalists,
+        updatedAt: Date.now()
+      };
+      await setDoc(doc(fs, 'vote', 'sotm_panel'), nextPanel, { merge: true });
+      SOTM_PANEL_CACHE = nextPanel;
+      draw();
+      showNotice('SOTM Judge Panel scores saved and synced to Live Console!', 'Panel Updated');
+    } else {
+      const planRef = doc(fs, 'plans', `${todayStr}_${U.uid}`);
+      await setDoc(planRef, {
+        uid: U.uid,
+        date: todayStr,
+        singer: judgeName,
+        isJudge: true,
+        sotmJudgeScores: scoresMap,
+        upd: Date.now()
+      }, { merge: true });
+      if (!PLAN) PLAN = { uid: U.uid, date: todayStr, singer: judgeName, songs: [] };
+      PLAN.sotmJudgeScores = scoresMap;
+      draw();
+      showNotice('Your SOTM Judge scores have been submitted to the Live Console!', 'Judge Scores Saved');
+    }
+  } catch (err) {
+    showNotice('Could not submit judge scores: ' + (err.code || err.message));
+  }
+};
+
+async function syncAppointedJudgesToCloud() {
+  try {
+    const q = await getDocs(collection(fs, 'users'));
+    const allUsers = q.docs.map(x => ({ id: x.id, ...x.data() }));
+    const judgeNames = [...new Set(
+      allUsers
+        .filter(u => u.status === 'approved' && isUserJudge(u))
+        .map(u => canonSinger(u.singer || u.name || idOf(u.email)))
+        .filter(Boolean)
+    )].sort();
+    await setDoc(doc(fs, 'config', 'app'), { sotmJudges: judgeNames }, { merge: true });
+    CONF.sotmJudges = judgeNames;
+    if (judgeNames.length) {
+      await setDoc(doc(fs, 'vote', 'sotm_panel'), { judges: judgeNames, updatedAt: Date.now() }, { merge: true });
+    }
+  } catch (_je) {}
+}
+
+window.makeJudge = async (id, name) => {
+  if (!IS_SUPER) return;
+  const uObj = AU.find(x => x.id === id) || {};
+  showConfirm(`Appoint ${name} as SOTM Judge?\n\n• Sets ${name} as the Appointed Judge in the SOTM Judge Panel\n• Gives them access to the SOTM Judge Scorecard to submit Sur, Taal, Choice & Performance marks`, async () => {
+    try {
+      const nextRole = uObj.role === 'admin' ? 'admin' : 'judge';
+      await updateDoc(doc(fs, 'users', id), { isJudge: true, role: nextRole });
+      await syncAppointedJudgesToCloud();
+      await loadAdm();
+      draw();
+      showNotice(`${name} has been appointed as SOTM Judge.`, 'Judge Appointed');
+    } catch (x) {
+      showNotice('Failed (' + (x.code || 'error') + ')');
+    }
+  }, 'Appoint SOTM Judge');
+};
+
+window.revokeJudge = async (id, name) => {
+  if (!IS_SUPER) return;
+  const uObj = AU.find(x => x.id === id) || {};
+  showConfirm(`Remove SOTM Judge role from ${name}?`, async () => {
+    try {
+      const nextRole = uObj.role === 'admin' ? 'admin' : 'participant';
+      await updateDoc(doc(fs, 'users', id), { isJudge: false, role: nextRole });
+      await syncAppointedJudgesToCloud();
+      await loadAdm();
+      draw();
+      showNotice(`SOTM Judge role removed from ${name}.`);
+    } catch (x) {
+      showNotice('Failed (' + (x.code || 'error') + ')');
+    }
+  }, 'Revoke Judge');
 };
 
 window.makeAdmin = async (id, name) => {
@@ -2373,9 +3444,10 @@ window.makeAdmin = async (id, name) => {
 
 window.revokeAdmin = async (id, name) => {
   if (!IS_SUPER) return;
+  const uObj = AU.find(x => x.id === id) || {};
   showConfirm('Remove Admin role from ' + name + '? They will become a standard participant.', async () => {
     try {
-      await updateDoc(doc(fs, 'users', id), { role: 'participant' });
+      await updateDoc(doc(fs, 'users', id), { role: uObj.isJudge ? 'judge' : 'participant' });
       await loadAdm();
       draw();
       showNotice('Admin privileges removed for ' + name);
@@ -2400,7 +3472,7 @@ window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.on
     showConfirm(`${label}: ${x.songs.length} songs (${Math.round(tot/1024)} KB across ${ms.length} month(s)), ${(x.sotd||[]).length} SOTD dates, and ${(x.singers||[]).length} singers?`, async () => {
       const ix=await getDoc(doc(fs,'pub','idx')),old=ix.exists()?(ix.data().months||{}):{},nw={};let wr=0;
       for(const m of ms){const hh=hsh(js[m]);nw[m]={n:by[m].length,h:hh};if(!old[m]||old[m].h!==hh){await setDoc(doc(fs,'pub','songs_'+m),{json:js[m],n:by[m].length,h:hh,ts:x.ts||''});wr++}}
-      await setDoc(doc(fs,'pub','data'),{singers:x.singers||[],sotd:x.sotd||[],som:x.som||{},somd:x.somd||{},stars:x.stars||{},ts:x.ts||''});
+      await setDoc(doc(fs,'pub','data'),{singers:x.singers||[],sotd:x.sotd||[],som:x.som||{},somd:x.somd||{},stars:x.stars||{},songMeta:x.songMeta||(PUB&&PUB.songMeta)||{},sessionMeta:x.sessionMeta||(PUB&&PUB.sessionMeta)||{},ts:x.ts||''});
       await setDoc(doc(fs,'pub','idx'),{months:nw,total:tot,ts:x.ts||''});
       if(isFullBackup && x.sotmResult){try{await setDoc(doc(fs,'pub','sotm'),x.sotmResult)}catch(y){}}
       if(isFullBackup && (x.holidays || x.schedule || x.starScoring)){

@@ -1,5 +1,8 @@
 {
   "name": "Sing From Home",
   "description": "Sing From Home - Singer of the Day, profile, messages and Zoom for participants.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

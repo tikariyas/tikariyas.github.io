@@ -35,10 +35,18 @@ header{
   display:flex;justify-content:space-between;align-items:flex-start;width:100%;
 }
 .header-toolbar{
-  display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;width:100%;
+  display:grid;grid-template-columns:repeat(auto-fit, minmax(92px, 1fr));gap:6px;width:100%;
 }
-.header-toolbar button{
+.header-toolbar button,
+.header-toolbar button.pri,
+.header-toolbar button.danger,
+.header-toolbar button.warn,
+.header-toolbar button.on{
   width:100%;padding:7px 4px;font-size:12px;font-weight:700;text-align:center;box-sizing:border-box;
+  background:transparent !important;color:#000000 !important;border:1px solid var(--bd);box-shadow:none !important;
+}
+.header-toolbar button:hover,.header-toolbar button.warn,.header-toolbar button.on{
+  border-color:#000000;
 }
 
 h1{
@@ -72,7 +80,7 @@ button.on,button.pri{
   box-shadow:0 3px 12px -2px rgba(15,52,96,0.35);
 }
 button.danger{
-  background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;border-color:transparent;
+  background:linear-gradient(135deg,#e11d48,#be123c);color:#fff;border-color:transparent;
 }
 button.warn{
   background:linear-gradient(135deg,#d97706,#b45309);color:#fff;border-color:transparent;
@@ -94,12 +102,18 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
   white-space:nowrap;padding:4px 6px;border-bottom:1px solid var(--bd);text-align:left;height:33px;box-sizing:border-box;font-size:12.5px;
 }
 .tbl th{height:28px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--mut);background:var(--bg)}
+.tbl th.col-src,.tbl td.col-src{width:28px;min-width:28px;text-align:center;padding:2px 3px}
 .tbl th.col-ord,.tbl td.col-ord{width:30px;min-width:30px;text-align:center;padding:2px 4px}
 .tbl tr:last-child td{border-bottom:none}
 .tbl .n{text-align:center}
 .badge-ok{color:#15803d;background:#dcfce7;font-weight:700;padding:2px 6px;border-radius:6px;font-size:11px}
-.badge-late{color:#b91c1c;background:#fee2e2;font-weight:700;padding:2px 6px;border-radius:6px;font-size:11px}
+.badge-late{color:#ea580c;background:#ffedd5;font-weight:700;padding:2px 6px;border-radius:6px;font-size:11px}
 .badge-zoom{color:#0369a1;background:#e0f2fe;font-weight:700;padding:2px 6px;border-radius:6px;font-size:11px}
+.badge-src-z{color:#1d4ed8;background:#dbeafe;font-weight:800;padding:2px 6px;border-radius:6px;font-size:11.5px;display:inline-block;min-width:20px;text-align:center}
+.badge-src-m{color:#8b0000;background:transparent;font-weight:900;padding:2px 6px;border-radius:6px;font-size:12px;display:inline-block;min-width:20px;text-align:center}
+.badge-st-e{color:#15803d;background:#dcfce7;font-weight:800;padding:2px 7px;border-radius:6px;font-size:11.5px;display:inline-block;min-width:20px;text-align:center}
+.badge-st-i{color:#ea580c;background:#ffedd5;font-weight:800;padding:2px 7px;border-radius:6px;font-size:11.5px;display:inline-block;min-width:20px;text-align:center}
+.singer-late{color:#ea580c;cursor:help}
 .badge-round{color:var(--ac);background:var(--ac-light);font-weight:800;padding:2px 8px;border-radius:6px;font-size:11.5px}
 
 .practice-banner{
@@ -110,7 +124,9 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
 .score-box{display:inline-flex;gap:2px}
 .score-star{cursor:pointer;font-size:17px;user-select:none;opacity:0.25;transition:opacity .15s;padding:1px}
 .score-star.active{opacity:1;color:#f59e0b}
-.btn-meta{padding:2px 6px;font-size:11px;border-radius:6px;background:var(--ac-light);color:var(--ac);border:1px solid var(--bd)}
+.btn-meta{padding:2px 7px;font-size:11px;font-weight:800;border-radius:6px;background:var(--ac-light);color:var(--ac);border:1px solid var(--bd)}
+.btn-meta.filled{background:#dcfce7;color:#15803d;border-color:#86efac}
+.btn-meta.loading{background:#fef3c7;color:#b45309;border-color:#fcd34d}
 
 .sotd-sug-chip{
   padding:4px 8px;font-size:11.5px;background:var(--card);border:1px solid var(--bd);border-radius:8px;
@@ -147,12 +163,36 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
 }
 .song-ac-item:last-child{border-bottom:0}
 .song-ac-item:hover{background:var(--ac-light);color:var(--ac)}
+
+#participant-preview-pane{
+  position:fixed;top:0;right:0;bottom:0;width:390px;max-width:100vw;z-index:85;
+  background:var(--card);border-left:2px solid var(--ac);box-shadow:-8px 0 28px rgba(15,23,42,0.22);
+  display:none;flex-direction:column;
+}
+#participant-preview-pane.open{display:flex}
+.pp-bar{
+  display:flex;align-items:center;justify-content:space-between;gap:6px;
+  padding:8px 10px;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;flex:none;
+}
+.pp-bar button{
+  background:rgba(255,255,255,0.16);color:#fff;border:1px solid rgba(255,255,255,0.28);
+  padding:3px 8px;font-size:11.5px;
+}
+.pp-bar button:hover{background:rgba(255,255,255,0.28);border-color:#fff}
+#participant-preview-body{
+  flex:1;overflow-y:auto;padding:8px;background:var(--bg);
+}
+#participant-preview-body .c{margin-bottom:8px}
+#participant-preview-body tr.me td{background:var(--ac-light);font-weight:700}
+@media (min-width:960px){
+  body.split-preview{padding-right:394px}
+}
 </style></head><body>
 
 <header>
   <div class="header-top">
     <div>
-      <h1>SING FRO<span style="color:#b30000;font-weight:900">M</span> HO<span style="color:#b30000;font-weight:900">M</span>E</h1>
+      <h1>SING FRO<span style="color:#8b0000;font-weight:900">M</span> HO<span style="color:#8b0000;font-weight:900">M</span>E</h1>
       <div class="sub-fnd">A project of B. S. Tikariya Cultural Foundation ®<br>(CIN: U88900MH2025NPL454435)</div>
     </div>
     <div id="live-clock">--:--:--</div>
@@ -162,6 +202,17 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
 
 <div id="floating-song-ac"></div>
 <main id="app"><p class="m">Connecting to live console…</p></main>
+
+<aside id="participant-preview-pane" aria-label="Participant Live Preview">
+  <div class="pp-bar">
+    <span>👁 Participant Live Preview</span>
+    <div style="display:flex;gap:5px">
+      <button onclick="renderLiveParticipantPreview()" title="Refresh participant preview">↻ Refresh</button>
+      <button onclick="toggleLiveParticipantPreview()" title="Close participant preview">✕ Close</button>
+    </div>
+  </div>
+  <div id="participant-preview-body"></div>
+</aside>
 
 <div id="custom-modal">
   <div class="box" id="custom-modal-body"></div>
@@ -275,6 +326,7 @@ function calcStarPoints(stars) {
 // Schedule evaluation
 let SCHEDULE = { days: [1,2,3,4,5], startTime: "20:30", endTime: "23:30", cutoffMins: 15, forceLiveOverride: false };
 let lastScheduleMode = null;
+let lastAdminWindowMode = null;
 
 function isWithinLiveSchedule(now = new Date()) {
   if (SCHEDULE.forceLiveOverride) return true;
@@ -296,6 +348,43 @@ function isWithinLiveSchedule(now = new Date()) {
     return true;
   }
   return false;
+}
+
+function isWithinAdminLiveWindow(now = new Date()) {
+  if (SCHEDULE.forceLiveOverride) return true;
+  const day = now.getDay();
+  const prevDay = (day + 6) % 7;
+  const nextDay = (day + 1) % 7;
+  const [sh, sm] = (SCHEDULE.startTime || "20:20").split(':').map(Number);
+  const [eh, em] = (SCHEDULE.endTime || "23:30").split(':').map(Number);
+  const curMins = now.getHours() * 60 + now.getMinutes();
+  const startMins = sh * 60 + sm;
+  const openMins = startMins - 5;
+  let endMins = eh * 60 + em;
+  if (endMins <= startMins) {
+    endMins = Math.max(endMins + 1440, startMins + 120);
+  }
+  if (openMins >= 0) {
+    if (SCHEDULE.days.includes(day) && curMins >= openMins && curMins <= endMins) return true;
+  } else {
+    // Session starts within 5 mins after midnight: allow last 5 mins of previous day
+    if (SCHEDULE.days.includes(nextDay) && curMins >= (1440 + openMins)) return true;
+    if (SCHEDULE.days.includes(day) && curMins >= 0 && curMins <= endMins) return true;
+  }
+  if (SCHEDULE.days.includes(prevDay) && (curMins + 1440) >= openMins && (curMins + 1440) <= endMins) {
+    return true;
+  }
+  return false;
+}
+
+function formatAdminOpenTime() {
+  const [sh, sm] = (SCHEDULE.startTime || "20:20").split(':').map(Number);
+  const openTotal = ((sh * 60 + sm - 5) + 1440) % 1440;
+  const hh = Math.floor(openTotal / 60);
+  const mm = openTotal % 60;
+  const ampm = hh >= 12 ? 'PM' : 'AM';
+  const h12 = hh % 12 || 12;
+  return `${h12}:${String(mm).padStart(2, '0')} ${ampm}`;
 }
 
 function isBeforeCutoff(now = new Date()) {
@@ -332,8 +421,10 @@ function updateClock(){
   const el = $('#live-clock');
   if(el) el.textContent = d.toLocaleTimeString('en-IN', {hour12:true, hour:'2-digit', minute:'2-digit', second:'2-digit'});
   const liveNow = isWithinLiveSchedule(d);
-  if (lastScheduleMode !== null && lastScheduleMode !== liveNow) {
+  const adminWinNow = isWithinAdminLiveWindow(d);
+  if ((lastScheduleMode !== null && lastScheduleMode !== liveNow) || (lastAdminWindowMode !== null && lastAdminWindowMode !== adminWinNow)) {
     lastScheduleMode = liveNow;
+    lastAdminWindowMode = adminWinNow;
     init();
   }
 }
@@ -352,11 +443,16 @@ window.showConfirm = (msg, onOk, title="Confirmation") => {
   $('#modal-ok-btn').onclick = () => { closeModal(); onOk(); };
   m.style.display = 'flex';
 };
-window.closeModal = () => { $('#custom-modal').style.display = 'none'; };
+window.closeModal = () => { OPEN_META_CTX = null; $('#custom-modal').style.display = 'none'; };
 
 let U=null, IS_SUPER=false, IS_ADMIN=false, KNOWN_SINGERS=[], ALL_SONGS=[], MAX_ID_NUM=209;
 let CONF_CACHE = {};
 let PUB_CACHE = null;
+let SONG_META_ARCHIVE = {};
+const AUTO_META_TIMERS = {};
+const AUTO_META_INFLIGHT = {};
+let AI_COOLDOWN_UNTIL = 0;
+let OPEN_META_CTX = null;
 let currentRound = 1;
 let SOTD_LIST = [];
 let PRACTICE_COUNTER = 0;
@@ -374,7 +470,7 @@ let SOTM_PANEL = {
   activeBlindVote: null,
   finalists: []
 };
-let sotmPanelExpanded = false;
+let sotmPanelExpanded = true;
 let sotmBlindInterval = null;
 
 function syncSOTMFinalistsFromFourStars(forceSync = false) {
@@ -424,16 +520,45 @@ getBackupDirHandleFromIDB().then(h => { if (h) backupDirHandle = h; });
 
 let LIVE = {
   date: tdy(),
+  theme: '',
+  host: '',
   singers: [],
-  performances: []
+  performances: [],
+  sotdExtras: {},
+  sotdVoteWeight: 1
 };
 
+const DEFAULT_SINGER_ALIASES = {
+  'NANDU GHADSING': 'SURESH GHADSING'
+};
+
+function getSingerAliases() {
+  const map = { ...DEFAULT_SINGER_ALIASES };
+  const saved = (CONF_CACHE && CONF_CACHE.singerAliases) || {};
+  Object.entries(saved).forEach(([k, v]) => {
+    const fk = String(k || '').trim().toUpperCase();
+    const fv = String(v || '').trim().toUpperCase();
+    if (fk && fv && fk !== fv) map[fk] = fv;
+  });
+  return map;
+}
+
+function canonSinger(rawName) {
+  let cur = String(rawName || '').trim().toUpperCase();
+  if (!cur) return '';
+  const aliases = getSingerAliases();
+  for (let i = 0; i < 5 && aliases[cur]; i++) {
+    cur = aliases[cur];
+  }
+  return cur;
+}
+
 function resolveCanonicalSingerName(rawName) {
-  const clean = (rawName || '').trim().toUpperCase();
+  const clean = canonSinger(rawName);
   if (!clean) return '';
   if (KNOWN_SINGERS.includes(clean)) return clean;
   const prefixMatches = KNOWN_SINGERS.filter(k => k.startsWith(clean + ' '));
-  if (prefixMatches.length === 1) return prefixMatches[0];
+  if (prefixMatches.length === 1) return canonSinger(prefixMatches[0]);
   return clean;
 }
 
@@ -450,11 +575,15 @@ async function writeLivePayloadEverywhere(rawPayload) {
 }
 
 async function pushLiveSessionNow() {
-  if (SESSION_ENDED) return;
+  // Never broadcast off-schedule practice sessions to real participants
+  if (SESSION_ENDED || !isWithinLiveSchedule()) return;
   const hasActiveVote = Boolean((SOTD_30S_VOTE && SOTD_30S_VOTE.active) || (SOTM_PANEL && SOTM_PANEL.activeBlindVote));
   const isActive = LIVE.singers.length > 0 || SOTD_LIST.length > 0 || hasActiveVote;
   const payload = {
     date: LIVE.date,
+    theme: (LIVE.theme || '').trim(),
+    host: (LIVE.host || '').trim().toUpperCase(),
+    practice: false,
     currentRound: currentRound,
     singers: LIVE.singers,
     performances: LIVE.performances,
@@ -483,28 +612,30 @@ async function pushLiveSessionNow() {
 }
 
 function syncToFirestore() {
-  if (SESSION_ENDED) return;
+  if (SESSION_ENDED || !isWithinLiveSchedule()) return;
   clearTimeout(syncTimer);
   syncTimer = setTimeout(() => { pushLiveSessionNow(); }, 90);
 }
 
 function saveLocal(){
   if (SESSION_ENDED) return;
-  if (!isWithinLiveSchedule() && LIVE.singers.length === 0) {
+  if (!isWithinAdminLiveWindow()) {
+    if (!IS_SUPER) return;
     try{ sessionStorage.setItem('sfh_practice_session', JSON.stringify({LIVE, currentRound, SOTD_LIST, PRACTICE_COUNTER})); }catch(x){}
     return;
   }
   try{ localStorage.setItem('sfh_live_session_'+LIVE.date, JSON.stringify({LIVE, currentRound, SOTD_LIST})); }catch(x){}
-  syncToFirestore();
+  if (isWithinLiveSchedule()) syncToFirestore();
 }
 
 function loadLocal(){
-  if (!isWithinLiveSchedule()) {
+  if (!isWithinAdminLiveWindow()) {
+    if (!IS_SUPER) return;
     try{
       const d = sessionStorage.getItem('sfh_practice_session');
       if(d){
         const parsed = JSON.parse(d);
-        if(parsed.LIVE) LIVE = parsed.LIVE;
+        if(parsed.LIVE) LIVE = { theme: '', host: '', ...parsed.LIVE };
         if(parsed.currentRound) currentRound = parsed.currentRound;
         if(parsed.SOTD_LIST) SOTD_LIST = parsed.SOTD_LIST;
         if(parsed.PRACTICE_COUNTER) PRACTICE_COUNTER = parsed.PRACTICE_COUNTER;
@@ -516,7 +647,7 @@ function loadLocal(){
     const d = localStorage.getItem('sfh_live_session_'+LIVE.date);
     if(d){
       const parsed = JSON.parse(d);
-      if(parsed.LIVE) LIVE = parsed.LIVE;
+      if(parsed.LIVE) LIVE = { theme: '', host: '', ...parsed.LIVE };
       if(parsed.currentRound) currentRound = parsed.currentRound;
       if(parsed.SOTD_LIST) SOTD_LIST = parsed.SOTD_LIST;
     }
@@ -551,8 +682,10 @@ function tallyLivePlanBallots(planDocs) {
     SOTD_30S_VOTE.candidates.forEach(c => { counts[c.name] = 0; });
     let totalBallots = 0;
     planDocs.forEach(d => {
-      if (d.sotdPick && counts[d.sotdPick] !== undefined) {
-        counts[d.sotdPick]++;
+      const voter = String(d.singer || '').trim().toUpperCase();
+      const pick = String(d.sotdPick || '').trim().toUpperCase();
+      if (pick && counts[pick] !== undefined && (!voter || voter !== pick)) {
+        counts[pick]++;
         totalBallots++;
       }
     });
@@ -563,6 +696,7 @@ function tallyLivePlanBallots(planDocs) {
   if (SOTM_PANEL && Array.isArray(SOTM_PANEL.finalists)) {
     const voterSet = new Set();
     const sumBySinger = {};
+    const judgeAccum = {};
     planDocs.forEach(d => {
       if (d.sotmBallots && typeof d.sotmBallots === 'object') {
         Object.entries(d.sotmBallots).forEach(([target, b]) => {
@@ -572,20 +706,48 @@ function tallyLivePlanBallots(planDocs) {
           }
         });
       }
+      if (d.sotmJudgeScores && typeof d.sotmJudgeScores === 'object') {
+        Object.entries(d.sotmJudgeScores).forEach(([targetRaw, sc]) => {
+          const target = canonSinger(targetRaw);
+          if (!target || !sc) return;
+          if (!judgeAccum[target]) judgeAccum[target] = { sur: 0, taal: 0, sel: 0, perf: 0, count: 0 };
+          judgeAccum[target].sur += Number(sc.sur) || 0;
+          judgeAccum[target].taal += Number(sc.taal) || 0;
+          judgeAccum[target].sel += Number(sc.sel) || 0;
+          judgeAccum[target].perf += Number(sc.perf) || 0;
+          judgeAccum[target].count++;
+        });
+      }
     });
+    let sotmChanged = false;
     if (voterSet.size > 0) {
       SOTM_PANEL.votersCount = voterSet.size;
       SOTM_PANEL.finalists.forEach(f => {
         if (sumBySinger[f.name] !== undefined) f.audience = sumBySinger[f.name];
       });
-      drawSOTMPanel();
+      sotmChanged = true;
     }
+    if (Object.keys(judgeAccum).length > 0) {
+      SOTM_PANEL.finalists.forEach(f => {
+        const acc = judgeAccum[canonSinger(f.name)];
+        if (acc && acc.count > 0) {
+          f.sur = parseFloat((acc.sur / acc.count).toFixed(1));
+          f.taal = parseFloat((acc.taal / acc.count).toFixed(1));
+          f.sel = parseFloat((acc.sel / acc.count).toFixed(1));
+          f.perf = parseFloat((acc.perf / acc.count).toFixed(1));
+        }
+      });
+      sotmChanged = true;
+    }
+    if (sotmChanged) drawSOTMPanel();
   }
 }
 
 async function listenToZoomButtonEntries() {
   if (zoomEntriesUnsub) { zoomEntriesUnsub(); zoomEntriesUnsub = null; }
   if (plansEntriesUnsub) { plansEntriesUnsub(); plansEntriesUnsub = null; }
+  // Keep off-schedule practice isolated from real participant Zoom clicks
+  if (!isWithinLiveSchedule()) return;
 
   const qPlans = query(collection(fs, 'plans'), where('date', '==', LIVE.date));
   const qZoom = query(collection(fs, 'zoom_entries'), where('date', '==', LIVE.date));
@@ -656,16 +818,25 @@ async function init(){
   } catch (ce) {}
 
   lastScheduleMode = isWithinLiveSchedule();
-  LIVE = { date: tdy(), singers: [], performances: [] };
+  lastAdminWindowMode = isWithinAdminLiveWindow();
+  LIVE = { date: tdy(), theme: '', host: '', singers: [], performances: [], sotdExtras: {}, sotdVoteWeight: 1 };
   SOTD_LIST = [];
   currentRound = 1;
 
+  if (!IS_SUPER && !isWithinAdminLiveWindow()) {
+    if (zoomEntriesUnsub) { zoomEntriesUnsub(); zoomEntriesUnsub = null; }
+    if (plansEntriesUnsub) { plansEntriesUnsub(); plansEntriesUnsub = null; }
+    draw();
+    return;
+  }
+
   let wasExplicitlyEnded = false;
+  let latestMeta = null;
   try {
     const liveSessSnap = await getDoc(doc(fs, 'live', 'session'));
     const lsDoc = liveSessSnap.exists() ? liveSessSnap.data() : null;
     const cfgLsDoc = (CONF_CACHE && CONF_CACHE.liveSession) ? CONF_CACHE.liveSession : null;
-    const latestMeta = [lsDoc, cfgLsDoc].filter(Boolean).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0];
+    latestMeta = [lsDoc, cfgLsDoc].filter(Boolean).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0] || null;
     if (latestMeta && latestMeta.date === LIVE.date) {
       SESSION_CLEARED_AT = Math.max(SESSION_CLEARED_AT, latestMeta.sessionClearedAt || latestMeta.endedAt || 0);
       if (latestMeta.active === false && (latestMeta.endedAt || latestMeta.sessionClearedAt)) {
@@ -673,6 +844,22 @@ async function init(){
         try { localStorage.removeItem('sfh_live_session_' + LIVE.date); } catch(_x){}
         try { sessionStorage.removeItem('sfh_practice_session'); } catch(_x){}
       }
+    }
+    // Auto-clear any stale active live banner in Firestore when outside the live schedule
+    if (!isWithinLiveSchedule() && latestMeta && latestMeta.active === true) {
+      await writeLivePayloadEverywhere({
+        date: latestMeta.date || LIVE.date,
+        active: false,
+        practice: false,
+        singers: [],
+        performances: [],
+        sotdList: [],
+        sotdVote: null,
+        sotmVote: null,
+        sessionClearedAt: Date.now(),
+        endedAt: Date.now(),
+        updatedAt: Date.now()
+      });
     }
   } catch (_initMetaErr) {}
 
@@ -684,15 +871,28 @@ async function init(){
     const pubData = await getDoc(doc(fs, 'pub', 'data'));
     if(pubData.exists()){
       PUB_CACHE = pubData.data();
-      KNOWN_SINGERS = PUB_CACHE.singers || [];
+      KNOWN_SINGERS = [...new Set((PUB_CACHE.singers || []).map(canonSinger).filter(Boolean))].sort();
+      SONG_META_ARCHIVE = { ...(PUB_CACHE.songMeta || {}) };
+      const savedMeta = (PUB_CACHE.sessionMeta && PUB_CACHE.sessionMeta[LIVE.date]) || null;
+      if (savedMeta) {
+        if (!LIVE.theme && savedMeta.theme) LIVE.theme = savedMeta.theme;
+        if (!LIVE.host && savedMeta.host) LIVE.host = savedMeta.host;
+      }
     }
   } catch(e) {}
+  if (latestMeta && latestMeta.date === LIVE.date && !wasExplicitlyEnded) {
+    if (!LIVE.theme && latestMeta.theme) LIVE.theme = latestMeta.theme;
+    if (!LIVE.host && latestMeta.host) LIVE.host = latestMeta.host;
+  }
 
   // Load saved SOTM Judge Panel state if present in Firestore
   try {
     const sotmPanelSnap = await getDoc(doc(fs, 'vote', 'sotm_panel'));
     if (sotmPanelSnap.exists()) {
       SOTM_PANEL = { ...SOTM_PANEL, ...sotmPanelSnap.data() };
+    }
+    if (CONF_CACHE && Array.isArray(CONF_CACHE.sotmJudges) && CONF_CACHE.sotmJudges.length) {
+      SOTM_PANEL.judges = CONF_CACHE.sotmJudges.slice();
     }
   } catch (pe) {}
 
@@ -712,6 +912,7 @@ async function init(){
     NOV16_SONGS.forEach(row => {
       if (!existingIds.has(row[0])) ALL_SONGS.push(row);
     });
+    ALL_SONGS = ALL_SONGS.map(r => [r[0], r[1], canonSinger(r[2]), r[3]]);
     ALL_SONGS.sort(cmpBySongId);
 
     MAX_ID_NUM = 0;
@@ -722,6 +923,23 @@ async function init(){
     });
   } catch(x) {}
 
+  // Normalize any loaded singers/performances/SOTDs through singer aliases
+  if (Array.isArray(LIVE.singers) && LIVE.singers.length) {
+    const seenS = new Set();
+    LIVE.singers = LIVE.singers.filter(s => {
+      s.name = canonSinger(s.name);
+      if (!s.name || seenS.has(s.name)) return false;
+      seenS.add(s.name);
+      return true;
+    });
+  }
+  if (Array.isArray(LIVE.performances)) {
+    LIVE.performances.forEach(p => { p.singer = canonSinger(p.singer); });
+  }
+  if (Array.isArray(SOTD_LIST)) {
+    SOTD_LIST.forEach(w => { w.n = canonSinger(w.n); });
+  }
+
   if (isWithinLiveSchedule() && !wasExplicitlyEnded) {
     const todayPubSongs = ALL_SONGS.filter(r => r[1] === LIVE.date);
     todayPubSongs.forEach(r => {
@@ -731,6 +949,7 @@ async function init(){
       }
       let existing = LIVE.performances.find(p => p.songId === sId);
       if (!existing) {
+        const archivedMeta = SONG_META_ARCHIVE[String(sTitle || '').trim().toUpperCase()] || {};
         LIVE.performances.push({
           round: 1,
           singer: sName,
@@ -738,11 +957,20 @@ async function init(){
           songId: sId,
           stars: [false, false, false, false, false],
           repeatCount: Math.max(0, checkRepeat(sTitle) - 1),
-          meta: {}
+          meta: { ...archivedMeta },
+          _metaSong: hasMetaFields(archivedMeta) ? String(sTitle || '').trim().toUpperCase() : ''
         });
       }
     });
   }
+
+  (LIVE.performances || []).forEach(p => {
+    const sk = String(p.song || '').trim().toUpperCase();
+    if (sk && !hasMetaFields(p.meta) && hasMetaFields(SONG_META_ARCHIVE[sk])) {
+      p.meta = { ...SONG_META_ARCHIVE[sk] };
+      p._metaSong = sk;
+    }
+  });
 
   listenToZoomButtonEntries();
   draw();
@@ -930,12 +1158,199 @@ document.addEventListener('click', (ev) => {
 
 window.addEventListener('scroll', () => window.closeAllSongDropdowns(), true);
 
+function hasMetaFields(m) {
+  return !!(m && ['orig', 'comp', 'lyr', 'mov', 'yr', 'act'].some(k => String(m[k] || '').trim()));
+}
+
+function cleanMetaObj(m) {
+  const src = m || {};
+  return {
+    orig: String(src.orig || '').trim(),
+    comp: String(src.comp || '').trim(),
+    lyr: String(src.lyr || '').trim(),
+    mov: String(src.mov || '').trim(),
+    yr: String(src.yr || '').trim(),
+    act: String(src.act || '').trim()
+  };
+}
+
+function formatMetaTooltip(m) {
+  if (!hasMetaFields(m)) return 'AI Song Metadata (Auto-fills when song is entered; click to view/edit)';
+  const parts = [];
+  if (m.mov || m.yr) parts.push(`${m.mov || ''}${m.mov && m.yr ? ' (' + m.yr + ')' : (m.yr || '')}`.trim());
+  if (m.orig) parts.push(`Singer: ${m.orig}`);
+  if (m.comp) parts.push(`Music: ${m.comp}`);
+  if (m.lyr) parts.push(`Lyrics: ${m.lyr}`);
+  if (m.act) parts.push(`Actor: ${m.act}`);
+  return 'AI Metadata Saved — ' + parts.join(' | ');
+}
+
+function updateRowAiButton(singerName, round, state) {
+  const sKey = round + '_' + singerName.replace(/[^a-zA-Z0-9]/g, '_');
+  const btn = document.getElementById('ai_btn_' + sKey);
+  if (!btn) return;
+  const p = LIVE.performances.find(x => x.singer === singerName && x.round === round);
+  btn.classList.remove('loading', 'filled');
+  if (state === 'loading') {
+    btn.classList.add('loading');
+    btn.textContent = 'AI…';
+    btn.title = 'AI is fetching song metadata automatically…';
+  } else if (p && hasMetaFields(p.meta)) {
+    btn.classList.add('filled');
+    btn.textContent = 'AI';
+    btn.title = formatMetaTooltip(p.meta);
+  } else {
+    btn.textContent = 'AI';
+    btn.title = 'AI Song Metadata (Auto-fills when song is entered; click to view/edit)';
+  }
+}
+
+function mergeAllSongMeta(baseMeta = {}) {
+  const merged = { ...(baseMeta || {}), ...(SONG_META_ARCHIVE || {}) };
+  (LIVE.performances || []).forEach(p => {
+    const key = String(p.song || '').trim().toUpperCase();
+    if (key && hasMetaFields(p.meta)) {
+      merged[key] = cleanMetaObj(p.meta);
+    }
+  });
+  return merged;
+}
+
+async function persistSongMetaEntry(songTitle, metaObj) {
+  const key = String(songTitle || '').trim().toUpperCase();
+  if (!key || !hasMetaFields(metaObj)) return;
+  const cleaned = cleanMetaObj(metaObj);
+  SONG_META_ARCHIVE[key] = cleaned;
+  if (PUB_CACHE) {
+    PUB_CACHE.songMeta = { ...(PUB_CACHE.songMeta || {}), [key]: cleaned };
+  }
+  try {
+    await setDoc(doc(fs, 'pub', 'data'), { songMeta: { [key]: cleaned } }, { merge: true });
+  } catch (err) {
+    console.warn('Archive songMeta sync warning:', err);
+  }
+}
+
+async function runAutoMetaAI(singerName, round) {
+  const sKey = round + '_' + singerName.replace(/[^a-zA-Z0-9]/g, '_');
+  const p = getOrCreatePerf(singerName, round);
+  const songTitle = String(p.song || '').trim().toUpperCase();
+  if (!songTitle || songTitle.length < 3) return;
+
+  // Instant fill from permanent archive if already known
+  if (hasMetaFields(SONG_META_ARCHIVE[songTitle])) {
+    p.meta = { ...SONG_META_ARCHIVE[songTitle] };
+    p._metaSong = songTitle;
+    saveLocal();
+    updateRowAiButton(singerName, round, 'filled');
+    return;
+  }
+
+  if (p._metaSong === songTitle && hasMetaFields(p.meta)) {
+    updateRowAiButton(singerName, round, 'filled');
+    return;
+  }
+  if (AUTO_META_INFLIGHT[sKey] === songTitle) return;
+  if (Date.now() < AI_COOLDOWN_UNTIL) {
+    const remSec = Math.ceil((AI_COOLDOWN_UNTIL - Date.now()) / 1000);
+    const btn = document.getElementById('ai_btn_' + sKey);
+    if (btn && !hasMetaFields(p.meta)) {
+      btn.title = `AI cooling down (~${remSec}s) — click AI anytime to edit or retry`;
+    }
+    return;
+  }
+
+  AUTO_META_INFLIGHT[sKey] = songTitle;
+  updateRowAiButton(singerName, round, 'loading');
+
+  try {
+    const resp = await fetch('/api/song-metadata', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ songTitle }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (resp.status === 429) {
+      const waitSec = Math.max(15, Number(data.retryAfterSec) || 45);
+      AI_COOLDOWN_UNTIL = Date.now() + waitSec * 1000;
+      throw new Error(data.error || `AI rate limit reached. Try again in ~${waitSec}s.`);
+    }
+    if (!resp.ok) throw new Error(data.error || `AI request failed (${resp.status})`);
+
+    // Ensure the user has not changed the song title while waiting
+    if (String(p.song || '').trim().toUpperCase() !== songTitle) return;
+
+    const aiMeta = cleanMetaObj(data.meta || {});
+    if (hasMetaFields(aiMeta)) {
+      p.meta = aiMeta;
+      p._metaSong = songTitle;
+      saveLocal();
+      persistSongMetaEntry(songTitle, aiMeta);
+      updateRowAiButton(singerName, round, 'filled');
+
+      if (OPEN_META_CTX && OPEN_META_CTX.singerName === singerName && OPEN_META_CTX.round === round) {
+        ['orig', 'comp', 'lyr', 'mov', 'yr', 'act'].forEach(k => {
+          const inp = $('#meta_' + k);
+          if (inp && !inp.value.trim() && aiMeta[k]) inp.value = aiMeta[k];
+        });
+        const statusEl = $('#meta_ai_status');
+        if (statusEl) {
+          statusEl.style.color = '#15803d';
+          statusEl.textContent = '✓ AI automatically filled and archived song metadata.';
+        }
+      }
+    } else {
+      p._metaSong = songTitle;
+      updateRowAiButton(singerName, round, 'idle');
+    }
+  } catch (err) {
+    console.warn('Auto AI metadata lookup warning:', err?.message || err);
+    updateRowAiButton(singerName, round, hasMetaFields(p.meta) ? 'filled' : 'idle');
+  } finally {
+    if (AUTO_META_INFLIGHT[sKey] === songTitle) {
+      delete AUTO_META_INFLIGHT[sKey];
+    }
+  }
+}
+
+function scheduleAutoMetaAI(singerName, round, immediate = false) {
+  const sKey = round + '_' + singerName.replace(/[^a-zA-Z0-9]/g, '_');
+  if (AUTO_META_TIMERS[sKey]) {
+    clearTimeout(AUTO_META_TIMERS[sKey]);
+    delete AUTO_META_TIMERS[sKey];
+  }
+  const p = getOrCreatePerf(singerName, round);
+  const songTitle = String(p.song || '').trim().toUpperCase();
+  if (!songTitle || songTitle.length < 3) return;
+
+  if (hasMetaFields(SONG_META_ARCHIVE[songTitle])) {
+    p.meta = { ...SONG_META_ARCHIVE[songTitle] };
+    p._metaSong = songTitle;
+    saveLocal();
+    updateRowAiButton(singerName, round, 'filled');
+    return;
+  }
+
+  if (immediate) {
+    runAutoMetaAI(singerName, round);
+  }
+}
+
 window.pickSongSuggestion = (singerName, round, title) => {
   const sIdSanitized = round + '_' + singerName.replace(/[^a-zA-Z0-9]/g, '_');
   const songInp = $('#sg_' + sIdSanitized);
   if (songInp) songInp.value = title;
   window.closeAllSongDropdowns();
   window.onSongInput(singerName, round, false);
+  scheduleAutoMetaAI(singerName, round, true);
+};
+
+window.onSongBlur = (singerName, round) => {
+  const p = getOrCreatePerf(singerName, round);
+  const songTitle = String(p.song || '').trim().toUpperCase();
+  if (songTitle && songTitle.length >= 3 && p._metaSong !== songTitle) {
+    scheduleAutoMetaAI(singerName, round, true);
+  }
 };
 
 // No Song ID locking: song titles can be freely edited or cleared anytime!
@@ -946,14 +1361,19 @@ window.onSongInput = (singerName, round, showDrop = true) => {
   const p = getOrCreatePerf(singerName, round);
 
   const song = (songInp.value || '').trim().toUpperCase();
-  const repEl = $('#rep_' + sIdSanitized);
   const idEl = $('#id_' + sIdSanitized);
 
   if(!song){
     p.song = '';
     p.songId = '';
     p.repeatCount = 0;
-    if(repEl) repEl.innerHTML = '';
+    p.meta = {};
+    p._metaSong = '';
+    if (AUTO_META_TIMERS[sIdSanitized]) {
+      clearTimeout(AUTO_META_TIMERS[sIdSanitized]);
+      delete AUTO_META_TIMERS[sIdSanitized];
+    }
+    updateRowAiButton(singerName, round, 'idle');
     if(idEl) idEl.innerHTML = '<span class="m">-</span>';
     if(fl) fl.style.display = 'none';
     saveLocal();
@@ -984,6 +1404,7 @@ window.onSongInput = (singerName, round, showDrop = true) => {
     }
   }
 
+  const prevSong = String(p.song || '').trim().toUpperCase();
   const rep = checkRepeat(song);
   p.song = song;
   p.repeatCount = rep;
@@ -991,9 +1412,18 @@ window.onSongInput = (singerName, round, showDrop = true) => {
     p.songId = getNextSongId();
   }
 
-  if(repEl){
-    repEl.innerHTML = rep > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${rep})</span>` : '';
+  if (prevSong !== song) {
+    if (hasMetaFields(SONG_META_ARCHIVE[song])) {
+      p.meta = { ...SONG_META_ARCHIVE[song] };
+      p._metaSong = song;
+      updateRowAiButton(singerName, round, 'filled');
+    } else if (p._metaSong && p._metaSong !== song) {
+      p.meta = {};
+      p._metaSong = '';
+      updateRowAiButton(singerName, round, 'idle');
+    }
   }
+
   if(idEl){
     idEl.innerHTML = `<b>${p.songId}</b>`;
   }
@@ -1002,14 +1432,113 @@ window.onSongInput = (singerName, round, showDrop = true) => {
   drawSOTDSection();
 };
 
+window.fetchSongMetaAI = async (singerName, round, overwriteAll = true) => {
+  const p = getOrCreatePerf(singerName, round);
+  const songTitle = (p.song || '').trim().toUpperCase();
+  const statusEl = $('#meta_ai_status');
+  const btnEl = $('#btn_meta_ai');
+
+  if (!songTitle) {
+    if (statusEl) {
+      statusEl.style.color = '#d97706';
+      statusEl.textContent = 'Enter a song title first so AI can look up its details.';
+    }
+    return;
+  }
+
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = 'AI Loading…';
+  }
+  if (statusEl) {
+    statusEl.style.color = 'var(--ac)';
+    statusEl.textContent = `Fetching metadata for "${songTitle}" with AI…`;
+  }
+  updateRowAiButton(singerName, round, 'loading');
+
+  try {
+    const resp = await fetch('/api/song-metadata', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ songTitle, force: overwriteAll }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (resp.status === 429) {
+      const waitSec = Math.max(15, Number(data.retryAfterSec) || 45);
+      AI_COOLDOWN_UNTIL = Date.now() + waitSec * 1000;
+      throw new Error(data.error || `AI rate limit reached. Try again in ~${waitSec}s.`);
+    }
+    if (!resp.ok) {
+      throw new Error(data.error || `AI request failed (${resp.status})`);
+    }
+    const aiMeta = cleanMetaObj(data.meta || {});
+    const fields = ['orig', 'comp', 'lyr', 'mov', 'yr', 'act'];
+    let filledCount = 0;
+    fields.forEach(k => {
+      const inp = $('#meta_' + k);
+      if (!inp) return;
+      const val = aiMeta[k];
+      if (val && (overwriteAll || !inp.value.trim())) {
+        inp.value = val;
+        filledCount++;
+      }
+    });
+    if (filledCount > 0) {
+      p.meta = cleanMetaObj({
+        orig: ($('#meta_orig')?.value || aiMeta.orig),
+        comp: ($('#meta_comp')?.value || aiMeta.comp),
+        lyr: ($('#meta_lyr')?.value || aiMeta.lyr),
+        mov: ($('#meta_mov')?.value || aiMeta.mov),
+        yr: ($('#meta_yr')?.value || aiMeta.yr),
+        act: ($('#meta_act')?.value || aiMeta.act),
+      });
+      p._metaSong = songTitle;
+      saveLocal();
+      persistSongMetaEntry(songTitle, p.meta);
+      updateRowAiButton(singerName, round, 'filled');
+    } else {
+      updateRowAiButton(singerName, round, hasMetaFields(p.meta) ? 'filled' : 'idle');
+    }
+    if (statusEl) {
+      statusEl.style.color = filledCount > 0 ? '#15803d' : '#d97706';
+      statusEl.textContent = filledCount > 0
+        ? `✓ AI filled & saved ${filledCount} field${filledCount === 1 ? '' : 's'} to archives.`
+        : 'AI could not find verified details for this title. You can enter them manually.';
+    }
+  } catch (err) {
+    updateRowAiButton(singerName, round, hasMetaFields(p.meta) ? 'filled' : 'idle');
+    if (statusEl) {
+      statusEl.style.color = '#dc2626';
+      statusEl.textContent = err?.message || 'Could not fetch AI metadata right now.';
+    }
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.textContent = '✨ Refresh AI';
+    }
+  }
+};
+
 window.openMeta = (singerName, round) => {
   const p = getOrCreatePerf(singerName, round);
   const songTitle = p.song ? p.song : 'New Song';
+  const sk = String(p.song || '').trim().toUpperCase();
+  if (sk && !hasMetaFields(p.meta) && hasMetaFields(SONG_META_ARCHIVE[sk])) {
+    p.meta = { ...SONG_META_ARCHIVE[sk] };
+    p._metaSong = sk;
+  }
   const meta = p.meta || {};
+  const safeSinger = e(singerName).replace(/'/g, "\\'");
+  const hasAnyMeta = hasMetaFields(meta);
+  OPEN_META_CTX = { singerName, round, song: sk };
 
   const m = $('#custom-modal');
   $('#custom-modal-body').innerHTML = `
-    <h3>Song Details: ${e(songTitle)}</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+      <h3 style="margin:0">Song Details: ${e(songTitle)}</h3>
+      <button id="btn_meta_ai" class="pri" style="padding:4px 9px;font-size:11.5px;white-space:nowrap" onclick="fetchSongMetaAI('${safeSinger}', ${round}, true)">✨ Refresh AI</button>
+    </div>
+    <div id="meta_ai_status" class="m" style="font-size:11.5px;min-height:16px;margin-bottom:4px">${hasAnyMeta ? '<span style="color:#15803d">✓ Metadata synced with Song Archives</span>' : ''}</div>
     <div class="meta-field-group">
       <label>Original Singer<input id="meta_orig" value="${e(meta.orig||'')}" placeholder="e.g. Kishore Kumar, Lata Mangeshkar"></label>
       <label>Music Composer<input id="meta_comp" value="${e(meta.comp||'')}" placeholder="e.g. R. D. Burman, Shankar Jaikishan"></label>
@@ -1019,28 +1548,39 @@ window.openMeta = (singerName, round) => {
       <label>Lead Actor / Star<input id="meta_act" value="${e(meta.act||'')}" placeholder="e.g. Raj Kapoor, Amitabh Bachchan"></label>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
-      <button onclick="closeModal()">Cancel</button>
-      <button class="pri" onclick="saveMeta('${e(singerName)}', ${round})">Save Details</button>
+      <button onclick="closeModal()">Close</button>
+      <button class="pri" onclick="saveMeta('${safeSinger}', ${round})">Save Details</button>
     </div>
   `;
   m.style.display = 'flex';
+
+  if (p.song && !hasAnyMeta) {
+    window.fetchSongMetaAI(singerName, round, false);
+  }
 };
 
-window.saveMeta = (singerName, round) => {
+window.saveMeta = async (singerName, round) => {
   const p = getOrCreatePerf(singerName, round);
-  p.meta = {
-    orig: ($('#meta_orig').value||'').trim(),
-    comp: ($('#meta_comp').value||'').trim(),
-    lyr: ($('#meta_lyr').value||'').trim(),
-    mov: ($('#meta_mov').value||'').trim(),
-    yr: ($('#meta_yr').value||'').trim(),
-    act: ($('#meta_act').value||'').trim()
-  };
+  p.meta = cleanMetaObj({
+    orig: $('#meta_orig').value,
+    comp: $('#meta_comp').value,
+    lyr: $('#meta_lyr').value,
+    mov: $('#meta_mov').value,
+    yr: $('#meta_yr').value,
+    act: $('#meta_act').value
+  });
+  const sk = String(p.song || '').trim().toUpperCase();
+  if (sk) {
+    p._metaSong = sk;
+    persistSongMetaEntry(sk, p.meta);
+  }
   saveLocal();
   closeModal();
+  updateRowAiButton(singerName, round, hasMetaFields(p.meta) ? 'filled' : 'idle');
 };
 
 window.toggleStar = (singerName, round, starIdx) => {
+  if (!IS_SUPER) return;
   const p = getOrCreatePerf(singerName, round);
   p.stars[starIdx] = !p.stars[starIdx];
   saveLocal();
@@ -1075,6 +1615,60 @@ function getTop4SOTDCandidates() {
   return ranked.slice(0, 4);
 }
 
+function getSotdExtra(singerName) {
+  if (!LIVE.sotdExtras || typeof LIVE.sotdExtras !== 'object') LIVE.sotdExtras = {};
+  if (!LIVE.sotdExtras[singerName]) LIVE.sotdExtras[singerName] = { opinion: 0, quiz: 0 };
+  return LIVE.sotdExtras[singerName];
+}
+
+function getSotdVoteWeight() {
+  const w = parseFloat(LIVE.sotdVoteWeight);
+  return (!isNaN(w) && w >= 0) ? w : 1;
+}
+
+function getSotdVotesFor(singerName) {
+  const rem = (SOTD_30S_VOTE && SOTD_30S_VOTE.remoteCounts && SOTD_30S_VOTE.remoteCounts[singerName]) || 0;
+  const loc = (SOTD_30S_VOTE && SOTD_30S_VOTE.localCounts && SOTD_30S_VOTE.localCounts[singerName]) || 0;
+  return rem + loc;
+}
+
+window.onSotdExtraInput = (singerName, field, rawVal) => {
+  if (!IS_SUPER) return;
+  const ex = getSotdExtra(singerName);
+  ex[field] = parseFloat(rawVal) || 0;
+  saveLocal();
+  const sKey = singerName.replace(/[^a-zA-Z0-9]/g, '_');
+  const totEl = document.getElementById('sotd_final_' + sKey);
+  if (totEl) {
+    const rec = getRankedSOTDCandidates().find(x => x.name === singerName);
+    if (rec) totEl.textContent = rec.finalScore + ' pts';
+  }
+};
+
+window.setSotdExtra = (singerName, field, rawVal) => {
+  if (!IS_SUPER) return;
+  const ex = getSotdExtra(singerName);
+  ex[field] = parseFloat(rawVal) || 0;
+  saveLocal();
+  drawSOTDSection();
+};
+
+window.bumpSotdQuiz = (singerName, delta) => {
+  if (!IS_SUPER) return;
+  const ex = getSotdExtra(singerName);
+  ex.quiz = Math.max(0, parseFloat(((parseFloat(ex.quiz) || 0) + delta).toFixed(2)));
+  saveLocal();
+  drawSOTDSection();
+};
+
+window.setSotdVoteWeight = (rawVal) => {
+  if (!IS_SUPER) return;
+  const w = parseFloat(rawVal);
+  LIVE.sotdVoteWeight = (!isNaN(w) && w >= 0) ? w : 1;
+  saveLocal();
+  drawSOTDSection();
+};
+
 window.startSOTD30sVote = async () => {
   const top4 = getTop4SOTDCandidates();
   if (!top4.length) {
@@ -1086,7 +1680,7 @@ window.startSOTD30sVote = async () => {
   top4.forEach(c => { initCounts[c.name] = 0; });
   SOTD_30S_VOTE = {
     active: true,
-    candidates: top4.map(c => ({ name: c.name, totalPts: c.totalPts, avgPts: c.avgPts })),
+    candidates: top4.map(c => ({ name: c.name, totalPts: c.starPts, avgPts: c.avgPts, finalScore: c.finalScore })),
     remaining: 30,
     endsAt: Date.now() + 30000,
     localCounts: { ...initCounts },
@@ -1104,7 +1698,14 @@ window.startSOTD30sVote = async () => {
       SOTD_30S_VOTE.remaining = 0;
       await pushLiveSessionNow();
     }
-    drawSOTDSection();
+    const card = document.getElementById('sotd_section_card');
+    const activeEl = document.activeElement;
+    if (SOTD_30S_VOTE.active && card && activeEl && card.contains(activeEl) && activeEl.tagName === 'INPUT') {
+      const badge = document.getElementById('sotd_timer_badge');
+      if (badge) badge.textContent = `⏳ ${SOTD_30S_VOTE.remaining}s left`;
+    } else {
+      drawSOTDSection();
+    }
   }, 1000);
 };
 
@@ -1129,6 +1730,17 @@ window.selectSuggestedSOTD = (name) => {
   if (mode) mode.value = 'score';
 };
 
+window.toggleSOTDWinner = (name, modeLabel = 'Score') => {
+  const idx = SOTD_LIST.findIndex(x => x.n === name);
+  if (idx >= 0) {
+    SOTD_LIST.splice(idx, 1);
+  } else {
+    SOTD_LIST.push({ n: name, h: modeLabel, reason: '' });
+  }
+  saveLocal();
+  drawSOTDSection();
+};
+
 window.addSOTD = () => {
   const selVal = $('#sotd_winner').value;
   const overrideInp = $('#sotd_override_singer') ? ($('#sotd_override_singer').value || '').trim().toUpperCase() : '';
@@ -1141,6 +1753,7 @@ window.addSOTD = () => {
   const modeLabel = mode === 'score' ? 'Score' : (mode === 'special' ? 'Special' : 'Quiz');
   SOTD_LIST.push({ n: winner, h: modeLabel, reason });
 
+  if ($('#sotd_winner')) $('#sotd_winner').value = '';
   if ($('#sotd_reason')) $('#sotd_reason').value = '';
   if ($('#sotd_override_singer')) $('#sotd_override_singer').value = '';
   saveLocal();
@@ -1155,35 +1768,112 @@ window.removeSOTD = (idx) => {
 
 function getRankedSOTDCandidates() {
   const pool = IS_SUPER ? LIVE.singers : LIVE.singers.filter(s => s.eligible);
+  const voteWeight = getSotdVoteWeight();
   return pool.map(s => {
     const perfs = LIVE.performances.filter(p => p.singer === s.name && p.song);
     const count = perfs.length;
-    const totalPts = perfs.reduce((sum, p) => sum + calcStarPoints(p.stars), 0);
-    const avg = count > 0 ? (totalPts / count) : 0;
+    const starPts = parseFloat(perfs.reduce((sum, p) => sum + calcStarPoints(p.stars), 0).toFixed(2));
+    const avg = count > 0 ? (starPts / count) : 0;
+    const ex = getSotdExtra(s.name);
+    const opinionPts = parseFloat(ex.opinion) || 0;
+    const quizPts = parseFloat(ex.quiz) || 0;
+    const votes = getSotdVotesFor(s.name);
+    const votePts = parseFloat((votes * voteWeight).toFixed(2));
+    const finalScore = parseFloat((starPts + opinionPts + quizPts + votePts).toFixed(2));
     return {
       name: s.name,
       eligible: s.eligible,
+      joinTime: s.joinTime || '',
       songsSung: count,
-      totalPts,
-      avgPts: parseFloat(avg.toFixed(1))
+      starPts,
+      totalPts: starPts,
+      avgPts: parseFloat(avg.toFixed(1)),
+      opinionPts,
+      quizPts,
+      votes,
+      votePts,
+      finalScore
     };
-  }).sort((a, b) => b.totalPts - a.totalPts || b.avgPts - a.avgPts || b.songsSung - a.songsSung);
+  }).sort((a, b) => b.finalScore - a.finalScore || b.starPts - a.starPts || b.votes - a.votes || b.avgPts - a.avgPts || b.songsSung - a.songsSung);
 }
 
 function renderSOTDHTML() {
   const ranked = getRankedSOTDCandidates();
   const top4 = ranked.slice(0, 4);
-  const voteCands = (SOTD_30S_VOTE && SOTD_30S_VOTE.candidates && SOTD_30S_VOTE.candidates.length) ? SOTD_30S_VOTE.candidates : top4;
+  const voteCands = (SOTD_30S_VOTE && SOTD_30S_VOTE.candidates && SOTD_30S_VOTE.candidates.length)
+    ? SOTD_30S_VOTE.candidates.map(vc => ranked.find(r => r.name === vc.name) || { ...vc, eligible: true, joinTime: '', starPts: vc.totalPts || 0, opinionPts: 0, quizPts: 0, votes: getSotdVotesFor(vc.name), votePts: getSotdVotesFor(vc.name) * getSotdVoteWeight(), finalScore: (vc.totalPts || 0) + getSotdVotesFor(vc.name) * getSotdVoteWeight() })
+    : top4;
+  const totalMeterVotes = voteCands.reduce((sum, c) => sum + getSotdVotesFor(c.name), 0);
+  const voteWeight = getSotdVoteWeight();
 
   return `
-    <b>Declare Singer(s) of the Day (SOTD) & 4-Candidate 30s Vote</b>
+    <b>Declare Singer(s) of the Day (SOTD) & Live Vote Meter</b>
+    <span class="m" style="font-size:11.5px;margin-left:6px">(Multiple SOTDs allowed)</span>
 
-    <div style="margin:6px 0 8px;padding:8px 10px;background:var(--bg);border:1px solid var(--bd);border-radius:8px">
+    ${IS_SUPER ? `
+      <div style="margin:6px 0 8px;padding:8px 10px;background:var(--ac-light);border:1px solid var(--ac);border-radius:8px">
+        <div class="row" style="justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:12px;font-weight:800;color:var(--ac)">🧮 Final SOTD Scoreboard (Superadmin Only)</span>
+          <label style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:var(--fg)">
+            Pts / Vote:
+            <input type="number" step="0.5" min="0" value="${voteWeight}" onchange="setSotdVoteWeight(this.value)" style="width:58px;padding:2px 5px;font-size:12px;text-align:center">
+          </label>
+        </div>
+        <div class="m" style="font-size:11.5px;margin-bottom:6px">
+          <b>Final SOTD</b> = <b>My Opinion</b> + <b>5-Star Marks</b> + <b>Quiz Answers</b> + <b>Other Participants Live Votes (Vote Meter)</b>
+        </div>
+        ${ranked.length ? `
+          <div class="tbl" style="margin-top:4px;background:var(--card)"><table>
+            <tr>
+              <th class="n">#</th>
+              <th>Singer</th>
+              <th class="n" title="5-Star Marks">Stars</th>
+              <th class="n" title="My Opinion">Opinion</th>
+              <th class="n" title="Quiz Answers">Quiz</th>
+              <th class="n" title="Live Vote Meter">Votes</th>
+              <th class="n" title="Final SOTD Score">Final</th>
+              <th class="n" title="Declare multiple SOTDs">SOTD</th>
+            </tr>
+            ${ranked.map((r, idx) => {
+              const sKey = r.name.replace(/[^a-zA-Z0-9]/g, '_');
+              const safeName = e(r.name).replace(/'/g, "\\'");
+              const pct = totalMeterVotes > 0 ? Math.round((r.votes / totalMeterVotes) * 100) : 0;
+              const isDeclared = SOTD_LIST.some(x => x.n === r.name);
+              const lateTip = !r.eligible ? `Late ${r.joinTime || ''}`.trim() : '';
+              return `<tr style="${isDeclared || (idx === 0 && r.finalScore > 0) ? 'background:rgba(22,163,74,0.09)' : ''}">
+                <td class="n"><b>${idx + 1}</b></td>
+                <td><b class="${!r.eligible ? 'singer-late' : ''}"${lateTip ? ` title="${e(lateTip)}"` : ''}>${e(r.name)}</b></td>
+                <td class="n"><b>${r.starPts}</b></td>
+                <td class="n">
+                  <input type="number" step="0.5" value="${r.opinionPts}" oninput="onSotdExtraInput('${safeName}', 'opinion', this.value)" onchange="setSotdExtra('${safeName}', 'opinion', this.value)" style="width:64px;padding:3px 5px;font-size:12px;text-align:center" title="Your Opinion marks">
+                </td>
+                <td class="n">
+                  <div style="display:inline-flex;align-items:center;gap:3px">
+                    <input type="number" step="0.5" min="0" value="${r.quizPts}" oninput="onSotdExtraInput('${safeName}', 'quiz', this.value)" onchange="setSotdExtra('${safeName}', 'quiz', this.value)" style="width:58px;padding:3px 5px;font-size:12px;text-align:center" title="Quiz Answers marks">
+                    <button style="padding:2px 6px;font-size:11px;font-weight:700" onclick="bumpSotdQuiz('${safeName}', 1)" title="Add +1 Quiz point">+1</button>
+                  </div>
+                </td>
+                <td class="n" style="min-width:110px">
+                  <div style="font-size:11.5px;font-weight:700;color:#0369a1">${r.votes} vote${r.votes === 1 ? '' : 's'} (${r.votePts} pts)</div>
+                  <div style="height:5px;background:var(--bd);border-radius:4px;overflow:hidden;margin-top:2px">
+                    <div style="height:100%;width:${pct}%;background:#0284c7"></div>
+                  </div>
+                </td>
+                <td class="n"><b id="sotd_final_${sKey}" style="color:#15803d;font-size:13px">${r.finalScore} pts</b></td>
+                <td class="n"><button class="${isDeclared ? 'on' : 'pri'}" style="padding:2px 7px;font-size:11px" onclick="toggleSOTDWinner('${safeName}', 'Score')" title="Click to add/remove as Singer of the Day (multiple allowed)">${isDeclared ? '✓ SOTD' : '+ SOTD'}</button></td>
+              </tr>`;
+            }).join('')}
+          </table></div>
+        ` : '<p class="m" style="margin:4px 0 0">Add singers to the queue to compute Final SOTD scores.</p>'}
+      </div>
+    ` : ''}
+
+    ${IS_SUPER ? `<div style="margin:6px 0 8px;padding:8px 10px;background:var(--bg);border:1px solid var(--bd);border-radius:8px">
       <div class="row" style="justify-content:space-between">
-        <span style="font-size:12px;font-weight:700;color:var(--ac)">⏱️ SOTD 30s Poll (Top 4 Suggested Candidates)</span>
+        <span style="font-size:12px;font-weight:700;color:var(--ac)">⏱️ 30s SOTD Live Vote Meter (Top 4 Candidates · ${totalMeterVotes} vote${totalMeterVotes === 1 ? '' : 's'})</span>
         ${SOTD_30S_VOTE.active ? `
           <div class="row">
-            <span class="badge-late" style="font-size:12px">⏳ ${SOTD_30S_VOTE.remaining}s left</span>
+            <span id="sotd_timer_badge" class="badge-late" style="font-size:12px">⏳ ${SOTD_30S_VOTE.remaining}s left</span>
             <button onclick="stopSOTD30sVote()" style="padding:2px 7px;font-size:11px">Stop Vote</button>
           </div>
         ` : `
@@ -1194,46 +1884,52 @@ function renderSOTDHTML() {
       ${voteCands.length ? `
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:6px;margin-top:8px">
           ${voteCands.map((c, i) => {
-            const remVotes = (SOTD_30S_VOTE.remoteCounts && SOTD_30S_VOTE.remoteCounts[c.name]) || 0;
-            const locVotes = (SOTD_30S_VOTE.localCounts && SOTD_30S_VOTE.localCounts[c.name]) || 0;
-            const totVotes = remVotes + locVotes;
-            return `<div style="padding:6px 8px;border:1px solid var(--bd);border-radius:8px;background:var(--card);display:flex;flex-direction:column;gap:4px">
+            const safeName = e(c.name).replace(/'/g, "\\'");
+            const totVotes = getSotdVotesFor(c.name);
+            const pct = totalMeterVotes > 0 ? Math.round((totVotes / totalMeterVotes) * 100) : 0;
+            const isDeclared = SOTD_LIST.some(x => x.n === c.name);
+            const lateTip = c.eligible === false ? `Late ${c.joinTime || ''}`.trim() : '';
+            return `<div style="padding:6px 8px;border:1px solid ${isDeclared ? '#16a34a' : 'var(--bd)'};border-radius:8px;background:var(--card);display:flex;flex-direction:column;gap:4px">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:4px">
-                <b style="font-size:12px">${i+1}. ${e(c.name)}</b>
-                <span class="badge-ok" style="font-size:11px">${totVotes} vote${totVotes===1?'':'s'}</span>
+                <b class="${c.eligible === false ? 'singer-late' : ''}"${lateTip ? ` title="${e(lateTip)}"` : ''} style="font-size:12px">${i+1}. ${e(c.name)}</b>
+                <span class="badge-ok" style="font-size:11px">${totVotes} vote${totVotes===1?'':'s'} (${pct}%)</span>
               </div>
-              <span class="m" style="font-size:11px">${c.totalPts} pts (Avg: ${c.avgPts})</span>
+              <div style="height:6px;background:var(--bd);border-radius:4px;overflow:hidden">
+                <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#0284c7,#16a34a);transition:width 0.25s"></div>
+              </div>
+              <span class="m" style="font-size:11px">Final: <b>${c.finalScore} pts</b> (★${c.starPts} + Op ${c.opinionPts} + Q ${c.quizPts} + V ${c.votePts})</span>
               <div class="row" style="gap:4px;margin-top:2px">
-                <button style="padding:2px 6px;font-size:11px" onclick="recordSOTD30sJudgePick('${e(c.name).replace(/'/g, "\\'")}')">+1 Vote</button>
-                <button class="pri" style="padding:2px 6px;font-size:11px" onclick="selectSuggestedSOTD('${e(c.name).replace(/'/g, "\\'")}')">Select SOTD</button>
+                <button style="padding:2px 6px;font-size:11px" onclick="recordSOTD30sJudgePick('${safeName}')">+1 Vote</button>
+                <button class="${isDeclared ? 'on' : 'pri'}" style="padding:2px 6px;font-size:11px" onclick="toggleSOTDWinner('${safeName}', 'Score')">${isDeclared ? '✓ SOTD' : '+ SOTD'}</button>
               </div>
             </div>`;
           }).join('')}
         </div>
       ` : '<p class="m" style="margin:6px 0 0">Add singers to the queue to generate Top 4 SOTD candidates.</p>'}
-    </div>
+    </div>` : ''}
 
     <div class="f">
       <select id="sotd_winner">
-        <option value="">Choose SOTD Singer (Top 4 Suggested First)…</option>
-        ${ranked.map((c, idx) => `<option value="${e(c.name)}">${idx < 4 ? '★ ' : ''}${e(c.name)}${!c.eligible ? ' [Late]' : ''}${c.totalPts > 0 ? ` — ${c.totalPts} pts (Avg: ${c.avgPts})` : ''}</option>`).join('')}
+        <option value="">Add Another SOTD Singer…</option>
+        ${ranked.map((c, idx) => `<option value="${e(c.name)}"${!c.eligible ? ` title="Late ${e(c.joinTime || '')}"` : ''}>${idx < 4 ? '★ ' : ''}${e(c.name)}${IS_SUPER && c.finalScore > 0 ? ` — Final: ${c.finalScore} pts (★${c.starPts} + Op ${c.opinionPts} + Q ${c.quizPts} + V ${c.votePts})` : ''}</option>`).join('')}
       </select>
       ${IS_SUPER ? `<input id="sotd_override_singer" list="dl_known" placeholder="Superadmin Rule Override (Any Singer)" style="text-transform:uppercase;border-color:#d97706">` : ''}
       <select id="sotd_mode">
-        <option value="score">By Star Points</option>
+        <option value="score">By Final SOTD Score</option>
         <option value="special">Special Appreciation</option>
         <option value="quiz">Musical Quiz Winner</option>
       </select>
       <input id="sotd_reason" placeholder="Reason / Note (Optional)">
-      <button class="pri" onclick="addSOTD()">Declare SOTD</button>
+      <button class="pri" onclick="addSOTD()">+ Add SOTD</button>
     </div>
 
     ${SOTD_LIST.length ? `
       <div style="margin-top:8px">
+        <div class="m" style="font-size:11.5px;font-weight:700;margin-bottom:4px">🏆 Declared Singer${SOTD_LIST.length > 1 ? 's' : ''} of the Day (${SOTD_LIST.length}):</div>
         ${SOTD_LIST.map((w, i) => `
           <div class="row" style="justify-content:space-between;padding:5px 8px;background:var(--ac-light);border-radius:8px;margin-bottom:4px">
             <span>🏆 <b>${e(w.n)}</b> <span class="badge-ok">${e(w.h)}</span> ${w.reason ? `<span class="m">(${e(w.reason)})</span>` : ''}</span>
-            <button style="padding:2px 8px;font-size:11px" onclick="removeSOTD(${i})">Remove</button>
+            <button style="padding:2px 8px;font-size:11px" onclick="removeSOTD(${i})" title="Remove">R</button>
           </div>
         `).join('')}
       </div>
@@ -1253,6 +1949,9 @@ function drawSOTDSection() {
     if (curOver && $('#sotd_override_singer')) $('#sotd_override_singer').value = curOver;
     if (curMode && $('#sotd_mode')) $('#sotd_mode').value = curMode;
     if (curReason && $('#sotd_reason')) $('#sotd_reason').value = curReason;
+  }
+  if (typeof renderLiveParticipantPreview === 'function' && PARTICIPANT_PREVIEW_OPEN) {
+    renderLiveParticipantPreview();
   }
 }
 
@@ -1514,7 +2213,7 @@ window.downloadOfficialSOTMPDF = () => {
 function renderSOTMPanelHTML() {
   syncSOTMFinalistsFromFourStars(false);
   const standings = getSOTMComputedStandings();
-  const judgeName = (SOTM_PANEL.judges && SOTM_PANEL.judges[0]) || 'SOHAN KUMAR';
+  const judgeName = (SOTM_PANEL.judges && SOTM_PANEL.judges.length) ? SOTM_PANEL.judges.join(' · ') : 'SOHAN KUMAR';
   const qualNames = standings.map(s => s.name);
 
   if (!sotmPanelExpanded) {
@@ -1579,15 +2278,15 @@ function renderSOTMPanelHTML() {
         <div class="tbl"><table>
           <tr>
             <th class="n">#</th>
-            <th>FINALIST</th>
-            <th class="n">SUR (10)</th>
-            <th class="n">TAAL (10)</th>
-            <th class="n">SEL (10)</th>
-            <th class="n">PERF (10)</th>
-            <th class="n">JUDGE TOTAL</th>
-            <th class="n">AUDIENCE</th>
-            <th class="n">GRAND TOTAL</th>
-            <th style="text-align:center">30S VOTE</th>
+            <th>Singer</th>
+            <th class="n" title="Sur (Out of 10)">Sur</th>
+            <th class="n" title="Taal (Out of 10)">Taal</th>
+            <th class="n" title="Selection (Out of 10)">Choice</th>
+            <th class="n" title="Performance (Out of 10)">Perf</th>
+            <th class="n" title="Judge Total">Judge</th>
+            <th class="n" title="Audience Votes">Votes</th>
+            <th class="n" title="Grand Total">Total</th>
+            <th style="text-align:center" title="30s Blind Vote">Vote</th>
           </tr>
           ${standings.map((s, idx) => `
             <tr style="${idx===0 && s.grandTotal>0 ? 'background:rgba(22,163,74,0.08)' : ''}">
@@ -1610,8 +2309,12 @@ function renderSOTMPanelHTML() {
 }
 
 function drawSOTMPanel() {
+  if (!IS_SUPER) return;
   const el = document.getElementById('sotm_always_on_panel');
   if (el) el.innerHTML = renderSOTMPanelHTML();
+  if (typeof renderLiveParticipantPreview === 'function' && PARTICIPANT_PREVIEW_OPEN) {
+    renderLiveParticipantPreview();
+  }
 }
 
 // ==============================================================================
@@ -1621,6 +2324,11 @@ async function buildAndSaveMasterBackup(songsSnapshot, pDataSnapshot, sotmSnapsh
   const now = new Date();
   const stamp = LIVE.date + '_' + String(now.getHours()).padStart(2,'0') + '-' + String(now.getMinutes()).padStart(2,'0');
   const fileName = `SFH_Master_Backup_${stamp}.json`;
+
+  const sMetaMerged = { ...((pDataSnapshot && pDataSnapshot.sessionMeta) || (PUB_CACHE && PUB_CACHE.sessionMeta) || {}) };
+  const liveTh = (LIVE.theme || '').trim();
+  const liveHo = (LIVE.host || '').trim().toUpperCase();
+  if (liveTh || liveHo) sMetaMerged[LIVE.date] = { theme: liveTh, host: liveHo };
 
   const masterObj = {
     kind: 'sfh-master-backup',
@@ -1633,6 +2341,8 @@ async function buildAndSaveMasterBackup(songsSnapshot, pDataSnapshot, sotmSnapsh
     som: (pDataSnapshot && pDataSnapshot.som) || {},
     somd: (pDataSnapshot && pDataSnapshot.somd) || {},
     stars: (pDataSnapshot && pDataSnapshot.stars) || {},
+    songMeta: mergeAllSongMeta((pDataSnapshot && pDataSnapshot.songMeta) || {}),
+    sessionMeta: sMetaMerged,
     holidays: CONF_CACHE.holidays || [],
     schedule: SCHEDULE,
     starScoring: STAR_SCORING,
@@ -1703,7 +2413,14 @@ window.downloadLivePDF = () => {
   docPdf.setTextColor(100, 116, 139);
   docPdf.text(`Sorted by Song ID  |  Total Songs: ${rows.length}  |  Exported: ${curTime()}`, 14, 36.5);
 
-  let startY = 41;
+  const thTxt = asc((LIVE.theme || '').trim() || '-');
+  const hoTxt = asc((LIVE.host || '').trim().toUpperCase() || '-');
+  docPdf.setFont('helvetica', 'bold');
+  docPdf.setFontSize(9);
+  docPdf.setTextColor(15, 52, 96);
+  docPdf.text(`Theme: ${thTxt}   |   Host: ${hoTxt}`, 14, 41.5);
+
+  let startY = 45.5;
   if (SOTD_LIST.length) {
     const sotdText = 'Singers of the Day (SOTD): ' + SOTD_LIST.map(x => `${asc(x.n)} (${asc(x.h)}${x.reason ? ' - ' + asc(x.reason) : ''})`).join('  |  ');
     const wrapped = docPdf.splitTextToSize(sotdText, 176);
@@ -1718,16 +2435,34 @@ window.downloadLivePDF = () => {
     startY += boxH + 4;
   }
 
-  const head = [['#', 'Song ID', 'Round', 'Singer Name', 'Song Title', `Points (/${getMaxStarPoints()})`, 'Repeat']];
-  const body = rows.map((p, i) => [
-    String(i + 1),
-    asc(p.songId || '-'),
-    `Round ${p.round}`,
-    asc(p.singer),
-    asc(p.song),
-    `${calcStarPoints(p.stars)} pts`,
-    p.repeatCount > 0 ? `(${p.repeatCount})` : '1st Time'
-  ]);
+  const head = IS_SUPER
+    ? [['#', 'Song ID', 'Round', 'Singer Name', 'Song Title', `Points (/${getMaxStarPoints()})`, 'Repeat']]
+    : [['#', 'Song ID', 'Round', 'Singer Name', 'Song Title', 'Repeat']];
+  const formatPdfSong = (p) => {
+    const m = (p.meta && hasMetaFields(p.meta)) ? p.meta : SONG_META_ARCHIVE[String(p.song || '').trim().toUpperCase()];
+    if (!m || !hasMetaFields(m)) return asc(p.song);
+    const sub = [m.mov ? `${m.mov}${m.yr ? ' (' + m.yr + ')' : ''}` : m.yr, m.orig].filter(Boolean).join(' - ');
+    return sub ? `${asc(p.song)}\n${asc(sub)}` : asc(p.song);
+  };
+  const body = rows.map((p, i) => IS_SUPER
+    ? [
+        String(i + 1),
+        asc(p.songId || '-'),
+        `Round ${p.round}`,
+        asc(p.singer),
+        formatPdfSong(p),
+        `${calcStarPoints(p.stars)} pts`,
+        p.repeatCount > 0 ? `(${p.repeatCount})` : '1st Time'
+      ]
+    : [
+        String(i + 1),
+        asc(p.songId || '-'),
+        `Round ${p.round}`,
+        asc(p.singer),
+        formatPdfSong(p),
+        p.repeatCount > 0 ? `(${p.repeatCount})` : '1st Time'
+      ]
+  );
 
   docPdf.autoTable({
     startY,
@@ -1737,14 +2472,22 @@ window.downloadLivePDF = () => {
     styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 2.3, textColor: [15, 23, 42], lineColor: [203, 213, 225], lineWidth: 0.15 },
     headStyles: { fillColor: [15, 52, 96], textColor: [255, 255, 255], fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [248, 250, 252] },
-    columnStyles: {
-      0: { halign: 'center', cellWidth: 10 },
-      1: { fontStyle: 'bold', cellWidth: 20 },
-      2: { halign: 'center', cellWidth: 18 },
-      3: { fontStyle: 'bold', cellWidth: 40 },
-      5: { halign: 'center', fontStyle: 'bold', cellWidth: 22 },
-      6: { halign: 'center', cellWidth: 18 }
-    },
+    columnStyles: IS_SUPER
+      ? {
+          0: { halign: 'center', cellWidth: 10 },
+          1: { fontStyle: 'bold', cellWidth: 20 },
+          2: { halign: 'center', cellWidth: 18 },
+          3: { fontStyle: 'bold', cellWidth: 40 },
+          5: { halign: 'center', fontStyle: 'bold', cellWidth: 22 },
+          6: { halign: 'center', cellWidth: 18 }
+        }
+      : {
+          0: { halign: 'center', cellWidth: 10 },
+          1: { fontStyle: 'bold', cellWidth: 20 },
+          2: { halign: 'center', cellWidth: 18 },
+          3: { fontStyle: 'bold', cellWidth: 44 },
+          5: { halign: 'center', cellWidth: 20 }
+        },
     didDrawPage: (data) => {
       const pageCount = docPdf.internal.getNumberOfPages();
       docPdf.setFontSize(8);
@@ -1779,15 +2522,29 @@ async function commitSessionDataToFirestore() {
 
   mSongs = mSongs.filter(r => r[1] !== LIVE.date);
   performed.forEach(p => {
-    mSongs.push([p.songId, LIVE.date, p.singer, p.song]);
+    mSongs.push([p.songId, LIVE.date, canonSinger(p.singer), p.song]);
   });
   mSongs.sort(cmpBySongId);
 
+  const mJson = JSON.stringify(mSongs);
+  const hashStr = t => { let h = 5381; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return String(h >>> 0); };
+  const mHash = hashStr(mJson);
   await setDoc(mDocRef, {
-    json: JSON.stringify(mSongs),
+    json: mJson,
     n: mSongs.length,
+    h: mHash,
     ts: LIVE.date
   });
+
+  // Ensure pub/idx includes this month so Home always loads newly published months
+  try {
+    const idxRef = doc(fs, 'pub', 'idx');
+    const idxSnap = await getDoc(idxRef);
+    const idxData = idxSnap.exists() ? idxSnap.data() : { months: {}, total: 0 };
+    const monthsMap = { ...(idxData.months || {}) };
+    monthsMap[mo] = { n: mSongs.length, h: mHash };
+    await setDoc(idxRef, { ...idxData, months: monthsMap, ts: LIVE.date });
+  } catch (_idxErr) {}
 
   const dataDocRef = doc(fs, 'pub', 'data');
   const dataDoc = await getDoc(dataDocRef);
@@ -1818,7 +2575,19 @@ async function commitSessionDataToFirestore() {
   pData.singers.sort();
   pData.sotd = sotdArr;
   pData.stars = starsObj;
+  pData.songMeta = mergeAllSongMeta(pData.songMeta || {});
+  const sMeta = { ...(pData.sessionMeta || {}) };
+  const themeVal = (LIVE.theme || '').trim();
+  const hostVal = (LIVE.host || '').trim().toUpperCase();
+  if (themeVal || hostVal) sMeta[LIVE.date] = { theme: themeVal, host: hostVal };
+  else delete sMeta[LIVE.date];
+  pData.sessionMeta = sMeta;
   pData.ts = LIVE.date;
+  SONG_META_ARCHIVE = { ...pData.songMeta };
+  if (PUB_CACHE) {
+    PUB_CACHE.songMeta = { ...pData.songMeta };
+    PUB_CACHE.sessionMeta = { ...sMeta };
+  }
 
   const fullSongs = ALL_SONGS.filter(r => r[1] !== LIVE.date);
   performed.forEach(p => fullSongs.push([p.songId, LIVE.date, p.singer, p.song]));
@@ -1850,7 +2619,7 @@ window.resetAndClearLiveBanner = () => {
     if (plansEntriesUnsub) { plansEntriesUnsub(); plansEntriesUnsub = null; }
 
     SESSION_CLEARED_AT = Date.now();
-    LIVE = { date: LIVE.date, singers: [], performances: [] };
+    LIVE = { date: LIVE.date, theme: '', host: '', singers: [], performances: [], sotdExtras: {}, sotdVoteWeight: 1 };
     SOTD_LIST = [];
     PRACTICE_COUNTER = 0;
     try { localStorage.removeItem('sfh_live_session_' + LIVE.date); } catch(x){}
@@ -1859,12 +2628,12 @@ window.resetAndClearLiveBanner = () => {
     await writeLivePayloadEverywhere({
       date: LIVE.date,
       active: false,
+      practice: false,
       singers: [],
       performances: [],
       sotdList: [],
       sotdVote: null,
       sotmVote: null,
-      sessionClearedAt: SESSION_CLEARED_AT,
       sessionClearedAt: SESSION_CLEARED_AT,
       endedAt: Date.now(),
       updatedAt: Date.now()
@@ -1904,12 +2673,12 @@ window.endSession = async () => {
     await writeLivePayloadEverywhere({
       date: LIVE.date,
       active: false,
+      practice: false,
       singers: [],
       performances: [],
       sotdList: [],
       sotdVote: null,
       sotmVote: null,
-      sessionClearedAt: SESSION_CLEARED_AT,
       sessionClearedAt: SESSION_CLEARED_AT,
       endedAt: Date.now(),
       updatedAt: Date.now()
@@ -1927,16 +2696,23 @@ window.endSession = async () => {
     const backupFileName = await buildAndSaveMasterBackup(fullSongs, pData, sotmSnapData);
 
     const finalists = Object.entries(pData.stars || {}).filter(([n, o]) => (o.t || 0) >= 4).map(([n]) => n);
+    const waTheme = (LIVE.theme || '').trim();
+    const waHost = (LIVE.host || '').trim().toUpperCase();
+    const waMetaLine = [
+      waTheme ? `🎭 *Theme:* ${waTheme}` : '',
+      waHost ? `🎙️ *Host:* ${waHost}` : ''
+    ].filter(Boolean).join('\n');
     const waText =
       `🎶 *SING FROM HOME — ${fd(LIVE.date)}* 🎶\n` +
-      `_A project of B. S. Tikariya Cultural Foundation ®_\n\n` +
+      `_A project of B. S. Tikariya Cultural Foundation ®_\n` +
+      (waMetaLine ? `${waMetaLine}\n\n` : '\n') +
       (SOTD_LIST.length ? `🏆 *Singer(s) of the Day:* ${SOTD_LIST.map(w => `*${w.n}*${w.h !== 'Score' ? ' ('+w.h+')' : ''}`).join(', ')}\n\n` : '') +
       `🎤 *Songs Performed (${performed.length}):*\n` +
       performed.map((p, i) => `${i+1}. *${p.singer}* — ${p.song} (${p.songId})`).join('\n') +
       (finalists.length ? `\n\n⭐ *4-Star SOTM Finalists:* ${finalists.join(', ')}` : '') +
       `\n\n_Conducted by Tikariya's School of Music_`;
 
-    LIVE = { date: LIVE.date, singers: [], performances: [] };
+    LIVE = { date: LIVE.date, theme: '', host: '', singers: [], performances: [], sotdExtras: {}, sotdVoteWeight: 1 };
     SOTD_LIST = [];
 
     const m = $('#custom-modal');
@@ -1954,20 +2730,264 @@ window.endSession = async () => {
   }, "End & Publish Session");
 };
 
+let PARTICIPANT_PREVIEW_OPEN = false;
+let PREVIEW_SINGER_LIVE = '';
+let PREVIEW_SOTD_PICK = '';
+let PREVIEW_SOTM_SCORES = {};
+
+window.setLivePreviewSinger = (val) => {
+  PREVIEW_SINGER_LIVE = (val || '').trim().toUpperCase();
+  renderLiveParticipantPreview();
+};
+
+window.previewCastSOTDVote = (singerName) => {
+  if (!SOTD_30S_VOTE || !SOTD_30S_VOTE.active) return;
+  if (PREVIEW_SINGER_LIVE && PREVIEW_SINGER_LIVE === String(singerName || '').trim().toUpperCase()) {
+    showNotice('Self-voting is disabled — switch the preview dropdown to another participant to cast a vote.');
+    return;
+  }
+  if (!SOTD_30S_VOTE.localCounts) SOTD_30S_VOTE.localCounts = {};
+  if (PREVIEW_SOTD_PICK && SOTD_30S_VOTE.localCounts[PREVIEW_SOTD_PICK] > 0) {
+    SOTD_30S_VOTE.localCounts[PREVIEW_SOTD_PICK]--;
+  }
+  PREVIEW_SOTD_PICK = singerName;
+  SOTD_30S_VOTE.localCounts[singerName] = (SOTD_30S_VOTE.localCounts[singerName] || 0) + 1;
+  drawSOTDSection();
+};
+
+window.previewCastSOTMBallot = async (targetSinger, score) => {
+  if (!SOTM_PANEL || !SOTM_PANEL.activeBlindVote) return;
+  const prev = PREVIEW_SOTM_SCORES[targetSinger];
+  const f = (SOTM_PANEL.finalists || []).find(x => x.name === targetSinger);
+  if (f) {
+    if (typeof prev === 'number') {
+      f.audience = Math.max(0, parseFloat(((parseFloat(f.audience) || 0) - prev + score).toFixed(1)));
+    } else {
+      f.audience = parseFloat(((parseFloat(f.audience) || 0) + score).toFixed(1));
+      SOTM_PANEL.votersCount = (SOTM_PANEL.votersCount || 0) + 1;
+    }
+  }
+  PREVIEW_SOTM_SCORES[targetSinger] = score;
+  drawSOTMPanel();
+};
+
+window.previewTestZoomJoin = () => {
+  const singer = PREVIEW_SINGER_LIVE || (KNOWN_SINGERS[0] || 'TEST SINGER');
+  if (!singer) return;
+  if (LIVE.singers.some(s => s.name === singer)) {
+    showNotice(`${singer} is already in today's singing queue.`);
+    return;
+  }
+  const now = new Date();
+  const joinTime = format12HourTime(now);
+  const eligible = isBeforeCutoff(now);
+  LIVE.singers.push({ name: singer, joinTime, eligible, viaZoomBtn: true });
+  getOrCreatePerf(singer, 1);
+  saveLocal();
+  draw();
+};
+
+window.renderLiveParticipantPreview = () => {
+  const body = $('#participant-preview-body');
+  if (!body || !PARTICIPANT_PREVIEW_OPEN) return;
+
+  const singerSet = new Set();
+  (LIVE.singers || []).forEach(s => { if (s && s.name) singerSet.add(s.name.toUpperCase()); });
+  (KNOWN_SINGERS || []).forEach(s => { if (s) singerSet.add(String(s).trim().toUpperCase()); });
+  const singerOpts = [...singerSet].sort();
+  if (!PREVIEW_SINGER_LIVE && singerOpts.length) {
+    PREVIEW_SINGER_LIVE = (LIVE.singers[0] && LIVE.singers[0].name) || singerOpts[0];
+  }
+
+  const sk = PREVIEW_SINGER_LIVE;
+  const starsObj = (PUB_CACHE && PUB_CACHE.stars && PUB_CACHE.stars[sk]) || null;
+  const starCount = starsObj ? (starsObj.t || 0) : 0;
+  const sotdDates = (starsObj && Array.isArray(starsObj.d)) ? starsObj.d : [];
+  const somMap = (PUB_CACHE && PUB_CACHE.som) || {};
+  const mySom = Object.entries(somMap).filter(([, nm]) => nm === sk).map(([m]) => m);
+
+  if (!SOTD_30S_VOTE || !SOTD_30S_VOTE.active) PREVIEW_SOTD_PICK = '';
+
+  let html = `
+    <div class="c" style="border:2px solid #d97706;background:#fffbeb;padding:8px 10px">
+      <div style="font-size:11px;font-weight:800;color:#b45309;margin-bottom:5px">PREVIEWING AS PARTICIPANT</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <select aria-label="Select participant" onchange="setLivePreviewSinger(this.value)" style="flex:1;font-size:12.5px;padding:5px 7px">
+          ${singerOpts.map(s => `<option value="${e(s)}" ${s === sk ? 'selected' : ''}>${e(s)}</option>`).join('')}
+        </select>
+        <button class="pri" style="font-size:11.5px;padding:5px 8px;white-space:nowrap" onclick="previewTestZoomJoin()" title="Simulate this participant tapping Start Zoom">+ Test Zoom</button>
+      </div>
+    </div>
+
+    <div class="c">
+      <b style="font-size:12.5px">Your position</b>
+      <div style="font-size:16px;font-weight:800;color:var(--ac);margin:2px 0">${e(sk || 'No singer selected')}</div>
+      <div style="font-size:12.5px;line-height:1.4">
+        Your stars: <b>${starCount}</b>${starCount >= 4 ? ' <span style="color:var(--ac);font-weight:700">– SOTM Eligible</span>' : ''}
+        ${sotdDates.length ? `<br><span class="m">SOTD: ${sotdDates.map(fd).join(', ')}</span>` : ''}
+        ${mySom.length ? `<br>SOTM: <b>${e(mySom.join(', '))}</b>` : ''}
+      </div>
+    </div>
+  `;
+
+  if (SOTD_30S_VOTE && SOTD_30S_VOTE.active) {
+    const cands = Array.isArray(SOTD_30S_VOTE.candidates) ? SOTD_30S_VOTE.candidates : [];
+    const secsLeft = Math.max(0, SOTD_30S_VOTE.remaining || 0);
+    html += `
+      <div class="c" style="border:2px solid #d97706;background:#fffbeb">
+        <div class="row" style="justify-content:space-between">
+          <b style="color:#b45309;font-size:12.5px">⏱️ LIVE 30s SOTD VOTE METER</b>
+          <span class="badge-round" style="background:#d97706;color:#fff">${secsLeft}s</span>
+        </div>
+        <p class="m" style="margin:4px 0 6px;font-size:11.5px">Vote for another singer (self-voting is disabled):</p>
+        <div style="display:grid;grid-template-columns:1fr;gap:5px">
+          ${cands.map((c, idx) => {
+            const isSelf = sk && c.name === sk;
+            return `
+            <button class="${PREVIEW_SOTD_PICK === c.name ? 'pri' : ''}" ${isSelf ? 'disabled style="opacity:0.55;cursor:not-allowed;justify-content:flex-start;padding:7px 9px;font-size:12px"' : 'style="justify-content:flex-start;padding:7px 9px;font-size:12px"'} onclick="previewCastSOTDVote('${e(c.name).replace(/'/g, "\\'")}')">
+              <span><b>${idx + 1}. ${e(c.name)}${isSelf ? ' (You)' : ''}</b></span>
+            </button>`;
+          }).join('')}
+        </div>
+        ${PREVIEW_SOTD_PICK ? `<p class="m" style="margin:6px 0 0;color:#15803d;font-weight:700;font-size:11.5px">✓ Test vote locked for <b>${e(PREVIEW_SOTD_PICK)}</b></p>` : ''}
+      </div>
+    `;
+  }
+
+  if (SOTM_PANEL && SOTM_PANEL.activeBlindVote) {
+    const mv = SOTM_PANEL.activeBlindVote;
+    const myScore = PREVIEW_SOTM_SCORES[mv.singer];
+    html += `
+      <div class="c" style="border:2px solid #7c3aed;background:#f5f3ff">
+        <div class="row" style="justify-content:space-between">
+          <b style="color:#6d28d9;font-size:12.5px">🏆 LIVE 30s SOTM VOTE — ${e(mv.singer)}</b>
+          <span class="badge-round" style="background:#7c3aed;color:#fff">${Math.max(0, mv.remaining || 0)}s</span>
+        </div>
+        <p class="m" style="margin:4px 0 6px;font-size:11.5px">Tap your blind score (5 to 10):</p>
+        <div class="row" style="gap:4px">
+          ${[5,6,7,8,9,10].map(pt => `<button class="${myScore === pt ? 'pri' : ''}" style="min-width:38px;font-weight:800" onclick="previewCastSOTMBallot('${e(mv.singer).replace(/'/g, "\\'")}',${pt})">${pt}</button>`).join('')}
+        </div>
+        ${typeof myScore === 'number' ? `<p class="m" style="margin:6px 0 0;color:#15803d;font-weight:700;font-size:11.5px">✓ Test blind score (${myScore}/10) recorded</p>` : ''}
+      </div>
+    `;
+  }
+
+  const isLiveNow = isWithinLiveSchedule();
+  html += `
+    <div class="c" style="border:2px solid var(--ac);background:var(--ac-light)">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${LIVE.singers.length ? (isLiveNow ? '#16a34a' : '#d97706') : '#94a3b8'};margin-right:5px"></span>
+          <b style="color:var(--ac);font-size:12.5px">${LIVE.singers.length ? (isLiveNow ? 'Live Session in Progress' : 'Practice Preview (Private)') : 'No Live Singers Queued Yet'}</b>
+        </div>
+        <span class="badge-round" style="background:var(--ac);color:#fff">Round ${currentRound}</span>
+      </div>
+      <div style="margin-top:6px;font-size:11.5px;display:flex;gap:12px;flex-wrap:wrap">
+        <span><span class="m">Theme:</span> <b>${e((LIVE.theme || '').trim() || '—')}</b></span>
+        <span><span class="m">Host:</span> <b>${e((LIVE.host || '').trim().toUpperCase() || '—')}</b></span>
+      </div>
+
+      ${SOTD_LIST && SOTD_LIST.length ? `
+        <div style="margin:8px 0;padding:7px;background:var(--card);border-radius:8px;border:1px solid var(--bd);text-align:center">
+          <span class="m" style="font-size:10.5px;text-transform:uppercase;font-weight:700">Declared Singer(s) of the Day</span>
+          <div style="font-size:14px;font-weight:800;color:var(--ac);margin-top:3px">${SOTD_LIST.map(w => `${e(w.n)} <span style="font-size:11px">(${e(w.h)})</span>`).join(' · ')}</div>
+        </div>
+      ` : ''}
+
+      ${LIVE.singers.length ? `
+        <div class="tbl" style="margin-top:8px;background:var(--card)"><table>
+          <tr>
+            <th class="n">#</th>
+            <th>Singer</th>
+            <th title="Song (Round ${currentRound})">Song</th>
+          </tr>
+          ${LIVE.singers.map((sg, idx) => {
+            const perf = (LIVE.performances || []).find(p => p.singer === sg.name && p.round === currentRound);
+            return `<tr class="${sg.name === sk ? 'me' : ''}">
+              <td class="n">${idx + 1}</td>
+              <td><b>${e(sg.name)}</b></td>
+              <td style="white-space:normal;min-width:110px">
+                ${perf && perf.song ? `<b>${e(perf.song)}</b>` : '<span class="m">Waiting...</span>'}
+              </td>
+            </tr>`;
+          }).join('')}
+        </table></div>
+      ` : '<p class="m" style="margin:8px 0 0;font-size:12px">Add a singer on the left (or tap + Test Zoom above) to see how participants view the live queue.</p>'}
+    </div>
+  `;
+
+  const mySessionPerfs = (LIVE.performances || []).filter(p => p.singer === sk && p.song);
+  html += `
+    <div class="c">
+      <b style="font-size:12.5px">Your songs in this session (${mySessionPerfs.length})</b>
+      ${mySessionPerfs.length ? `
+        <div class="tbl" style="margin-top:6px"><table>
+          <tr><th>Rd</th><th>ID</th><th>Song</th></tr>
+          ${mySessionPerfs.map(p => `<tr>
+            <td>R${p.round}</td>
+            <td><b>${e(p.songId || '-')}</b></td>
+            <td style="white-space:normal">${e(p.song)}</td>
+          </tr>`).join('')}
+        </table></div>
+      ` : `<p class="m" style="margin:4px 0 0;font-size:12px">No songs entered yet for ${e(sk || 'this singer')}.</p>`}
+    </div>
+  `;
+
+  body.innerHTML = html;
+};
+
+window.toggleLiveParticipantPreview = () => {
+  if (!IS_SUPER) return;
+  PARTICIPANT_PREVIEW_OPEN = !PARTICIPANT_PREVIEW_OPEN;
+  const pane = $('#participant-preview-pane');
+  if (pane) pane.classList.toggle('open', PARTICIPANT_PREVIEW_OPEN);
+  document.body.classList.toggle('split-preview', PARTICIPANT_PREVIEW_OPEN);
+  if (PARTICIPANT_PREVIEW_OPEN) {
+    renderLiveParticipantPreview();
+  }
+  const btn = $('#btn-live-pp');
+  if (btn) {
+    btn.className = PARTICIPANT_PREVIEW_OPEN ? 'warn' : '';
+    btn.textContent = PARTICIPANT_PREVIEW_OPEN ? '✕ Participant' : '👁 Participant';
+  }
+};
+
+window.setSessionThemeHost = (field, val) => {
+  if (field !== 'theme' && field !== 'host') return;
+  LIVE[field] = field === 'host' ? String(val || '').toUpperCase() : String(val || '');
+  saveLocal();
+  if (typeof renderLiveParticipantPreview === 'function' && PARTICIPANT_PREVIEW_OPEN) {
+    renderLiveParticipantPreview();
+  }
+};
+
 function draw(){
   const liveNow = isWithinLiveSchedule();
+  const adminWinNow = isWithinAdminLiveWindow();
+
+  if (!IS_SUPER && !adminWinNow) {
+    $('#hb').innerHTML = `<button onclick="location.href='index.html'">Home</button>`;
+    $('#app').innerHTML = `<div class="c" style="border-left:4px solid var(--ac);padding:16px">
+      <h2 style="margin-bottom:6px">Live Session Opens 5 Minutes Before Session</h2>
+      <p style="margin:6px 0">Scheduled Session Timing: <b>${e(formatScheduleText())}</b></p>
+      <p class="m" style="margin:4px 0 12px">Admin access to the Live Session opens automatically at <b>${e(formatAdminOpenTime())}</b> (5 minutes before session start). Off-schedule Practice Console is disabled for Admin accounts.</p>
+      <p style="margin:0"><button class="pri" onclick="location.href='index.html'">← Back to Home</button></p>
+    </div>`;
+    return;
+  }
 
   $('#hb').innerHTML = `
     <button onclick="downloadLivePDF()">PDF</button>
-    <button onclick="downloadBackupJSON()">Backup</button>
+    ${IS_SUPER ? `<button onclick="downloadBackupJSON()">Backup</button>` : ''}
     <button class="pri" onclick="manualPublishSession()">Publish</button>
     <button class="danger" onclick="endSession()">End</button>
+    ${IS_SUPER ? `<button id="btn-live-pp" class="${PARTICIPANT_PREVIEW_OPEN ? 'warn' : ''}" onclick="toggleLiveParticipantPreview()">${PARTICIPANT_PREVIEW_OPEN ? '✕ Participant' : '👁 Participant'}</button>` : ''}
     <button onclick="location.href='index.html'">Home</button>
   `;
 
   let h = '';
 
-  if (!liveNow) {
+  if (IS_SUPER && !liveNow && !adminWinNow) {
     h += `<div class="practice-banner">
       <div>
         <b>🕒 OFF-SCHEDULE PRACTICE MODE</b>
@@ -1975,15 +2995,30 @@ function draw(){
       </div>
       <button style="background:#fff;color:#0369a1;border:0;font-weight:800;white-space:nowrap" onclick="resetAndClearLiveBanner()">Reset & Clear Live</button>
     </div>`;
+  } else if (!liveNow && adminWinNow) {
+    h += `<div class="practice-banner" style="background:linear-gradient(135deg,#0f3460,#1e4a7a)">
+      <div>
+        <b>⏱️ PRE-SESSION SETUP WINDOW</b>
+        <div style="font-size:11.5px;opacity:0.95">Session starts shortly (${e(formatScheduleText())}). You can set Theme, Host & prepare the queue now.</div>
+      </div>
+    </div>`;
   }
 
   h += `<div class="c">
     <div class="row" style="justify-content:space-between">
       <div>
-        <h2>${liveNow ? 'Live Session' : 'Practice Console'} · ${fd(LIVE.date)}</h2>
+        <h2>${(liveNow || adminWinNow) ? 'Live Session' : 'Practice Console'} · ${fd(LIVE.date)}</h2>
         <span class="m" style="font-size:12px">Schedule: <b>${e(formatScheduleText())}</b> · Auto-queuing singers who press Start Zoom</span>
       </div>
       <span class="badge-round">Round ${currentRound}</span>
+    </div>
+    <div class="f" style="margin-top:8px">
+      <label style="flex:1;min-width:160px;font-size:11.5px;font-weight:700;color:var(--mut)">Theme
+        <input id="in_theme" value="${e(LIVE.theme || '')}" placeholder="Enter Session Theme (e.g. Golden Retro)" oninput="setSessionThemeHost('theme', this.value)" style="width:100%;margin-top:2px">
+      </label>
+      <label style="flex:1;min-width:160px;font-size:11.5px;font-weight:700;color:var(--mut)">Host
+        <input id="in_host" list="dl_known" value="${e(LIVE.host || '')}" placeholder="Enter Host Name" oninput="setSessionThemeHost('host', this.value)" style="width:100%;margin-top:2px;text-transform:uppercase">
+      </label>
     </div>
     <div class="f" style="margin-top:8px">
       <input id="in_singer" list="dl_known" placeholder="Enter Singer Name" style="text-transform:uppercase;flex:2">
@@ -1991,7 +3026,7 @@ function draw(){
       <datalist id="dl_known">
         ${KNOWN_SINGERS.map(s => `<option value="${e(s)}">`).join('')}
       </datalist>
-      <button class="pri" onclick="addSinger()">Add to Singing Queue</button>
+      <button class="pri" onclick="addSinger()">Add</button>
     </div>
   </div>`;
 
@@ -1999,58 +3034,60 @@ function draw(){
     <div class="row" style="justify-content:space-between;margin-bottom:6px">
       <b>Singing Order & Performance Sheet</b>
       <div class="row">
-        <button class="${currentRound===1?'on':''}" onclick="setRound(1)">Round 1</button>
-        <button class="${currentRound===2?'on':''}" onclick="setRound(2)">Round 2</button>
-        <button class="${currentRound===3?'on':''}" onclick="setRound(3)">Round 3</button>
+        <button class="${currentRound===1?'on':''}" onclick="setRound(1)" title="Round 1">1</button>
+        <button class="${currentRound===2?'on':''}" onclick="setRound(2)" title="Round 2">2</button>
+        <button class="${currentRound===3?'on':''}" onclick="setRound(3)" title="Round 3">3</button>
       </div>
     </div>
 
     ${LIVE.singers.length ? `
       <div class="tbl"><table>
         <tr>
+          <th class="col-src" title="Z = Zoom, M = Manual">Src</th>
           <th class="col-ord">#</th>
-          <th>Singer Name</th>
-          <th>Arrival</th>
-          <th>SOTD Status</th>
-          <th>Song Title (Round ${currentRound})</th>
-          <th>Song ID</th>
-          <th style="min-width:155px">5-Star Scoring (Max ${getMaxStarPoints()} pts)</th>
+          <th>Singer</th>
+          <th>Time</th>
+          <th class="n">Status</th>
+          <th title="Song Title (Round ${currentRound})">Song</th>
+          <th>ID</th>
+          ${IS_SUPER ? `<th style="min-width:155px" title="5-Star Scoring (Max ${getMaxStarPoints()} pts)">Stars</th>` : ''}
           <th style="text-align:center">Action</th>
         </tr>
         ${LIVE.singers.map((s, idx) => {
           const p = getOrCreatePerf(s.name, currentRound);
           const sKey = currentRound + '_' + s.name.replace(/[^a-zA-Z0-9]/g, '_');
+          const safeSinger = e(s.name).replace(/'/g, "\\'");
           const isEligible = s.eligible;
           const pts = calcStarPoints(p.stars);
+          const hasMeta = hasMetaFields(p.meta);
+          const isAiLoading = !!AUTO_META_INFLIGHT[sKey];
+          const lateTip = !isEligible ? `Late ${s.joinTime || ''}`.trim() : '';
 
           return `<tr>
+            <td class="col-src">${s.viaZoomBtn ? `<span class="badge-src-z" title="Auto-queued via Start Zoom">Z</span>` : `<span class="badge-src-m" title="Manually entered">M</span>`}</td>
             <td class="col-ord"><b>${idx + 1}</b></td>
-            <td>
-              <b>${e(s.name)}</b>
-              ${s.viaZoomBtn ? `<span class="badge-zoom" style="margin-left:4px" title="Auto-queued via Start Zoom button">Zoom</span>` : ''}
-            </td>
+            <td><b class="${!isEligible ? 'singer-late' : ''}"${lateTip ? ` title="${e(lateTip)}"` : ''}>${e(s.name)}</b></td>
             <td><input type="time" value="${to24HourInput(s.joinTime)}" onchange="updateSingerJoinTime(${idx}, this.value)" style="padding:3px 5px;font-size:12px;width:105px" title="Click to edit arrival time"></td>
-            <td>${isEligible ? '<span class="badge-ok">Eligible</span>' : `<span class="badge-late">Ineligible (&gt;${formatCutoffTime()})</span>`}</td>
+            <td class="n">${isEligible ? '<span class="badge-st-e" title="SOTD Eligible">E</span>' : `<span class="badge-st-i" title="Late ${e(s.joinTime || '')} (&gt;${formatCutoffTime()})">I</span>`}</td>
             <td>
               <div style="display:flex;align-items:center;white-space:nowrap">
                 <div class="song-ac-wrap">
-                  <input id="sg_${sKey}" autocomplete="off" value="${e(p.song || '')}" placeholder="Type song..." style="width:195px;text-transform:uppercase" oninput="onSongInput('${e(s.name)}', ${currentRound}, true)" onfocus="onSongInput('${e(s.name)}', ${currentRound}, true)" onkeydown="if(event.key==='Escape')closeAllSongDropdowns()">
+                  <input id="sg_${sKey}" autocomplete="off" value="${e(p.song || '')}" placeholder="Type song..." style="width:195px;text-transform:uppercase" oninput="onSongInput('${safeSinger}', ${currentRound}, true)" onfocus="onSongInput('${safeSinger}', ${currentRound}, true)" onblur="onSongBlur('${safeSinger}', ${currentRound})" onkeydown="if(event.key==='Escape')closeAllSongDropdowns();if(event.key==='Enter'){closeAllSongDropdowns();onSongBlur('${safeSinger}', ${currentRound});}">
                 </div>
-                <span id="rep_${sKey}">${p.repeatCount > 0 ? `<span style="color:#dc2626;font-weight:700;margin-left:6px">(${p.repeatCount})</span>` : ''}</span>
-                <button class="btn-meta" style="margin-left:6px" onclick="openMeta('${e(s.name)}', ${currentRound})" title="Metadata (Original singer, composer, lyricist, movie)">ℹ Details</button>
+                <button id="ai_btn_${sKey}" class="btn-meta ${isAiLoading ? 'loading' : (hasMeta ? 'filled' : '')}" style="margin-left:6px" onclick="openMeta('${safeSinger}', ${currentRound})" title="${e(formatMetaTooltip(p.meta))}">${isAiLoading ? 'AI…' : 'AI'}</button>
               </div>
             </td>
             <td id="id_${sKey}">
               ${p.song ? `<b>${p.songId}</b>` : '<span class="m">-</span>'}
             </td>
-            <td>
+            ${IS_SUPER ? `<td>
               <div class="score-box" title="★1: Ready (1pt) | ★2: <=30s (1pt) | ★3: Clean (1pt) [★1+2=4, ★2+3=4.5, ★1+3=5, ★1+2+3=6] | ★4: Good (1pt) | ★5: Better (2pts) [★4+5=5]">
-                ${[0,1,2,3,4].map(sIdx => `<span id="star_${sKey}_${sIdx}" class="score-star ${p.stars[sIdx]?'active':''}" onclick="toggleStar('${e(s.name)}', ${currentRound}, ${sIdx})">★</span>`).join('')}
+                ${[0,1,2,3,4].map(sIdx => `<span id="star_${sKey}_${sIdx}" class="score-star ${p.stars[sIdx]?'active':''}" onclick="toggleStar('${safeSinger}', ${currentRound}, ${sIdx})">★</span>`).join('')}
               </div>
               <span id="score_txt_${sKey}" class="m" style="font-size:11px;margin-left:4px">(${pts} pts)</span>
-            </td>
+            </td>` : ''}
             <td style="text-align:center">
-              <button onclick="removeSinger(${idx})">Remove</button>
+              <button onclick="removeSinger(${idx})" title="Remove singer from queue" style="padding:3px 9px;font-weight:700">R</button>
             </td>
           </tr>`;
         }).join('')}
@@ -2062,19 +3099,26 @@ function draw(){
 
   h += `<div class="c" id="sotd_section_card">${renderSOTDHTML()}</div>`;
 
-  // Always-On SOTM Judge Panel & 30s Blind Voting Card
-  h += `<div class="c" id="sotm_always_on_panel">${renderSOTMPanelHTML()}</div>`;
+  // Always-On SOTM Judge Panel & 30s Blind Voting Card (Superadmin Only)
+  if (IS_SUPER) {
+    h += `<div class="c" id="sotm_always_on_panel">${renderSOTMPanelHTML()}</div>`;
+  }
 
-  h += `<div class="c">
-    <b>5-Star Point & Bonus Logic Reference</b>
-    <div class="m" style="margin-top:4px;line-height:1.6">
-      • <b>★1 Ready on Turn:</b> ${STAR_SCORING.s1} pt &nbsp;|&nbsp; <b>★2 Start ≤ 30 sec:</b> ${STAR_SCORING.s2} pt &nbsp;|&nbsp; <b>★3 Cleanliness (No Noise):</b> ${STAR_SCORING.s3} pt<br>
-      • <b>Group A Combos:</b> <b>★1+★2 = ${STAR_SCORING.s1+STAR_SCORING.s2+STAR_SCORING.b12} pts</b> (+${STAR_SCORING.b12}) &nbsp;|&nbsp; <b>★2+★3 = ${STAR_SCORING.s2+STAR_SCORING.s3+STAR_SCORING.b23} pts</b> (+${STAR_SCORING.b23}) &nbsp;|&nbsp; <b>★1+★3 = ${STAR_SCORING.s1+STAR_SCORING.s3+STAR_SCORING.b13} pts</b> (+${STAR_SCORING.b13}) &nbsp;|&nbsp; <b>★1+★2+★3 = ${STAR_SCORING.s1+STAR_SCORING.s2+STAR_SCORING.s3+STAR_SCORING.b123} pts</b> (+${STAR_SCORING.b123})<br>
-      • <b>★4 Good Singing:</b> ${STAR_SCORING.s4} pt &nbsp;|&nbsp; <b>★5 Better Singing:</b> ${STAR_SCORING.s5} pts &nbsp;→&nbsp; <b>★4+★5 = ${STAR_SCORING.s4+STAR_SCORING.s5+STAR_SCORING.b45} pts</b> (+${STAR_SCORING.b45})<br>
-      • <b>Auto-Queue via Zoom Button:</b> Singers tapping <b>Start Zoom</b> in the app are automatically added to the queue with their exact entry timestamp.
-    </div>
-  </div>`;
+  if (IS_SUPER) {
+    h += `<div class="c">
+      <b>5-Star Point & Bonus Logic Reference (Superadmin Only)</b>
+      <div class="m" style="margin-top:4px;line-height:1.6">
+        • <b>★1 Ready on Turn:</b> ${STAR_SCORING.s1} pt &nbsp;|&nbsp; <b>★2 Start ≤ 30 sec:</b> ${STAR_SCORING.s2} pt &nbsp;|&nbsp; <b>★3 Cleanliness (No Noise):</b> ${STAR_SCORING.s3} pt<br>
+        • <b>Group A Combos:</b> <b>★1+★2 = ${STAR_SCORING.s1+STAR_SCORING.s2+STAR_SCORING.b12} pts</b> (+${STAR_SCORING.b12}) &nbsp;|&nbsp; <b>★2+★3 = ${STAR_SCORING.s2+STAR_SCORING.s3+STAR_SCORING.b23} pts</b> (+${STAR_SCORING.b23}) &nbsp;|&nbsp; <b>★1+★3 = ${STAR_SCORING.s1+STAR_SCORING.s3+STAR_SCORING.b13} pts</b> (+${STAR_SCORING.b13}) &nbsp;|&nbsp; <b>★1+★2+★3 = ${STAR_SCORING.s1+STAR_SCORING.s2+STAR_SCORING.s3+STAR_SCORING.b123} pts</b> (+${STAR_SCORING.b123})<br>
+        • <b>★4 Good Singing:</b> ${STAR_SCORING.s4} pt &nbsp;|&nbsp; <b>★5 Better Singing:</b> ${STAR_SCORING.s5} pts &nbsp;→&nbsp; <b>★4+★5 = ${STAR_SCORING.s4+STAR_SCORING.s5+STAR_SCORING.b45} pts</b> (+${STAR_SCORING.b45})<br>
+        • <b>Auto-Queue via Zoom Button:</b> Singers tapping <b>Start Zoom</b> in the app are automatically added to the queue with their exact entry timestamp.
+      </div>
+    </div>`;
+  }
 
   $('#app').innerHTML = h;
+  if (PARTICIPANT_PREVIEW_OPEN) {
+    renderLiveParticipantPreview();
+  }
 }
 </script></body></html>
