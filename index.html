@@ -1339,20 +1339,151 @@ function renderArchiveSongCell(title) {
   </div>`;
 }
 
+let STATIC_HOST_NO_API_IDX = false;
+
+function stripWikiHtmlIdx(html) {
+  return String(html || '')
+    .replace(/<sup[\s\S]*?<\/sup>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<(?:br|li|p|div)[^>]*>/gi, ', ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/&#\d+;/g, ' ').replace(/&quot;/g, '"')
+    .replace(/\b(?:Songs|Score)\s*:\s*/gi, '')
+    .replace(/\s*\([^)]*(?:soundtrack|film|song|composer|singer|actor|lyricist|lyrics|score|songs)[^)]*\)/gi, '')
+    .replace(/\s*,\s*(?:,\s*)+/g, ', ')
+    .replace(/\s*,\s*/g, ', ')
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s,•–-]+|[\s,•–-]+$/g, '');
+}
+
+function parseWikiInfoboxHtmlIdx(html) {
+  const boxM = String(html || '').match(/<table[^>]*class="[^"]*infobox[^"]*"[\s\S]*?<\/table>/i);
+  if (!boxM) return null;
+  const rows = {};
+  const headers = [];
+  const trRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  let m;
+  while ((m = trRe.exec(boxM[0])) !== null) {
+    const th = m[1].match(/<th[^>]*>([\s\S]*?)<\/th>/i);
+    const td = m[1].match(/<td[^>]*>([\s\S]*?)<\/td>/i);
+    if (th && td) {
+      const k = stripWikiHtmlIdx(th[1]).toLowerCase();
+      const v = stripWikiHtmlIdx(td[1]);
+      if (k && v) rows[k] = v;
+    } else if (th) {
+      headers.push(stripWikiHtmlIdx(th[1]));
+    }
+  }
+  rows._headers = headers.join(' | ');
+  return rows;
+}
+
+async function fetchWikiInfoboxIdx(pageTitle) {
+  try {
+    const url = 'https://en.wikipedia.org/w/api.php?action=parse&page=' + encodeURIComponent(pageTitle) + '&prop=text&section=0&redirects=1&format=json&origin=*';
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const j = await r.json();
+    const html = j && j.parse && j.parse.text && j.parse.text['*'];
+    return html ? parseWikiInfoboxHtmlIdx(html) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function fetchPublicSongMetaIdx(songTitle) {
+  const title = String(songTitle || '').trim();
+  const meta = { orig: '', comp: '', lyr: '', mov: '', yr: '', act: '' };
+  if (!title) return meta;
+  const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const titleNorm = norm(title);
+
+  const [itRes, wpRes] = await Promise.all([
+    fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(title) + '&entity=song&country=IN&limit=8').then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch('https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=' + encodeURIComponent(title + ' song') + '&srlimit=5&format=json&origin=*').then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
+
+  const hits = (wpRes?.query?.search || []).filter(h => !/\((?:tv series|television|serial)\)/i.test(h.title));
+  for (const hit of hits.slice(0, 3)) {
+    const box = await fetchWikiInfoboxIdx(hit.title);
+    if (!box) continue;
+    const hdr = box._headers || '';
+    const isSongBox = Boolean(
+      box['artist'] || box['composer(s)'] || box['composer'] || box['lyricist(s)'] || box['lyricist'] ||
+      box['songwriter(s)'] || box['album'] || /\b(?:song|single)\s+by\b/i.test(hdr)
+    );
+    if (!isSongBox) continue;
+    const byMatch = hdr.match(/\b(?:song|single)\s+by\s+([^|]+?)(?:\s+from\s+the\s+(?:album|film)\s+([^|]+))?(?:\||$)/i);
+    meta.orig = box['artist'] || box['singer(s)'] || box['singer'] || (byMatch && byMatch[1] ? byMatch[1].trim() : '') || meta.orig;
+    meta.comp = box['composer(s)'] || box['composer'] || box['music'] || meta.comp;
+    meta.lyr = box['lyricist(s)'] || box['lyricist'] || box['songwriter(s)'] || meta.lyr;
+    meta.mov = box['film'] || box['album'] || (byMatch && byMatch[2] ? byMatch[2].trim() : '') || meta.mov;
+    const yrM = String(box['released'] || box['recorded'] || '').match(/\b(19\d{2}|20\d{2})\b/);
+    if (yrM) meta.yr = yrM[1];
+    break;
+  }
+
+  const itAll = (itRes?.results || []).filter(x => !/\b(remix|drill|lofi|lo-fi|cover|karaoke|instrumental|mashup)\b/i.test((x.trackName || '') + ' ' + (x.collectionName || '')));
+  const bestIt = itAll.find(x => norm(x.trackName).includes(titleNorm) || titleNorm.includes(norm(x.trackName).slice(0, 8))) || itAll[0];
+  if (bestIt) {
+    if (!meta.orig && bestIt.artistName) meta.orig = String(bestIt.artistName).trim();
+    if (!meta.mov) {
+      const fromMatch = String(bestIt.trackName || '').match(/\(From\s+["'\u201c]([^"'\u201d]+)["'\u201d]\)/i);
+      const albClean = String(bestIt.collectionName || '').replace(/\s*\([^)]*(?:Soundtrack|Motion Picture|EP|Single)[^)]*\)/gi, '').trim();
+      meta.mov = (fromMatch && fromMatch[1]) ? fromMatch[1].trim() : albClean;
+    }
+    if (!meta.yr && bestIt.releaseDate) {
+      const y = String(bestIt.releaseDate).slice(0, 4);
+      if (/^(19|20)\d{2}$/.test(y)) meta.yr = y;
+    }
+  }
+
+  if (meta.mov && (!meta.act || !meta.comp || !meta.yr)) {
+    const mvSrch = await fetch('https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=' + encodeURIComponent(meta.mov + ' film ' + (meta.yr || '')) + '&srlimit=4&format=json&origin=*').then(r => r.ok ? r.json() : null).catch(() => null);
+    const mvHits = (mvSrch?.query?.search || []).filter(h => !/\((?:tv series|television|serial|soundtrack)\)/i.test(h.title));
+    for (const mh of mvHits.slice(0, 2)) {
+      const mbox = await fetchWikiInfoboxIdx(mh.title);
+      if (!mbox || (!mbox['directed by'] && !mbox['starring'])) continue;
+      if (!meta.act && mbox['starring']) {
+        meta.act = mbox['starring'].split(',').map(x => x.trim()).filter(Boolean).slice(0, 3).join(', ');
+      }
+      if (!meta.comp && mbox['music by']) meta.comp = mbox['music by'].split(',').map(x => x.trim()).filter(Boolean).slice(0, 3).join(', ');
+      if (!meta.yr && (mbox['release date'] || mbox['release dates'])) {
+        const my = String(mbox['release date'] || mbox['release dates']).match(/\b(19\d{2}|20\d{2})\b/);
+        if (my) meta.yr = my[1];
+      }
+      break;
+    }
+  }
+  return meta;
+}
+
 window.fetchArchiveMetaAI = async (songTitle) => {
   const statusEl = $('#arch_meta_status');
   const btnEl = $('#btn_arch_meta_ai');
   if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'AI Loading…'; }
-  if (statusEl) { statusEl.style.color = 'var(--ac)'; statusEl.textContent = `Fetching metadata for "${songTitle}" with AI…`; }
+  if (statusEl) { statusEl.style.color = 'var(--ac)'; statusEl.textContent = `Fetching metadata for "${songTitle}"…`; }
   try {
-    const resp = await fetch('/api/song-metadata', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ songTitle }),
-    });
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok) throw new Error(data.error || `AI request failed (${resp.status})`);
-    const aiMeta = data.meta || {};
+    let aiMeta = null;
+    if (!STATIC_HOST_NO_API_IDX) {
+      try {
+        const resp = await fetch('/api/song-metadata', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ songTitle }),
+        });
+        const ct = resp.headers.get('content-type') || '';
+        if (resp.status === 405 || resp.status === 404 || (!ct.includes('application/json') && !resp.ok)) {
+          STATIC_HOST_NO_API_IDX = true;
+        } else if (resp.ok) {
+          const data = await resp.json().catch(() => ({}));
+          if (data && data.meta) aiMeta = data.meta;
+        }
+      } catch (_) {}
+    }
+    if (!aiMeta) {
+      aiMeta = await fetchPublicSongMetaIdx(songTitle);
+    }
     let filled = 0;
     ['orig', 'comp', 'lyr', 'mov', 'yr', 'act'].forEach(k => {
       const inp = $('#arch_meta_' + k);
@@ -1360,10 +1491,10 @@ window.fetchArchiveMetaAI = async (songTitle) => {
     });
     if (statusEl) {
       statusEl.style.color = filled ? '#15803d' : '#d97706';
-      statusEl.textContent = filled ? `✓ AI filled ${filled} field${filled === 1 ? '' : 's'} — click Save to Archive.` : 'AI could not find verified details for this title.';
+      statusEl.textContent = filled ? `✓ Filled ${filled} field${filled === 1 ? '' : 's'} — click Save to Archive.` : 'Could not find verified details for this title. You can enter them manually.';
     }
   } catch (err) {
-    if (statusEl) { statusEl.style.color = '#dc2626'; statusEl.textContent = err?.message || 'AI lookup failed.'; }
+    if (statusEl) { statusEl.style.color = '#dc2626'; statusEl.textContent = err?.message || 'Metadata lookup failed.'; }
   } finally {
     if (btnEl) { btnEl.disabled = false; btnEl.textContent = '✨ AI Fill'; }
   }

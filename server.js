@@ -175,9 +175,24 @@ Return an empty string "" for any field you are not confident about. For yr, ret
   throw lastErr || new Error('Failed to fetch song metadata from AI.');
 }
 
-app.post('/api/song-metadata', async (req, res) => {
-  const rawTitle = typeof req.body?.songTitle === 'string' ? req.body.songTitle.trim() : '';
-  const forceRefresh = req.body?.force === true;
+app.use('/api', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
+
+async function handleSongMetadataRequest(req, res) {
+  const rawTitle =
+    typeof req.body?.songTitle === 'string'
+      ? req.body.songTitle.trim()
+      : typeof req.query?.songTitle === 'string'
+        ? req.query.songTitle.trim()
+        : '';
+  const forceRefresh = req.body?.force === true || req.query?.force === '1' || req.query?.force === 'true';
   if (!rawTitle) {
     return res.status(400).json({ error: 'Please enter a song title first.' });
   }
@@ -230,7 +245,10 @@ app.post('/api/song-metadata', async (req, res) => {
       error: err?.message || 'Failed to fetch song metadata from AI.',
     });
   }
-});
+}
+
+app.post('/api/song-metadata', handleSongMetadataRequest);
+app.get('/api/song-metadata', handleSongMetadataRequest);
 
 app.use(
   '/.well-known',
