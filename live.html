@@ -439,30 +439,42 @@ function resolveCanonicalSingerName(rawName) {
 
 let syncTimer = null;
 let SESSION_ENDED = false;
+
+async function writeLivePayloadEverywhere(rawPayload) {
+  const cleanPayload = JSON.parse(JSON.stringify(rawPayload));
+  await Promise.allSettled([
+    setDoc(doc(fs, 'live', 'session'), cleanPayload),
+    setDoc(doc(fs, 'config', 'app'), { liveSession: cleanPayload }, { merge: true })
+  ]);
+}
+
 async function pushLiveSessionNow() {
   if (SESSION_ENDED) return;
+  const hasActiveVote = Boolean((SOTD_30S_VOTE && SOTD_30S_VOTE.active) || (SOTM_PANEL && SOTM_PANEL.activeBlindVote));
+  const isActive = LIVE.singers.length > 0 || SOTD_LIST.length > 0 || hasActiveVote;
+  const payload = {
+    date: LIVE.date,
+    currentRound: currentRound,
+    singers: LIVE.singers,
+    performances: LIVE.performances,
+    sotdList: SOTD_LIST,
+    sotdVote: SOTD_30S_VOTE && SOTD_30S_VOTE.active ? {
+      active: true,
+      candidates: SOTD_30S_VOTE.candidates || [],
+      remaining: SOTD_30S_VOTE.remaining || 30,
+      endsAt: SOTD_30S_VOTE.endsAt || (Date.now() + 30000)
+    } : null,
+    sotmVote: SOTM_PANEL && SOTM_PANEL.activeBlindVote ? {
+      active: true,
+      singer: SOTM_PANEL.activeBlindVote.singer,
+      remaining: SOTM_PANEL.activeBlindVote.remaining || 30,
+      endsAt: SOTM_PANEL.activeBlindVote.endsAt || (Date.now() + 30000)
+    } : null,
+    updatedAt: Date.now(),
+    active: isActive
+  };
   try {
-    await setDoc(doc(fs, 'live', 'session'), {
-      date: LIVE.date,
-      currentRound: currentRound,
-      singers: LIVE.singers,
-      performances: LIVE.performances,
-      sotdList: SOTD_LIST,
-      sotdVote: SOTD_30S_VOTE && SOTD_30S_VOTE.active ? {
-        active: true,
-        candidates: SOTD_30S_VOTE.candidates || [],
-        remaining: SOTD_30S_VOTE.remaining || 30,
-        endsAt: SOTD_30S_VOTE.endsAt || (Date.now() + 30000)
-      } : null,
-      sotmVote: SOTM_PANEL && SOTM_PANEL.activeBlindVote ? {
-        active: true,
-        singer: SOTM_PANEL.activeBlindVote.singer,
-        remaining: SOTM_PANEL.activeBlindVote.remaining || 30,
-        endsAt: SOTM_PANEL.activeBlindVote.endsAt || (Date.now() + 30000)
-      } : null,
-      updatedAt: Date.now(),
-      active: true
-    });
+    await writeLivePayloadEverywhere(payload);
   } catch (err) {
     console.warn('Live cloud sync warning:', err);
   }
@@ -470,9 +482,8 @@ async function pushLiveSessionNow() {
 
 function syncToFirestore() {
   if (SESSION_ENDED) return;
-  if (!isWithinLiveSchedule() && LIVE.singers.length === 0 && !(SOTD_30S_VOTE && SOTD_30S_VOTE.active) && !(SOTM_PANEL && SOTM_PANEL.activeBlindVote)) return;
   clearTimeout(syncTimer);
-  syncTimer = setTimeout(() => { pushLiveSessionNow(); }, 100);
+  syncTimer = setTimeout(() => { pushLiveSessionNow(); }, 90);
 }
 
 function saveLocal(){
@@ -860,12 +871,13 @@ window.addSinger = () => {
 window.removeSinger = (idx) => {
   const s = LIVE.singers[idx];
   if (!s) return;
-  showConfirm('Remove ' + s.name + ' from today\'s singing order?', () => {
+  showConfirm('Remove ' + s.name + " from today's singing order?", async () => {
     const name = s.name;
     LIVE.singers.splice(idx, 1);
     LIVE.performances = LIVE.performances.filter(p => p.singer !== name);
-    saveLocal();
+    try { localStorage.setItem('sfh_live_session_'+LIVE.date, JSON.stringify({LIVE, currentRound, SOTD_LIST})); } catch(x){}
     draw();
+    await pushLiveSessionNow();
   });
 };
 
@@ -1809,12 +1821,47 @@ window.manualPublishSession = () => {
   }, "Publish Now");
 };
 
-window.endSession = async () => {
-  showConfirm("End & Publish today's live session?\n\n• Publishes all songs, stars & SOTDs\n• Downloads Master Backup JSON automatically\n• Closes Live Session & returns to Home", async () => {
+window.resetAndClearLiveBanner = () => {
+  showConfirm("Reset console & clear any active Live Session banner on Home?", async () => {
     SESSION_ENDED = true;
     clearTimeout(syncTimer);
     if (sotdTimerInterval) { clearInterval(sotdTimerInterval); sotdTimerInterval = null; }
     if (sotmBlindInterval) { clearInterval(sotmBlindInterval); sotmBlindInterval = null; }
+    if (zoomEntriesUnsub) { zoomEntriesUnsub(); zoomEntriesUnsub = null; }
+    if (plansEntriesUnsub) { plansEntriesUnsub(); plansEntriesUnsub = null; }
+
+    LIVE = { date: LIVE.date, singers: [], performances: [] };
+    SOTD_LIST = [];
+    PRACTICE_COUNTER = 0;
+    try { localStorage.removeItem('sfh_live_session_' + LIVE.date); } catch(x){}
+    try { sessionStorage.removeItem('sfh_practice_session'); } catch(x){}
+
+    await writeLivePayloadEverywhere({
+      date: LIVE.date,
+      active: false,
+      singers: [],
+      performances: [],
+      sotdList: [],
+      sotdVote: null,
+      sotmVote: null,
+      endedAt: Date.now(),
+      updatedAt: Date.now()
+    });
+
+    SESSION_ENDED = false;
+    draw();
+    showNotice("Live session cleared and Home banner closed.");
+  }, "Reset & Clear Live");
+};
+
+window.endSession = async () => {
+  showConfirm("End & Publish today's live session?\n\n• Publishes all songs, stars & SOTDs\n• Downloads Master Backup JSON automatically\n• Closes Live Session banner on Home & returns to Home", async () => {
+    SESSION_ENDED = true;
+    clearTimeout(syncTimer);
+    if (sotdTimerInterval) { clearInterval(sotdTimerInterval); sotdTimerInterval = null; }
+    if (sotmBlindInterval) { clearInterval(sotmBlindInterval); sotmBlindInterval = null; }
+    if (zoomEntriesUnsub) { zoomEntriesUnsub(); zoomEntriesUnsub = null; }
+    if (plansEntriesUnsub) { plansEntriesUnsub(); plansEntriesUnsub = null; }
 
     let performed = LIVE.performances.filter(p => p.song).slice().sort(cmpBySongId);
     let pData = PUB_CACHE || { singers: KNOWN_SINGERS, sotd: [], som: {}, somd: {}, stars: {} };
@@ -1831,21 +1878,17 @@ window.endSession = async () => {
       console.warn('Firestore publish warning during endSession:', pubErr);
     }
 
-    try {
-      await setDoc(doc(fs, 'live', 'session'), {
-        date: LIVE.date,
-        active: false,
-        singers: [],
-        performances: [],
-        sotdList: [],
-        sotdVote: null,
-        sotmVote: null,
-        endedAt: Date.now(),
-        updatedAt: Date.now()
-      });
-    } catch (sessErr) {
-      console.warn('Live session close warning:', sessErr);
-    }
+    await writeLivePayloadEverywhere({
+      date: LIVE.date,
+      active: false,
+      singers: [],
+      performances: [],
+      sotdList: [],
+      sotdVote: null,
+      sotmVote: null,
+      endedAt: Date.now(),
+      updatedAt: Date.now()
+    });
 
     try { localStorage.removeItem('sfh_live_session_' + LIVE.date); } catch(x){}
     try { sessionStorage.removeItem('sfh_practice_session'); } catch(x){}
@@ -1874,7 +1917,7 @@ window.endSession = async () => {
     const m = $('#custom-modal');
     $('#custom-modal-body').innerHTML = `
       <h3>✅ Session Ended & Backup Downloaded</h3>
-      <p class="m" style="margin:6px 0">Live session closed. JSON backup downloaded:<br><b>${e(backupFileName)}</b></p>
+      <p class="m" style="margin:6px 0">Live session closed on Home. JSON backup downloaded:<br><b>${e(backupFileName)}</b></p>
       <label style="display:block;font-size:12px;font-weight:700;margin-top:8px">WhatsApp Group Summary (Ready to Share):</label>
       <textarea id="wa_summary_box" rows="6" style="width:100%;margin-top:4px;font-size:12.5px">${e(waText)}</textarea>
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
@@ -1905,7 +1948,7 @@ function draw(){
         <b>🕒 OFF-SCHEDULE PRACTICE MODE</b>
         <div style="font-size:11.5px;opacity:0.95">Scheduled Live Window: <b>${e(formatScheduleText())}</b>. Practice entries stay isolated.</div>
       </div>
-      <button style="background:#fff;color:#0369a1;border:0;font-weight:800;white-space:nowrap" onclick="endSession()">Reset Practice</button>
+      <button style="background:#fff;color:#0369a1;border:0;font-weight:800;white-space:nowrap" onclick="resetAndClearLiveBanner()">Reset & Clear Live</button>
     </div>`;
   }
 

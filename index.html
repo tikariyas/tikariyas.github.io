@@ -197,7 +197,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,deleteDoc,query,where,collection,getDocs,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-const VER='2026-11-19 b38';
+const VER='2026-11-19 b39';
 const CFG = {
   firebase: {
     apiKey: "AIzaSyDe0qD1wnPQH5H9wewX59gj5D16aAYhIOU",
@@ -439,19 +439,36 @@ onAuthStateChanged(auth, async u => {
   IS_ADMIN = IS_SUPER || (P && P.status == 'approved' && P.role == 'admin');
   ADM = IS_ADMIN;
 
-  onSnapshot(doc(fs, 'live', 'session'), snap => {
-    if (snap.exists()) {
-      const data = snap.data();
-      if (data.active === true) {
-        LIVE_SESSION = data;
-      } else {
-        LIVE_SESSION = null;
-      }
-    } else {
+  let _lsFromLiveDoc = null;
+  let _lsFromCfgDoc = null;
+  const applyMergedLiveSession = () => {
+    const candidates = [_lsFromLiveDoc, _lsFromCfgDoc].filter(Boolean);
+    if (!candidates.length) {
       LIVE_SESSION = null;
+    } else {
+      candidates.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      const latest = candidates[0];
+      const isFresh = (Date.now() - (latest.updatedAt || 0)) < (8 * 3600 * 1000);
+      LIVE_SESSION = (latest.active === true && isFresh) ? latest : null;
     }
     if (tab === 'home') draw();
-  });
+  };
+
+  onSnapshot(doc(fs, 'live', 'session'), snap => {
+    _lsFromLiveDoc = snap.exists() ? snap.data() : null;
+    applyMergedLiveSession();
+  }, () => {});
+
+  onSnapshot(doc(fs, 'config', 'app'), snap => {
+    if (snap.exists()) {
+      const cfgData = snap.data();
+      CONF = cfgData;
+      _lsFromCfgDoc = cfgData.liveSession || null;
+    } else {
+      _lsFromCfgDoc = null;
+    }
+    applyMergedLiveSession();
+  }, () => {});
 
   draw();
   setTimeout(runCards, 400);
@@ -2411,5 +2428,5 @@ window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.on
     }, label);
   }catch(z){showNotice(z=='size'?'One month of songs is too large for a single document.':(z&&z.code?'Restore/Publish failed ('+z.code+'). Check Firebase rules.':'That is not a valid SFH backup or participants file.'))}};r.readAsText(f)};
 
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=38').then(r=>r.update()).catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=39').then(r=>r.update()).catch(()=>{});}
 </script></body></html>
