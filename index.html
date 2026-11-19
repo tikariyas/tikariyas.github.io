@@ -925,7 +925,7 @@ function renderPreviewBar(){
 }
 
 function draw(){
-  $('#hb').innerHTML=U?`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">${IS_SUPER&&!IS_EMBED_PREVIEW?`<button class="${PREVIEW_PARTICIPANT?'warn':''}" style="padding:4px 8px;font-size:12px;white-space:nowrap" onclick="toggleParticipantPreview()">${PREVIEW_PARTICIPANT?'← Super Admin':'👁 Participant View'}</button>`:''}<a href="#" onclick="out();return false" style="color:var(--ac);font-size:14px;text-decoration:underline;cursor:pointer;white-space:nowrap">Sign out</a></div>`:'';
+  $('#hb').innerHTML=U?`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end"><a href="#" onclick="out();return false" style="color:var(--ac);font-size:14px;text-decoration:underline;cursor:pointer;white-space:nowrap">Sign out</a></div>`:'';
   if(showAbout){$('#app').innerHTML=vAbout(true);return}
   if(!U){$('#app').innerHTML=vLogin();return}
   if(loadErr){$('#app').innerHTML='<div class="c"><b>Could not load data</b><p class="m">'+e(loadErr)+'</p><p class="m">Check your internet and try again.</p><p><button class="pri" onclick="refresh()">↻ Try again</button></p></div>';return}
@@ -970,7 +970,8 @@ const tabs = () => {
       ['rules', 'Rules'],
       ['about', 'About'],
       ['adm', 'Admin'],
-      ['live', 'Live Session']
+      ['live', 'Live Session'],
+      ...(!IS_EMBED_PREVIEW ? [['preview', 'Participant View']] : [])
     ];
   } else if (effAdmin()) {
     list = [
@@ -992,7 +993,7 @@ const tabs = () => {
     ];
   }
 
-  return `<nav>${list.map(([k, t]) => `<button class="${tab == k ? 'on' : ''}" onclick="go('${k}')">${t}</button>`).join('')}${CONF.zoom ? `<button class="zm" onclick="joinZoom()">Start Zoom</button>` : ''}</nav>`;
+  return `<nav>${list.map(([k, t]) => k == 'preview' ? `<button onclick="toggleParticipantPreview()">${t}</button>` : `<button class="${tab == k ? 'on' : ''}" onclick="go('${k}')">${t}</button>`).join('')}${CONF.zoom ? `<button class="zm" onclick="joinZoom()">Start Zoom</button>` : ''}</nav>`;
 };
 
 const nmL = l => (l||[]).map(x => '<b>' + e(canonSinger(x.n || x)) + '</b>' + (x.h === 'Special' ? ' (special)' : x.h === 'Quiz' ? ' (quiz)' : '')).join(', ');
