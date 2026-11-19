@@ -132,6 +132,26 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 .f{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin:8px 0}
 .f label,label.m{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--mut)}
 .m{color:var(--mut);font-size:13px}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.jdg-item{border:1px solid var(--bd);border-radius:9px;padding:7px 7px 8px;margin-bottom:7px;background:var(--bg)}
+.jdg-head{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px;line-height:1.25}
+.jdg-name{font-size:14px;font-weight:800;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jdg-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) minmax(42px,0.72fr);gap:4px;align-items:stretch}
+.jdg-col{display:flex;flex-direction:column;align-items:center;min-width:0}
+.jdg-lbl{font-size:10px;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:0.2px;margin-bottom:2px;line-height:1.1}
+.jdg-step{display:flex;align-items:center;width:100%;height:30px;border:1px solid var(--bd);border-radius:7px;overflow:hidden;background:var(--card);box-sizing:border-box}
+.jdg-btn{width:19px;min-width:19px;height:100%;padding:0;border:0;border-radius:0;background:var(--ac-light);color:var(--ac);font-size:14px;font-weight:800;line-height:1;box-shadow:none !important;touch-action:manipulation;flex:none}
+.jdg-btn:hover{transform:none;background:var(--ac);color:#fff}
+.jdg-btn:active{transform:none;opacity:0.85}
+.jdg-btn-m{border-right:1px solid var(--bd)}
+.jdg-btn-p{border-left:1px solid var(--bd)}
+.jdg-inp{width:100%;min-width:0;height:100%;padding:0 1px;border:0 !important;border-radius:0;background:transparent;text-align:center;font-size:12.5px;font-weight:700;color:var(--fg);box-shadow:none !important;-moz-appearance:textfield}
+.jdg-inp::-webkit-outer-spin-button,.jdg-inp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.jdg-tot-box{width:100%;height:30px;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--ac);border-radius:7px;background:var(--ac-light);font-size:13px;font-weight:900;color:var(--ac);box-sizing:border-box}
+@media (max-width:360px){
+  .jdg-btn{width:17px;min-width:17px;font-size:13px}
+  .jdg-inp{font-size:12px}
+  .jdg-grid{gap:3px}
+}
 .ph{
   width:90px;height:90px;border:2px solid var(--bd);border-radius:12px;overflow:hidden;
   display:flex;align-items:center;justify-content:center;background:var(--bg);flex:none;box-shadow:0 2px 6px rgba(0,0,0,0.05);
@@ -3975,43 +3995,53 @@ window.syncJudgeFinalistsFromStars = async () => {
   }
 };
 
+function renderJudgeScorecardList(finalists, panelFinalists, savedScores, isSuper) {
+  const fields = [
+    ['sur', 'Sur'],
+    ['taal', 'Taal'],
+    ['sel', 'Choice'],
+    ['perf', 'Perf']
+  ];
+  return finalists.map((nm, idx) => {
+    const panelRec = panelFinalists.find(f => canonSinger(f.name) === nm);
+    const cur = isSuper
+      ? (panelRec ? { sur: panelRec.sur, taal: panelRec.taal, sel: panelRec.sel, perf: panelRec.perf } : { sur: 0, taal: 0, sel: 0, perf: 0 })
+      : (savedScores[nm] || { sur: '', taal: '', sel: '', perf: '' });
+    const tot = parseFloat(((Number(cur.sur)||0)+(Number(cur.taal)||0)+(Number(cur.sel)||0)+(Number(cur.perf)||0)).toFixed(1));
+    const aud = panelRec ? (Number(panelRec.audience) || 0) : 0;
+    const grand = parseFloat((tot + aud).toFixed(1));
+    return `<div class="jdg-item">
+      <div class="jdg-head">
+        <div class="jdg-name"><span style="color:var(--mut);font-weight:700;margin-right:4px">${idx + 1}.</span>${e(nm)}</div>
+        ${isSuper ? `<div style="font-size:11.5px;white-space:nowrap;flex:none"><span style="color:#0369a1;font-weight:700">Votes: ${aud}</span> · <span style="color:#15803d;font-weight:900">Grand: <span id="jdg_grand_${idx}">${grand}</span></span></div>` : ''}
+      </div>
+      <div class="jdg-grid">
+        ${fields.map(([fk, lbl]) => {
+          const v = cur[fk] !== '' && cur[fk] != null ? cur[fk] : '';
+          return `<div class="jdg-col">
+            <span class="jdg-lbl">${lbl}</span>
+            <div class="jdg-step">
+              <button type="button" class="jdg-btn jdg-btn-m" aria-label="Decrease ${lbl}" onclick="stepJudgeScore('${fk}',${idx},-0.5,${aud})">−</button>
+              <input id="jdg_${fk}_${idx}" class="jdg-inp" type="number" inputmode="decimal" step="0.5" min="0" max="10" value="${e(v)}" oninput="recalcJudgeRow(${idx},${aud})">
+              <button type="button" class="jdg-btn jdg-btn-p" aria-label="Increase ${lbl}" onclick="stepJudgeScore('${fk}',${idx},0.5,${aud})">+</button>
+            </div>
+          </div>`;
+        }).join('')}
+        <div class="jdg-col">
+          <span class="jdg-lbl">Total</span>
+          <div class="jdg-tot-box" id="jdg_tot_${idx}">${tot}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function vJudge() {
   const vp = curP();
-  const viewerName = canonSinger(vp.singer || vp.name || (U && U.displayName) || 'JUDGE');
+  const viewerName = canonSinger(vp.singer || vp.name || (U && U.displayName) || '');
   const finalists = getSOTMJudgeFinalists();
   const panelFinalists = (SOTM_PANEL_CACHE && Array.isArray(SOTM_PANEL_CACHE.finalists)) ? SOTM_PANEL_CACHE.finalists : [];
   const savedScores = (PLAN && PLAN.sotmJudgeScores) || {};
-  const monthLabel = (SOTM_PANEL_CACHE && SOTM_PANEL_CACHE.monthLabel) || fm(nowM()).toUpperCase();
-
-  if (isExternalJudgeOnly()) {
-    return `<div class="c">
-      ${finalists.length ? `<div class="tbl"><table>
-        <tr>
-          <th class="n">#</th>
-          <th>Singer</th>
-          <th class="n">Sur</th>
-          <th class="n">Taal</th>
-          <th class="n">Choice</th>
-          <th class="n">Perf</th>
-          <th class="n">Total</th>
-        </tr>
-        ${finalists.map((nm, idx) => {
-          const cur = savedScores[nm] || { sur: '', taal: '', sel: '', perf: '' };
-          const tot = parseFloat(((Number(cur.sur)||0)+(Number(cur.taal)||0)+(Number(cur.sel)||0)+(Number(cur.perf)||0)).toFixed(1));
-          return `<tr>
-            <td class="n">${idx + 1}</td>
-            <td><b>${e(nm)}</b></td>
-            <td class="n"><input id="jdg_sur_${idx}" type="number" step="0.5" min="0" max="10" value="${cur.sur !== '' && cur.sur != null ? e(cur.sur) : ''}" oninput="recalcJudgeRow(${idx},0)" style="width:56px;padding:4px 6px;text-align:center"></td>
-            <td class="n"><input id="jdg_taal_${idx}" type="number" step="0.5" min="0" max="10" value="${cur.taal !== '' && cur.taal != null ? e(cur.taal) : ''}" oninput="recalcJudgeRow(${idx},0)" style="width:56px;padding:4px 6px;text-align:center"></td>
-            <td class="n"><input id="jdg_sel_${idx}" type="number" step="0.5" min="0" max="10" value="${cur.sel !== '' && cur.sel != null ? e(cur.sel) : ''}" oninput="recalcJudgeRow(${idx},0)" style="width:56px;padding:4px 6px;text-align:center"></td>
-            <td class="n"><input id="jdg_perf_${idx}" type="number" step="0.5" min="0" max="10" value="${cur.perf !== '' && cur.perf != null ? e(cur.perf) : ''}" oninput="recalcJudgeRow(${idx},0)" style="width:56px;padding:4px 6px;text-align:center"></td>
-            <td class="n"><b id="jdg_tot_${idx}" style="color:var(--ac)">${tot}</b></td>
-          </tr>`;
-        }).join('')}
-      </table></div>
-      <p style="margin:12px 0 0"><button class="pri" onclick="submitJudgeScores()">Submit</button></p>` : '<p class="m">No finalists are ready for judging yet.</p>'}
-    </div>`;
-  }
 
   const appointedJudges = [...new Set([
     ...((CONF && Array.isArray(CONF.sotmJudges)) ? CONF.sotmJudges : []),
@@ -4019,58 +4049,42 @@ function vJudge() {
     ...((SOTM_PANEL_CACHE && Array.isArray(SOTM_PANEL_CACHE.judges)) ? SOTM_PANEL_CACHE.judges : [])
   ].map(canonSinger).filter(Boolean))];
 
+  const honoraryJudgeName = isExternalJudgeOnly()
+    ? (viewerName || appointedJudges[0] || 'JUDGE')
+    : (appointedJudges.length ? appointedJudges.join(' · ') : (viewerName || 'Not appointed yet'));
+
+  const taglineCard = `<div class="c" style="border-left:4px solid var(--ac);background:var(--ac-light);text-align:center;padding:10px 12px">
+    <blockquote style="margin:0;font-style:italic;font-weight:700;font-size:13.5px;line-height:1.45;color:var(--fg)">
+      “It’s more important that you sing on the mic than how good or bad you sing… Everyone has right to sing… We just encourage and appreciate them.”
+    </blockquote>
+    <div style="margin-top:4px;font-size:11.5px;font-weight:800;color:var(--ac);letter-spacing:0.3px">— By Tikariyas</div>
+  </div>`;
+
+  const judgeNameCard = `<div class="c" style="border-left:4px solid #d97706;text-align:center;padding:9px 12px">
+    <div style="font-size:14.5px;font-weight:600;color:var(--fg);line-height:1.35">Our today's honorary Judge is <b style="color:var(--ac)">${e(honoraryJudgeName)}</b></div>
+    ${effSuper() ? `<div class="row" style="justify-content:center;gap:6px;margin-top:8px">
+      <button style="padding:4px 9px;font-size:12px" onclick="openApprovedJudges()">Appoint Judge</button>
+      <button style="padding:4px 9px;font-size:12px" onclick="syncJudgeFinalistsFromStars()">↻ Sync 4★</button>
+      <button class="pri" style="padding:4px 9px;font-size:12px" onclick="go('live')">Live Console</button>
+    </div>` : ''}
+  </div>`;
+
+  if (isExternalJudgeOnly()) {
+    return `${taglineCard}${judgeNameCard}
+    <div class="c" style="padding:9px 8px">
+      ${finalists.length ? `${renderJudgeScorecardList(finalists, panelFinalists, savedScores, false)}
+      <p style="margin:10px 0 0"><button class="pri" style="width:100%;padding:11px;font-size:15px" onclick="submitJudgeScores()">Submit</button></p>` : '<p class="m" style="text-align:center">No finalists are ready for judging yet.</p>'}
+    </div>`;
+  }
+
   const submittedJudgeDocs = effSuper()
     ? (PL || []).filter(p => p && p.sotmJudgeScores && typeof p.sotmJudgeScores === 'object' && Object.keys(p.sotmJudgeScores).length > 0)
     : [];
 
-  return `<div class="c" style="border-left:4px solid #d97706">
-    <div class="row" style="justify-content:space-between;align-items:flex-start">
-      <div>
-        <b style="font-size:15px">SOTM Judges Panel — ${e(monthLabel)}</b>
-        <p class="m" style="margin:3px 0 0">Appointed Judge${appointedJudges.length > 1 ? 's' : ''}: <b>${appointedJudges.length ? appointedJudges.map(e).join(' · ') : 'Not appointed yet'}</b></p>
-      </div>
-      ${effSuper() ? `<div class="row" style="gap:6px">
-        <button style="padding:4px 9px;font-size:12px" onclick="openApprovedJudges()">Appoint Judge</button>
-        <button style="padding:4px 9px;font-size:12px" onclick="syncJudgeFinalistsFromStars()">↻ Sync 4★</button>
-        <button class="pri" style="padding:4px 9px;font-size:12px" onclick="go('live')">Live Console</button>
-      </div>` : ''}
-    </div>
-  </div>
-  <div class="c">
-    <b>Judge Scorecard (Out of 10 each · Max 40)</b>
-    <p class="m" style="margin:2px 0 8px">${effSuper() ? 'Enter or review Judge marks for each SOTM finalist. Saving updates the Live SOTM Panel immediately.' : `Scoring as Appointed Judge: ${e(viewerName)}. Enter marks for each finalist and tap Submit.`}</p>
-    ${finalists.length ? `<div class="tbl"><table>
-      <tr>
-        <th class="n">#</th>
-        <th>Singer</th>
-        <th class="n">Sur</th>
-        <th class="n">Taal</th>
-        <th class="n">Choice</th>
-        <th class="n">Perf</th>
-        <th class="n">Total</th>
-        ${effSuper() ? '<th class="n">Votes</th><th class="n">Grand</th>' : ''}
-      </tr>
-      ${finalists.map((nm, idx) => {
-        const panelRec = panelFinalists.find(f => canonSinger(f.name) === nm);
-        const cur = effSuper()
-          ? (panelRec ? { sur: panelRec.sur, taal: panelRec.taal, sel: panelRec.sel, perf: panelRec.perf } : { sur: 0, taal: 0, sel: 0, perf: 0 })
-          : (savedScores[nm] || { sur: '', taal: '', sel: '', perf: '' });
-        const tot = parseFloat(((Number(cur.sur)||0)+(Number(cur.taal)||0)+(Number(cur.sel)||0)+(Number(cur.perf)||0)).toFixed(1));
-        const aud = panelRec ? (Number(panelRec.audience) || 0) : 0;
-        const grand = parseFloat((tot + aud).toFixed(1));
-        return `<tr>
-          <td class="n">${idx + 1}</td>
-          <td><b>${e(nm)}</b></td>
-          <td class="n"><input id="jdg_sur_${idx}" type="number" step="0.5" min="0" max="10" value="${cur.sur !== '' && cur.sur != null ? e(cur.sur) : ''}" oninput="recalcJudgeRow(${idx},${aud})" style="width:56px;padding:4px 6px;text-align:center"></td>
-          <td class="n"><input id="jdg_taal_${idx}" type="number" step="0.5" min="0" max="10" value="${cur.taal !== '' && cur.taal != null ? e(cur.taal) : ''}" oninput="recalcJudgeRow(${idx},${aud})" style="width:56px;padding:4px 6px;text-align:center"></td>
-          <td class="n"><input id="jdg_sel_${idx}" type="number" step="0.5" min="0" max="10" value="${cur.sel !== '' && cur.sel != null ? e(cur.sel) : ''}" oninput="recalcJudgeRow(${idx},${aud})" style="width:56px;padding:4px 6px;text-align:center"></td>
-          <td class="n"><input id="jdg_perf_${idx}" type="number" step="0.5" min="0" max="10" value="${cur.perf !== '' && cur.perf != null ? e(cur.perf) : ''}" oninput="recalcJudgeRow(${idx},${aud})" style="width:56px;padding:4px 6px;text-align:center"></td>
-          <td class="n"><b id="jdg_tot_${idx}" style="color:var(--ac)">${tot}</b></td>
-          ${effSuper() ? `<td class="n" style="color:#0369a1;font-weight:700">${aud}</td><td class="n" id="jdg_grand_${idx}" style="color:#15803d;font-weight:900">${grand}</td>` : ''}
-        </tr>`;
-      }).join('')}
-    </table></div>
-    <p style="margin-top:12px"><button class="pri" onclick="submitJudgeScores()">${effSuper() ? 'Save Judge Scores to Panel' : 'Submit Judge Scores'}</button></p>` : '<p class="m">No SOTM finalists are currently listed. Tap <b>↻ Sync 4★</b> above to load current 4-Star qualifiers.</p>'}
+  return `${taglineCard}${judgeNameCard}
+  <div class="c" style="padding:9px 8px">
+    ${finalists.length ? `${renderJudgeScorecardList(finalists, panelFinalists, savedScores, effSuper())}
+    <p style="margin:10px 0 0"><button class="pri" style="width:100%;padding:10px;font-size:14.5px" onclick="submitJudgeScores()">${effSuper() ? 'Save Judge Scores to Panel' : 'Submit'}</button></p>` : '<p class="m">No SOTM finalists are currently listed. Tap <b>↻ Sync 4★</b> above to load current 4-Star qualifiers.</p>'}
   </div>
   ${effSuper() ? `<div class="c">
     <b>Submitted Judge Ballots (${submittedJudgeDocs.length})</b>
@@ -4086,12 +4100,25 @@ function vJudge() {
           }).join('')}
         </table></div>
       </div>`;
-    }).join('') : '<p class="m" style="margin:4px 0 0">No remote Judge scorecards submitted today yet. Appointed judges see the <b>Judge</b> tab in their window once logged in.</p>'}
+    }).join('') : '<p class="m" style="margin:4px 0 0">No remote Judge scorecards submitted today yet.</p>'}
   </div>` : ''}`;
 }
 
+window.stepJudgeScore = (field, idx, delta, aud = 0) => {
+  const el = $('#jdg_' + field + '_' + idx);
+  if (!el) return;
+  const raw = parseFloat(el.value);
+  const cur = isNaN(raw) ? 0 : raw;
+  const next = Math.max(0, Math.min(10, Math.round((cur + delta) * 2) / 2));
+  el.value = String(next);
+  window.recalcJudgeRow(idx, aud);
+};
+
 window.recalcJudgeRow = (idx, aud = 0) => {
-  const g = id => parseFloat(($('#' + id) && $('#' + id).value) || '0') || 0;
+  const g = id => {
+    const n = parseFloat(($('#' + id) && $('#' + id).value) || '0');
+    return isNaN(n) ? 0 : Math.max(0, Math.min(10, n));
+  };
   const tot = parseFloat((g('jdg_sur_' + idx) + g('jdg_taal_' + idx) + g('jdg_sel_' + idx) + g('jdg_perf_' + idx)).toFixed(1));
   const el = $('#jdg_tot_' + idx);
   if (el) el.textContent = String(tot);
