@@ -239,6 +239,34 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 }
 #custom-modal .box h3{margin:0 0 10px;font-size:17px;color:var(--ac)}
 
+.cert-flash-card{
+  border:1.5px solid var(--ac);
+  border-left:5px solid var(--ac);
+  background:var(--card);
+  color:var(--fg);
+  box-shadow:var(--shadow);
+}
+.cert-theme-btn{
+  background:var(--btn-pri-bg);
+  color:#ffffff;border:1px solid transparent;font-weight:700;
+  box-shadow:0 3px 10px -2px rgba(15,52,96,0.32);
+}
+.cert-theme-btn:hover{box-shadow:0 5px 14px -2px rgba(15,52,96,0.42)}
+#cert-modal{
+  position:fixed;inset:0;z-index:95;background:rgba(15,23,42,0.72);backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;padding:12px;overflow-y:auto;
+}
+#cert-modal .cert-box{
+  background:var(--card);color:var(--fg);max-width:840px;width:100%;border-radius:14px;
+  padding:16px;border:1.5px solid var(--bd);box-shadow:0 20px 50px rgba(15,23,42,0.35);
+  max-height:94vh;overflow-y:auto;
+}
+.cert-canvas-wrap{
+  width:100%;border-radius:8px;overflow:hidden;border:1px solid var(--bd);
+  background:#ffffff;box-shadow:0 4px 16px rgba(15,23,42,0.12);margin:10px 0;
+}
+.cert-canvas-wrap canvas{display:block;width:100%;height:auto}
+
 </style></head><body>
 <header>
   <div>
@@ -252,6 +280,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 
 <div id="custom-modal">
   <div class="box" id="custom-modal-body"></div>
+</div>
+<div id="cert-modal" onclick="if(event.target===this)closeCertModal()">
+  <div class="cert-box" id="cert-modal-body"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -614,6 +645,8 @@ const curP = () => {
 let songListTab = 'today';
 let songArchivesExpanded = false;
 let approvedListExpanded = false;
+let approvedSearch = '';
+let revokedListExpanded = false;
 let residualListExpanded = false;
 let residualSearch = '';
 let selectedSingerFilter = '';
@@ -1152,6 +1185,9 @@ function draw(){
     tab=='about'?vAbout(false):
     effAdm()?vAdm():vHome()
   );
+  if (tab === 'home' && PUB && !effAdm()) {
+    maybeAutoFlashWinnerCert();
+  }
 }
 const idOf=em=>(em||'').endsWith('@singfromhome-phone.app')?em.split('@')[0]:(em||'');
 const vLogin=()=>`<div class="c" style="border-left:4px solid var(--ac);background:var(--ac-light);text-align:center;padding:12px 14px">
@@ -1316,7 +1352,7 @@ function getSOTMData() {
     return {
       monthLabel: SOTM_RESULT.monthLabel || 'NOVEMBER 2026',
       winner: SOTM_RESULT.winner || (mappedRows[0] && mappedRows[0].name) || 'SANTOSH BHAROTE',
-      judge: 'SOHAN KUMAR',
+      judge: SOTM_RESULT.judge || 'Not Appointed',
       declaredDate: SOTM_RESULT.declaredDate || '16/11/2026',
       votersCount: SOTM_RESULT.votersCount || SOTM_RESULT.totalVoters || 13,
       rows: mappedRows
@@ -1326,7 +1362,7 @@ function getSOTMData() {
   return {
     monthLabel: 'NOVEMBER 2026',
     winner: 'SANTOSH BHAROTE',
-    judge: 'SOHAN KUMAR',
+    judge: 'Not Appointed',
     declaredDate: '16/11/2026',
     votersCount: 13,
     rows: [
@@ -1431,60 +1467,23 @@ window.downloadSOTMPDF = () => {
 
 function renderSOTMBannerHTML() {
   const s = getSOTMData();
-
-  if (effSuper()) {
-    return `
-      <div class="c sotm-card">
-        <div class="sotm-title">OFFICIAL SINGER OF THE MONTH (SOTM) RESULT - ${e(s.monthLabel)}</div>
-        <p style="margin:3px 0 6px;font-size:13px;line-height:1.4">
-          Winner: <b>${e(s.winner)}</b> (G-Clef Memento Award) | Judge: <b>${e(s.judge)}</b>
-        </p>
-        <p style="margin:4px 0 8px">
-          <button class="pri" onclick="downloadSOTMPDF()">Download Full Official Result (PDF)</button>
-        </p>
-        ${s.rows && s.rows.length ? `
-          <div class="tbl" style="background:var(--card)"><table>
-            <tr>
-              <th class="n">#</th>
-              <th>Singer</th>
-              <th class="n" title="Sur (10)">Sur</th>
-              <th class="n" title="Taal (10)">Taal</th>
-              <th class="n" title="Selections (10)">Choice</th>
-              <th class="n" title="Performance (10)">Perf</th>
-              <th class="n" title="Judge Total">Judge</th>
-              <th class="n" title="Vote Meter">Votes</th>
-              <th class="n" title="Final Score">Total</th>
-              <th>Remarks</th>
-            </tr>
-            ${s.rows.map(r => `
-              <tr style="${r.rank === 1 ? 'background:rgba(22,163,74,0.08)' : ''}">
-                <td class="n"><b>${r.rank}</b></td>
-                <td><b>${e(r.name)}</b></td>
-                <td class="n" style="color:#b45309;font-weight:700">${e(r.sur)}</td>
-                <td class="n" style="color:#b45309;font-weight:700">${e(r.taal)}</td>
-                <td class="n" style="color:#b45309;font-weight:700">${e(r.selections)}</td>
-                <td class="n" style="color:#b45309;font-weight:700">${e(r.performance)}</td>
-                <td class="n"><b>${e(r.judgeTotal)}</b></td>
-                <td class="n" style="color:#0369a1;font-weight:700">${e(r.votes)}</td>
-                <td class="n" style="color:#15803d;font-weight:800">${e(r.grandTotal)}</td>
-                <td style="font-size:12px">${e(r.remarks || '-')}</td>
-              </tr>
-            `).join('')}
-          </table></div>
-        ` : ''}
-        <p class="m" style="margin:6px 0 0;font-size:12px">
-          Declared on ${e(s.declaredDate)} (Participating Audience Voters: ${s.votersCount}).
-        </p>
-      </div>
-    `;
-  }
+  const vp = curP();
+  const myName = canonSinger(vp && vp.singer);
+  const canOpenCert = Boolean(effSuper() || (myName && myName === canonSinger(s.winner)));
+  const safeWinner = e(s.winner).replace(/'/g, "\\'");
+  const safeMonth = e(s.monthLabel).replace(/'/g, "\\'");
+  const safeJudge = e(s.judge || '').replace(/'/g, "\\'");
+  const safeDecl = e(s.declaredDate || '').replace(/'/g, "\\'");
 
   return `
     <div class="c sotm-card">
-      <div class="sotm-title">OFFICIAL SINGER OF THE MONTH (SOTM) RESULT - ${e(s.monthLabel)}</div>
-      <p class="big" style="margin:4px 0">${e(s.winner)} <span style="font-size:12px;font-weight:600;color:var(--mut)">(G-Clef Memento Award)</span></p>
-      <p style="margin:3px 0 0;font-size:13px">
-        Judge: <b>${e(s.judge)}</b> · Declared on: <b>${e(s.declaredDate)}</b>
+      <div class="row" style="justify-content:space-between;gap:8px">
+        <div class="sotm-title" style="margin:0">OFFICIAL SINGER OF THE MONTH (SOTM) RESULT - ${e(s.monthLabel)}</div>
+        ${canOpenCert ? `<button class="cert-theme-btn" style="padding:4px 10px;font-size:11.5px;border-radius:8px" onclick="openCertificateModal('sotm','${safeWinner}','${safeMonth}','${safeJudge}','${safeDecl}')">Certificate</button>` : ''}
+      </div>
+      <p class="big" style="margin:5px 0 3px">${e(s.winner)} <span style="font-size:12px;font-weight:600;color:var(--mut)">(G-Clef Memento Award)</span></p>
+      <p style="margin:2px 0 0;font-size:13px">
+        ${s.judge && s.judge !== 'Not Appointed' ? `Judge: <b>${e(s.judge)}</b> · ` : ''}Declared on: <b>${e(s.declaredDate)}</b>
       </p>
     </div>
   `;
@@ -2490,6 +2489,7 @@ function vHome(){
       </div>
     </div>`;
 
+  h += renderParticipantCertFlashCard(sk);
 
   h+=renderSOTMBannerHTML();
 
@@ -2597,7 +2597,11 @@ function vHome(){
   const ls=SONGS.filter(r=>r[1]==d).slice().sort(cmpBySongId),mine=ls.filter(r=>r[2]==sk);
   const sotdWinners = getSOTDForDate(d);
   const fallbackSotd = (!sotdWinners.length && !HDATE) ? getLatestDeclaredSOTD(d) : null;
-  h+=`<div class="c"><b>Singer of the Day</b><p class="big" style="margin:6px 0">${
+  const activeSotdList = sotdWinners.length ? sotdWinners : (fallbackSotd ? fallbackSotd.l : []);
+  const activeSotdDate = sotdWinners.length ? d : (fallbackSotd ? fallbackSotd.d : d);
+  const mySotdMatch = activeSotdList.find(w => canonSinger((w && w.n) || w) === sk);
+  const certTargetWinner = mySotdMatch ? canonSinger((mySotdMatch && mySotdMatch.n) || mySotdMatch) : (effSuper() && activeSotdList.length ? canonSinger((activeSotdList[0] && activeSotdList[0].n) || activeSotdList[0]) : '');
+  h+=`<div class="c"><div class="row" style="justify-content:space-between;gap:6px"><b>Singer of the Day</b><div class="row" style="gap:6px">${certTargetWinner ? `<button class="cert-theme-btn" style="padding:3px 9px;font-size:11.5px;border-radius:8px" onclick="openCertificateModal('sotd','${e(certTargetWinner).replace(/'/g,"\\'")}','${e(activeSotdDate)}')">Certificate</button>` : ''}${effSuper() ? `<button style="padding:3px 9px;font-size:11.5px" onclick="openHomeSotdEditor('${e(d)}')">✏️ Edit SOTD</button>` : ''}</div></div><p class="big" style="margin:6px 0">${
     sotdWinners.length
       ? nmL(sotdWinners)
       : (fallbackSotd
@@ -2611,6 +2615,669 @@ function vHome(){
 
   return h;
 }
+
+// ==============================================================================
+// RICH CLIENT-SIDE SOTD & SOTM CERTIFICATE ENGINE (WITH SHREE B. S. TIKARIYA VIOLIN TRIBUTE)
+// ==============================================================================
+const CERT_IMG_CACHE = {};
+let ACTIVE_CERT_SPEC = null;
+let ACTIVE_CERT_LIST = [];
+let CERT_AUTO_FLASHED_SESSION = false;
+
+function loadCertAsset(src) {
+  if (CERT_IMG_CACHE[src]) return Promise.resolve(CERT_IMG_CACHE[src]);
+  return new Promise(resolve => {
+    const im = new Image();
+    im.crossOrigin = 'anonymous';
+    im.onload = () => { CERT_IMG_CACHE[src] = im; resolve(im); };
+    im.onerror = () => resolve(null);
+    im.src = src;
+  });
+}
+
+function getParticipantCertificates(singerRaw) {
+  const sk = canonSinger(singerRaw);
+  if (!sk || !PUB) return [];
+  const items = [];
+  const seenKey = new Set();
+
+  // 1. SOTM awards from official SOTM_RESULT and PUB.som
+  const sotmCur = getSOTMData();
+  if (sotmCur && canonSinger(sotmCur.winner) === sk) {
+    const key = 'sotm_' + (sotmCur.monthLabel || '');
+    seenKey.add(key);
+    items.push({
+      type: 'sotm',
+      key,
+      singer: sk,
+      title: 'Singer of the Month',
+      subtitle: `${sotmCur.monthLabel} · G-Clef Memento Award`,
+      period: sotmCur.monthLabel,
+      declaredDate: sotmCur.declaredDate || '',
+      judge: (sotmCur.judge && sotmCur.judge !== 'Not Appointed') ? sotmCur.judge : '',
+      sortVal: '9999-12-31'
+    });
+  }
+  Object.entries((PUB && PUB.som) || {}).forEach(([ym, win]) => {
+    if (canonSinger(win) !== sk) return;
+    const lbl = fm(ym).toUpperCase();
+    const key = 'sotm_' + lbl;
+    if (seenKey.has(key)) return;
+    seenKey.add(key);
+    items.push({
+      type: 'sotm',
+      key,
+      singer: sk,
+      title: 'Singer of the Month',
+      subtitle: `${lbl} · G-Clef Memento Award`,
+      period: lbl,
+      declaredDate: (PUB.somd && PUB.somd[ym]) ? fd(PUB.somd[ym]) : lbl,
+      judge: '',
+      sortVal: ym + '-32'
+    });
+  });
+
+  // 2. SOTD awards from PUB.sotd and PUB.stars[sk].d
+  const sotdDates = new Map();
+  ((PUB && PUB.sotd) || []).forEach(entry => {
+    if (!entry || !entry.d) return;
+    const dt = normDate(entry.d);
+    const list = Array.isArray(entry.l) ? entry.l : [];
+    const hit = list.find(w => canonSinger((w && w.n) || w) === sk);
+    if (hit && dt) {
+      sotdDates.set(dt, (typeof hit === 'object' && hit.h) ? hit.h : 'Score');
+    }
+  });
+  const starRec = (PUB.stars || {})[sk];
+  if (starRec && Array.isArray(starRec.d)) {
+    starRec.d.forEach(dRaw => {
+      const dt = normDate(dRaw);
+      if (dt && !sotdDates.has(dt)) sotdDates.set(dt, 'Score');
+    });
+  }
+  [...sotdDates.entries()].sort((a, b) => b[0].localeCompare(a[0])).forEach(([dt, mode]) => {
+    const key = 'sotd_' + dt;
+    items.push({
+      type: 'sotd',
+      key,
+      singer: sk,
+      title: 'Singer of the Day',
+      subtitle: fd(dt),
+      period: dt,
+      declaredDate: fd(dt),
+      mode,
+      sortVal: dt
+    });
+  });
+
+  return items;
+}
+
+function renderParticipantCertFlashCard(sk) {
+  if (!sk || effAdm()) return '';
+  const certs = getParticipantCertificates(sk);
+  if (!certs.length) return '';
+  const latest = certs[0];
+  const isSotm = latest.type === 'sotm';
+  const safeSk = e(sk).replace(/'/g, "\\'");
+  const safePeriod = e(latest.period).replace(/'/g, "\\'");
+  const safeJudge = e(latest.judge || '').replace(/'/g, "\\'");
+  const safeDecl = e(latest.declaredDate || '').replace(/'/g, "\\'");
+  return `
+    <div class="c cert-flash-card" style="padding:12px 13px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:74px;height:52px;border-radius:6px;overflow:hidden;border:1px solid var(--bd);flex:none;background:#ffffff;padding:3px;box-sizing:border-box;display:flex;align-items:center;justify-content:center">
+          <img src="public/assets/aistudio/violinist_961c3e38.png" alt="Shree B. S. Tikariya" style="max-width:100%;max-height:100%;object-fit:contain;display:block">
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;color:var(--ac)">
+            ${isSotm ? 'Official Singer of the Month Certificate' : 'Official Singer of the Day Certificate'}
+          </div>
+          <div style="font-size:15px;font-weight:800;margin:2px 0;color:var(--fg)">
+            Congratulations, ${e(sk)}!
+          </div>
+          <div class="m" style="font-size:12px;line-height:1.35">
+            ${e(latest.title)} — <b>${e(latest.subtitle)}</b>${certs.length > 1 ? ` · (${certs.length} certificates available)` : ''}
+          </div>
+          <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
+            <button class="cert-theme-btn" style="padding:6px 12px;font-size:12px;border-radius:8px" onclick="openCertificateModal('${latest.type}','${safeSk}','${safePeriod}','${safeJudge}','${safeDecl}')">
+              View & Download Certificate
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function maybeAutoFlashWinnerCert() {
+  if (CERT_AUTO_FLASHED_SESSION) return;
+  const vp = curP();
+  const sk = canonSinger(vp && vp.singer);
+  if (!sk) return;
+  const certs = getParticipantCertificates(sk);
+  if (!certs.length) return;
+  const latest = certs[0];
+  const seenStorageKey = `sfh_cert_seen_${sk}_${latest.key}`;
+  try {
+    if (localStorage.getItem(seenStorageKey) === '1') return;
+    localStorage.setItem(seenStorageKey, '1');
+  } catch (_e) {}
+  CERT_AUTO_FLASHED_SESSION = true;
+  setTimeout(() => {
+    if ($('#custom-modal') && $('#custom-modal').style.display === 'flex') return;
+    openCertificateModal(latest.type, latest.singer, latest.period, latest.judge || '', latest.declaredDate || '', true);
+  }, 450);
+}
+
+window.closeCertModal = () => {
+  const m = $('#cert-modal');
+  if (m) m.style.display = 'none';
+};
+
+window.switchCertSelection = (idx) => {
+  const item = ACTIVE_CERT_LIST[Number(idx)];
+  if (!item) return;
+  ACTIVE_CERT_SPEC = item;
+  renderCertificateCanvas(item);
+};
+
+window.openCertificateModal = async (type, singerRaw, period, judge = '', declaredDate = '', isCelebrationFlash = false) => {
+  const sk = canonSinger(singerRaw);
+  if (!sk) return;
+  const allForSinger = getParticipantCertificates(sk);
+  let spec = allForSinger.find(c => c.type === type && String(c.period) === String(period));
+  if (!spec) {
+    spec = {
+      type: type === 'sotm' ? 'sotm' : 'sotd',
+      key: `${type}_${period}`,
+      singer: sk,
+      title: type === 'sotm' ? 'Singer of the Month' : 'Singer of the Day',
+      subtitle: type === 'sotm' ? `${period} · G-Clef Memento Award` : fd(period),
+      period,
+      declaredDate: declaredDate || (type === 'sotd' ? fd(period) : period),
+      judge: (judge && judge !== 'Not Appointed') ? judge : ''
+    };
+  }
+  ACTIVE_CERT_LIST = allForSinger.length ? allForSinger : [spec];
+  if (!ACTIVE_CERT_LIST.some(c => c.key === spec.key)) ACTIVE_CERT_LIST.unshift(spec);
+  ACTIVE_CERT_SPEC = spec;
+
+  const selIdx = Math.max(0, ACTIVE_CERT_LIST.findIndex(c => c.key === spec.key));
+  const m = $('#cert-modal');
+  $('#cert-modal-body').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+      <div>
+        <h3 style="margin:0;color:var(--ac);font-size:17px">${isCelebrationFlash ? 'Congratulations — Your Official Certificate' : 'Official Certificate'}</h3>
+        <div class="m" style="font-size:12px">${e(sk)} · ${e(spec.title)} (${e(spec.subtitle)})</div>
+      </div>
+      <button onclick="closeCertModal()" style="padding:5px 11px;font-size:12px">✕ Close</button>
+    </div>
+    ${ACTIVE_CERT_LIST.length > 1 ? `
+      <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="m" style="font-size:12px;font-weight:700">Select Award:</span>
+        <select onchange="switchCertSelection(this.value)" style="flex:1;min-width:200px;padding:6px 8px;font-size:12.5px">
+          ${ACTIVE_CERT_LIST.map((c, i) => `<option value="${i}"${i === selIdx ? ' selected' : ''}>${c.type === 'sotm' ? 'SOTM' : 'SOTD'} — ${e(c.subtitle)}</option>`).join('')}
+        </select>
+      </div>
+    ` : ''}
+    <div class="cert-canvas-wrap">
+      <canvas id="sfh_cert_canvas" width="2400" height="1700"></canvas>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <span class="m" style="font-size:11.5px">Print-ready A4 landscape · Generated on your device</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button style="padding:8px 14px;font-size:13px;border-radius:8px" onclick="downloadCertPNG()">⬇ Download Image (PNG)</button>
+        <button class="pri" style="padding:8px 14px;font-size:13px;border-radius:8px" onclick="downloadCertPDF()">⬇ Download PDF (A4)</button>
+      </div>
+    </div>
+  `;
+  m.style.display = 'flex';
+  await renderCertificateCanvas(spec);
+};
+
+async function renderCertificateCanvas(spec) {
+  const canvas = document.getElementById('sfh_cert_canvas');
+  if (!canvas || !spec) return;
+  const ctx = canvas.getContext('2d');
+  const W = 2400, H = 1700;
+  canvas.width = W;
+  canvas.height = H;
+
+  const violinImg = await loadCertAsset('public/assets/aistudio/violinist_961c3e38.png');
+
+  const isSotm = spec.type === 'sotm';
+  // Exact App Theme Palette (from index.html :root)
+  const appBg = '#f8fafc';
+  const paper = '#ffffff';
+  const navy = '#0f3460';      // --ac
+  const navyMid = '#1e4a7a';   // --btn-pri-bg secondary
+  const navySoft = '#e8eef7';  // --ac-light
+  const ink = '#0f172a';       // --fg
+  const muted = '#64748b';     // --mut
+  const border = '#cbd5e1';    // --bd
+  const bloodRed = '#8b0000';  // Exclusive M brand color
+  const APP_FONT = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Devanagari", sans-serif';
+
+  const rRect = (x, y, w, h, r) => {
+    ctx.beginPath();
+    if (typeof ctx.roundRect === 'function') {
+      ctx.roundRect(x, y, w, h, r);
+    } else {
+      const rr = Math.min(r, w / 2, h / 2);
+      ctx.moveTo(x + rr, y);
+      ctx.arcTo(x + w, y, x + w, y + h, rr);
+      ctx.arcTo(x + w, y + h, x, y + h, rr);
+      ctx.arcTo(x, y + h, x, y, rr);
+      ctx.arcTo(x, y, x + w, y, rr);
+      ctx.closePath();
+    }
+  };
+
+  // 1. Clean Print Cardstock Surface (App Theme: #f8fafc mat + crisp #ffffff certificate sheet)
+  ctx.fillStyle = appBg;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = paper;
+  ctx.fillRect(46, 46, W - 92, H - 92);
+
+  // Clean Architectural Double-Rule Frame in App Navy (#0f3460) & Slate (#cbd5e1)
+  ctx.strokeStyle = navy;
+  ctx.lineWidth = 10;
+  ctx.strokeRect(56, 56, W - 112, H - 112);
+
+  ctx.strokeStyle = border;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(78, 78, W - 156, H - 156);
+
+  // Minimalist structural corner brackets (clean editorial print craft — no AI filigree)
+  const drawTick = (cx, cy, dx, dy) => {
+    ctx.strokeStyle = navy;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + dy * 42);
+    ctx.lineTo(cx, cy);
+    ctx.lineTo(cx + dx * 42, cy);
+    ctx.stroke();
+  };
+  drawTick(78, 78, 1, 1);
+  drawTick(W - 78, 78, -1, 1);
+  drawTick(78, H - 78, 1, -1);
+  drawTick(W - 78, H - 78, -1, -1);
+
+  // 2. Top-Left: Father's Authentic Violinist Illustration (Direct clean print integration — no box, no app icon)
+  const ilX = 128, ilY = 114, ilMaxW = 450, ilMaxH = 292;
+  let ilBottomY = ilY + ilMaxH;
+  if (violinImg && violinImg.naturalWidth && violinImg.naturalHeight) {
+    const ratio = Math.min(ilMaxW / violinImg.naturalWidth, ilMaxH / violinImg.naturalHeight);
+    const dw = Math.round(violinImg.naturalWidth * ratio);
+    const dh = Math.round(violinImg.naturalHeight * ratio);
+    ctx.drawImage(violinImg, ilX, ilY, dw, dh);
+    ilBottomY = ilY + dh;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#334155';
+    ctx.font = `600 20px ${APP_FONT}`;
+    ctx.fillText('In Honour of Shree B. S. Tikariya', ilX + dw / 2, ilBottomY + 26);
+  }
+
+  // 3. Top Header Text — Exact Match to App <header> Typography & Colors
+  const hdrX = 630;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+
+  // "SING FROM HOME" — Exact app h1 style (800 weight, #0f3460, Blood Red #8b0000 900 weight on both M's, tight tracking)
+  const drawHeaderTitle = (xStart, yBase) => {
+    const parts = [
+      { t: 'SING FRO', bold: 800, color: navy },
+      { t: 'M', bold: 900, color: bloodRed },
+      { t: ' HO', bold: 800, color: navy },
+      { t: 'M', bold: 900, color: bloodRed },
+      { t: 'E', bold: 800, color: navy }
+    ];
+    let cx = xStart;
+    parts.forEach(p => {
+      ctx.font = `${p.bold} 86px ${APP_FONT}`;
+      ctx.fillStyle = p.color;
+      for (const ch of p.t) {
+        ctx.fillText(ch, cx, yBase);
+        cx += ctx.measureText(ch).width - 1.1; // matches h1 letter-spacing: -0.3px at print scale
+      }
+    });
+  };
+  drawHeaderTitle(hdrX, 206);
+
+  // Foundation Name — Exact app .sub-fnd style (black #000000, weight 500, clean sans-serif directly beneath)
+  ctx.fillStyle = '#000000';
+  ctx.font = `500 35px ${APP_FONT}`;
+  ctx.fillText('A project of B. S. Tikariya Cultural Foundation ®', hdrX, 260);
+  ctx.font = `500 29px ${APP_FONT}`;
+  ctx.fillText('(CIN: U88900MH2025NPL454435)', hdrX, 302);
+
+  // Conducting school & session line in crisp app muted slate
+  ctx.fillStyle = muted;
+  ctx.font = `600 25px ${APP_FONT}`;
+  ctx.fillText("Conducted by Tikariya's School of Music  ·  Online Singing Session on Zoom", hdrX, 354);
+
+  // Subtle horizontal divider rule matching app <header> border-bottom
+  const divY = Math.max(456, ilBottomY + 52);
+  ctx.strokeStyle = border;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(120, divY);
+  ctx.lineTo(W - 120, divY);
+  ctx.stroke();
+  ctx.strokeStyle = navy;
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(120, divY);
+  ctx.lineTo(578, divY);
+  ctx.stroke();
+
+  // 4. Center Hero — BIG CENTERED AWARD TITLE
+  const cx = W / 2;
+  ctx.textAlign = 'center';
+
+  // Spaced uppercase editorial kicker
+  ctx.fillStyle = muted;
+  ctx.font = `700 25px ${APP_FONT}`;
+  ctx.fillText('C E R T I F I C A T E   O F   A P P R E C I A T I O N', cx, divY + 88);
+
+  // BIG CENTERED "SINGER OF THE MONTH" / "SINGER OF THE DAY"
+  ctx.fillStyle = navy;
+  ctx.font = `900 116px ${APP_FONT}`;
+  ctx.fillText(isSotm ? 'SINGER OF THE MONTH' : 'SINGER OF THE DAY', cx, divY + 224);
+
+  // Clean app-theme badge strip below main title (no AI ribbon)
+  const subText = isSotm
+    ? `${spec.period}   ·   G-CLEF MEMENTO AWARD`
+    : `${spec.declaredDate || fd(spec.period)}`;
+  ctx.font = `700 30px ${APP_FONT}`;
+  const subW = Math.max(420, ctx.measureText(subText).width + 88);
+  const subY = divY + 258;
+  ctx.fillStyle = navySoft;
+  rRect(cx - subW / 2, subY, subW, 56, 8);
+  ctx.fill();
+  ctx.strokeStyle = border;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.fillStyle = navy;
+  ctx.fillText(subText, cx, subY + 38);
+
+  // Presentation line
+  ctx.fillStyle = '#475569';
+  ctx.font = `500 34px ${APP_FONT}`;
+  ctx.fillText('Proudly presented to', cx, divY + 394);
+
+  // Recipient Singer Name (clean, commanding, centered)
+  let nameSize = 96;
+  ctx.font = `800 ${nameSize}px ${APP_FONT}`;
+  while (ctx.measureText(spec.singer).width > 1860 && nameSize > 52) {
+    nameSize -= 4;
+    ctx.font = `800 ${nameSize}px ${APP_FONT}`;
+  }
+  ctx.fillStyle = ink;
+  ctx.fillText(spec.singer, cx, divY + 510);
+
+  // Clean architectural underline under singer's name
+  const lineW = Math.min(1320, Math.max(520, ctx.measureText(spec.singer).width + 90));
+  ctx.strokeStyle = navy;
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(cx - lineW / 2, divY + 538);
+  ctx.lineTo(cx + lineW / 2, divY + 538);
+  ctx.stroke();
+
+  // Dignified 2-line appreciation text
+  ctx.fillStyle = '#334155';
+  ctx.font = `500 31px ${APP_FONT}`;
+  if (isSotm) {
+    ctx.fillText(`in recognition of an outstanding musical performance and winning the honour of`, cx, divY + 610);
+    ctx.fillText(`Singer of the Month (${spec.period}) at the Sing From Home Online Singing Session.`, cx, divY + 654);
+  } else {
+    ctx.fillText(`in recognition of a melodious performance and being honoured as`, cx, divY + 610);
+    ctx.fillText(`Singer of the Day on ${spec.declaredDate || fd(spec.period)} at the Sing From Home Online Singing Session.`, cx, divY + 654);
+  }
+
+  // Contextual Details Card (exact app .c card styling: #f8fafc + 1.5px #cbd5e1 border)
+  const detailLines = [];
+  if (!isSotm) {
+    const dt = normDate(spec.period);
+    const meta = getSessionMetaForDate(dt);
+    const daySongs = SONGS.filter(r => r[1] === dt && canonSinger(r[2]) === spec.singer).map(r => r[3]).filter(Boolean);
+    if (daySongs.length) {
+      const joined = daySongs.join('  ·  ');
+      detailLines.push(`Song(s) Performed: ${joined.length > 96 ? joined.slice(0, 94) + '…' : joined}`);
+    }
+    const metaParts = [];
+    if (meta && meta.theme) metaParts.push(`Theme: ${meta.theme}`);
+    if (meta && meta.host) metaParts.push(`Host: ${meta.host}`);
+    if (metaParts.length) detailLines.push(metaParts.join('    |    '));
+  } else {
+    const parts = [`Declared on: ${spec.declaredDate || spec.period}`];
+    if (spec.judge) parts.push(`Appointed Judge: ${spec.judge}`);
+    detailLines.push(parts.join('    |    '));
+  }
+
+  if (detailLines.length) {
+    const boxW = 1660, boxH = detailLines.length > 1 ? 110 : 68;
+    const boxX = cx - boxW / 2, boxY = divY + 694;
+    ctx.fillStyle = appBg;
+    rRect(boxX, boxY, boxW, boxH, 10);
+    ctx.fill();
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = navyMid;
+    ctx.font = `600 26px ${APP_FONT}`;
+    detailLines.forEach((ln, idx) => {
+      ctx.fillText(ln, cx, boxY + (detailLines.length > 1 ? 43 + idx * 44 : 43));
+    });
+  }
+
+  // 5. Clean Print Footer (Balanced Left Metadata + Right Director Signature)
+  const footRuleY = 1368;
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(120, footRuleY);
+  ctx.lineTo(W - 120, footRuleY);
+  ctx.stroke();
+
+  // Bottom-Left: Official Certificate Metadata
+  const certCode = `SFH-${isSotm ? 'SOTM' : 'SOTD'}-${String(spec.period).replace(/[^A-Z0-9]/gi, '').toUpperCase()}`;
+  ctx.textAlign = 'left';
+  ctx.fillStyle = navy;
+  ctx.font = `700 24px ${APP_FONT}`;
+  ctx.fillText(`Certificate No: ${certCode}`, 136, 1446);
+  ctx.fillStyle = muted;
+  ctx.font = `500 23px ${APP_FONT}`;
+  ctx.fillText(`Date: ${spec.declaredDate || fd(spec.period)}`, 136, 1484);
+  ctx.fillText("Tikariya's School of Music  ·  Core Committee", 136, 1522);
+
+  // Bottom-Right: Clean Director Signature Block
+  const sigRight = W - 136;
+  const sigCenter = sigRight - 240;
+  ctx.strokeStyle = navy;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(sigRight - 480, 1440);
+  ctx.lineTo(sigRight, 1440);
+  ctx.stroke();
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = ink;
+  ctx.font = `800 28px ${APP_FONT}`;
+  ctx.fillText('MANOJ TIKARIYA', sigCenter, 1478);
+  ctx.fillStyle = '#475569';
+  ctx.font = `500 22px ${APP_FONT}`;
+  ctx.fillText("Director, Tikariya's School of Music", sigCenter, 1510);
+  ctx.fillStyle = navy;
+  ctx.font = `600 22px ${APP_FONT}`;
+  ctx.fillText('B. S. Tikariya Cultural Foundation ®', sigCenter, 1540);
+}
+
+window.downloadCertPNG = () => {
+  const canvas = document.getElementById('sfh_cert_canvas');
+  if (!canvas || !ACTIVE_CERT_SPEC) return;
+  const safeName = String(ACTIVE_CERT_SPEC.singer || 'Singer').replace(/[^A-Z0-9]+/gi, '_');
+  const safePeriod = String(ACTIVE_CERT_SPEC.period || '').replace(/[^A-Z0-9]+/gi, '_');
+  const fname = `SFH_${ACTIVE_CERT_SPEC.type.toUpperCase()}_Certificate_${safeName}_${safePeriod}.png`;
+  const link = document.createElement('a');
+  link.download = fname;
+  link.href = canvas.toDataURL('image/png', 1.0);
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(() => { try { document.body.removeChild(link); } catch (_e) {} }, 250);
+};
+
+window.downloadCertPDF = () => {
+  const canvas = document.getElementById('sfh_cert_canvas');
+  if (!canvas || !ACTIVE_CERT_SPEC) return;
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    showNotice('PDF engine is still loading — please try again in a moment, or use Download Image (PNG).');
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const docPdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const imgData = canvas.toDataURL('image/jpeg', 0.95);
+  docPdf.addImage(imgData, 'JPEG', 0, 0, 297, 210);
+  const safeName = String(ACTIVE_CERT_SPEC.singer || 'Singer').replace(/[^A-Z0-9]+/gi, '_');
+  const safePeriod = String(ACTIVE_CERT_SPEC.period || '').replace(/[^A-Z0-9]+/gi, '_');
+  docPdf.save(`SFH_${ACTIVE_CERT_SPEC.type.toUpperCase()}_Certificate_${safeName}_${safePeriod}.pdf`);
+};
+
+let HOME_SOTD_EDIT_DATE = '';
+let HOME_SOTD_EDIT_LIST = [];
+
+function renderHomeSotdEditorModal() {
+  const dt = HOME_SOTD_EDIT_DATE;
+  const daySingers = [...new Set(SONGS.filter(r => r[1] === dt).map(r => canonSinger(r[2])).filter(Boolean))].sort();
+  const allSingers = [...new Set([...daySingers, ...((PUB && PUB.singers) || []).map(canonSinger).filter(Boolean)])];
+  const m = $('#custom-modal');
+  $('#custom-modal-body').innerHTML = `
+    <h3>Edit Singer of the Day · ${e(fd(dt))}</h3>
+    <div style="margin:8px 0">
+      ${HOME_SOTD_EDIT_LIST.length ? HOME_SOTD_EDIT_LIST.map((w, i) => `
+        <div class="row" style="justify-content:space-between;padding:5px 8px;background:var(--ac-light);border-radius:8px;margin-bottom:5px">
+          <span>🏆 <b>${e(w.n)}</b> <span class="badge-ok">${e(w.h || 'Score')}</span></span>
+          <button style="padding:2px 8px;font-size:11px;color:#dc2626;border-color:#fca5a5" onclick="removeHomeSotdItem(${i})">Remove</button>
+        </div>
+      `).join('') : '<p class="m" style="margin:4px 0 8px">No SOTD declared for this date yet.</p>'}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+      <select id="hs_singer" style="width:100%">
+        <option value="">Select singer to add…</option>
+        ${daySingers.length ? `<optgroup label="Performed on ${e(fd(dt))}">${daySingers.map(nm => `<option value="${e(nm)}">${e(nm)}</option>`).join('')}</optgroup>` : ''}
+        <optgroup label="All Singers">${allSingers.filter(nm => !daySingers.includes(nm)).map(nm => `<option value="${e(nm)}">${e(nm)}</option>`).join('')}</optgroup>
+      </select>
+      <div class="row" style="gap:6px">
+        <select id="hs_mode" style="flex:1">
+          <option value="Score">By Score</option>
+          <option value="Special">Special Appreciation</option>
+          <option value="Quiz">Musical Quiz Winner</option>
+        </select>
+        <button class="pri" onclick="addHomeSotdItem()">+ Add</button>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+      <button onclick="closeModal()">Cancel</button>
+      <button class="pri" onclick="saveHomeSotdEdits()">Save & Publish SOTD</button>
+    </div>
+  `;
+  m.style.display = 'flex';
+}
+
+window.openHomeSotdEditor = (dateStr) => {
+  if (!IS_SUPER) return;
+  HOME_SOTD_EDIT_DATE = normDate(dateStr) || tdy();
+  HOME_SOTD_EDIT_LIST = getSOTDForDate(HOME_SOTD_EDIT_DATE).map(w => ({ n: canonSinger(w.n), h: w.h || 'Score' }));
+  renderHomeSotdEditorModal();
+};
+
+window.addHomeSotdItem = () => {
+  const nm = canonSinger($('#hs_singer') ? $('#hs_singer').value : '');
+  const h = ($('#hs_mode') && $('#hs_mode').value) || 'Score';
+  if (!nm) return;
+  if (!HOME_SOTD_EDIT_LIST.some(x => x.n === nm)) {
+    HOME_SOTD_EDIT_LIST.push({ n: nm, h });
+  }
+  renderHomeSotdEditorModal();
+};
+
+window.removeHomeSotdItem = (idx) => {
+  HOME_SOTD_EDIT_LIST.splice(idx, 1);
+  renderHomeSotdEditorModal();
+};
+
+window.saveHomeSotdEdits = async () => {
+  if (!IS_SUPER) return;
+  const dt = HOME_SOTD_EDIT_DATE;
+  if (!dt) return;
+  const pendingNm = canonSinger($('#hs_singer') ? $('#hs_singer').value : '');
+  if (pendingNm && !HOME_SOTD_EDIT_LIST.some(x => x.n === pendingNm)) {
+    HOME_SOTD_EDIT_LIST.push({ n: pendingNm, h: ($('#hs_mode') && $('#hs_mode').value) || 'Score' });
+  }
+  try {
+    const dataRef = doc(fs, 'pub', 'data');
+    const snap = await getDoc(dataRef);
+    const pData = snap.exists() ? snap.data() : { singers: [], sotd: [], stars: {} };
+    if (!Array.isArray(pData.singers)) pData.singers = [];
+    if (!Array.isArray(pData.sotd)) pData.sotd = [];
+    const starsObj = (pData.stars && typeof pData.stars === 'object') ? { ...pData.stars } : {};
+
+    const prevEntry = pData.sotd.find(x => x && normDate(x.d) === dt);
+    const prevWinners = new Set(((prevEntry && prevEntry.l) || []).map(w => canonSinger(typeof w === 'string' ? w : (w && w.n))).filter(Boolean));
+    const newWinners = new Set(HOME_SOTD_EDIT_LIST.map(w => canonSinger(w.n)).filter(Boolean));
+
+    // Remove star for anyone removed from this date's SOTD
+    prevWinners.forEach(nm => {
+      if (!newWinners.has(nm) && starsObj[nm]) {
+        const cur = { ...starsObj[nm] };
+        const arr = Array.isArray(cur.d) ? cur.d.filter(x => normDate(x) !== dt) : [];
+        if (Array.isArray(cur.d) && arr.length !== cur.d.length) {
+          cur.d = arr;
+          cur.t = Math.max(0, (Number(cur.t) || 0) - 1);
+          starsObj[nm] = cur;
+        }
+      }
+    });
+
+    // Add star for each declared SOTD on this date
+    newWinners.forEach(nm => {
+      const cur = (starsObj[nm] && typeof starsObj[nm] === 'object') ? { ...starsObj[nm] } : { t: 0, d: [], m: {} };
+      if (!Array.isArray(cur.d)) cur.d = [];
+      if (!cur.m || typeof cur.m !== 'object') cur.m = {};
+      if (!cur.d.some(x => normDate(x) === dt)) {
+        cur.d = [...cur.d, dt];
+        cur.t = (Number(cur.t) || 0) + 1;
+      }
+      starsObj[nm] = cur;
+      if (!pData.singers.includes(nm)) pData.singers.push(nm);
+    });
+
+    let sotdArr = pData.sotd.filter(x => x && normDate(x.d) !== dt);
+    if (HOME_SOTD_EDIT_LIST.length) {
+      sotdArr.push({ d: dt, l: HOME_SOTD_EDIT_LIST.map(w => ({ n: canonSinger(w.n), h: w.h || 'Score' })) });
+      sotdArr.sort((a, b) => String(a.d || '').localeCompare(String(b.d || '')));
+    }
+
+    pData.sotd = sotdArr;
+    pData.stars = starsObj;
+    pData.singers.sort();
+    pData.ts = tdy();
+
+    await setDoc(dataRef, pData);
+    closeModal();
+    await load();
+    draw();
+    showNotice(HOME_SOTD_EDIT_LIST.length
+      ? `Updated Singer of the Day for ${fd(dt)}: ${HOME_SOTD_EDIT_LIST.map(w => w.n).join(', ')}`
+      : `Cleared Singer of the Day for ${fd(dt)}.`, 'SOTD Saved');
+  } catch (err) {
+    showNotice('Failed to save SOTD: ' + (err.code || err.message), 'Error');
+  }
+};
 
 // Restored Past Singers of the Day History so past SOTDs never vanish!
 window.syncHistoricalSOTD = async () => {
@@ -3127,15 +3794,6 @@ function getSchedule() {
   };
 }
 
-function formatCutoffTime(sc) {
-  const [sh, sm] = (sc.startTime || '20:20').split(':').map(Number);
-  const totalMins = sh * 60 + sm + (sc.cutoffMins ?? 26);
-  const hh = Math.floor(totalMins / 60) % 24;
-  const mm = totalMins % 60;
-  const ampm = hh >= 12 ? 'pm' : 'am';
-  const h12 = hh % 12 || 12;
-  return `${h12}:${String(mm).padStart(2, '0')} ${ampm}`;
-}
 function formatScheduleText(sc) {
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const sortedDays = [...sc.days].sort();
@@ -3346,9 +4004,6 @@ window.pic=el=>{const f=el.files[0];if(!f)return;grab();const r=new FileReader()
 window.rmPic=async()=>{if(PREVIEW_PARTICIPANT&&PREVIEW_SINGER)return;grab();P.photo='';draw();try{await updateDoc(doc(fs,'users',U.uid),{photo:'',updatedAt:Date.now()});showNotice('Photo removed')}catch(_pe){}};
 window.saveP=async()=>{if(PREVIEW_PARTICIPANT&&PREVIEW_SINGER){showNotice('Profile saving is disabled while previewing another singer. Switch the preview dropdown to "My own account" or exit preview to edit your profile.');return}grab();try{await updateDoc(doc(fs,'users',U.uid),{phone:P.phone||'',city:P.city||'',note:P.note||'',photo:P.photo||'',dob:P.dob||'',updatedAt:Date.now()});await setBd(U.uid,P.singer||P.name||'',P.dob,P.bshow);showNotice('Saved');}catch(x){showNotice('Could not save ('+(x.code||'error')+')')}};
 
-const vPdf=()=>`<div class="c"><b>PDF downloads</b><p class="m">Both PDFs show your position (Singer of the Day, Singer of the Month and stars).</p>
-<p><button class="pri" onclick="pdf('all')">⬇ All songs list till now</button></p><p><button class="pri" onclick="pdf('my')">⬇ My songs till now</button></p></div>`;
-
 window.pdf=kind=>{
   if(!PUB||!window.jspdf){showNotice('Data or PDF tool not ready. Check your internet and try again.');return}
   const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'}),a=s=>String(s==null?'':s).replace(/[^\x20-\xff]/g,'?');
@@ -3540,7 +4195,13 @@ window.delGreet=async id=>{showConfirm('Delete this greeting?', async () => {try
 async function loadAdm(){try{const q=await getDocs(collection(fs,'users'));AU=q.docs.map(x=>({id:x.id,...x.data()}));try{const mq=await getDocs(collection(fs,'msgs'));AM=mq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AM=[]}try{const iq=await getDocs(collection(fs,'inbox'));AIN=iq.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts)}catch(x){AIN=[]}await loadPlans()}catch(x){AU=[];showNotice('Could not load participants ('+(x.code||'error')+'). Check the admin email in firestore.rules.')}}
 function vAdm(){
   const names=(PUB&&PUB.singers)||[],opt='<option value="">Link to singer…</option>'+names.map(n=>`<option>${e(n)}</option>`).join('');
-  const pend=AU.filter(u=>u.status!='approved'),ok=AU.filter(u=>u.status=='approved');
+  const pend = AU.filter(u => !u.status || u.status === 'pending');
+  const revoked = AU.filter(u => u.status === 'rejected');
+  const ok = AU.filter(u => u.status === 'approved').slice().sort((a, b) => {
+    const na = String(a.singer || a.name || idOf(a.email) || '').toUpperCase();
+    const nb = String(b.singer || b.name || idOf(b.email) || '').toUpperCase();
+    return na.localeCompare(nb);
+  });
   const img=u=>okImg(u.photo)?`<div class="ph" style="width:44px;height:44px"><img src="${u.photo}"></div>`:'';
   const allRawSingers = [...new Set([
     ...RAW_SINGERS_BEFORE_ALIAS,
@@ -3648,26 +4309,60 @@ ${residualCard}
 ${effSuper()?`<div class="c"><b>Zoom link</b><input id="zl" style="width:100%" value="${e(CONF.zoom||'')}"><p style="margin-top:10px"><button onclick="saveZ()">Save link</button></p></div>`:''}
 <div class="c"><b>Festival greetings</b><select id="gf" onchange="fillFest(this.value)"><option value="">Choose a festival…</option>${FEST.map((f,i)=>`<option value="${i}">${e(f.t)}</option>`).join('')}</select><input id="gt" placeholder="Title" style="width:100%;margin-top:8px"><input id="gh" placeholder="Hindi / Marathi line (optional)" style="width:100%;margin-top:8px"><textarea id="gx" rows="3" placeholder="Message" style="width:100%;margin-top:8px"></textarea><div class="f"><label>Show from<input type="date" id="gfrom" value="${tdy()}"></label><label>Show until<input type="date" id="gto" value="${tdy()}"></label></div><p style="margin-top:10px"><button class="pri" onclick="addGreet()">Add greeting</button> <button onclick="prevGreet()">Preview</button></p>${GRT.length?GRT.slice().sort((a,b)=>a.from<b.from?1:-1).map(g=>`<p style="margin:6px 0"><b>${e(g.title)}</b> <span class="m">${fd(g.from)} – ${fd(g.to)}</span> <button onclick="delGreet('${e(g.id)}')">Delete</button></p>`).join(''):'<p class="m">No greetings added yet. The Diwali greeting for 5 to 12 Nov 2026 is built in.</p>'}</div>
 <div class="c"><b>Songs declared by participants</b><div class="f"><input type="date" value="${PD||tdy()}" onchange="setPD(this.value)"></div>${PL.length?PL.map((p,i)=>`<p style="margin:6px 0"><b>${i+1}. ${e(p.singer)}</b> <span class="m">${fdt(p.ts)}</span><br>${(p.songs||[]).map(x=>e(x)).join(' / ')}</p>`).join(''):'<p class="m">Nothing declared for this date.</p>'}<button onclick="copyPlans()">Copy list</button></div>
-<div class="c"><b>Messages from participants (${AIN.length})</b>${AIN.slice(0,30).map(m=>`<div style="margin:8px 0;border-top:1px solid var(--bd);padding-top:8px"><b>${e(m.name||'?')}</b> <span class="m">${fdt(m.ts)}</span>${m.ts>seenAdm?' <span class="zm" style="padding:1px 6px;font-size:11px;border-radius:6px">NEW</span>':''}<div style="white-space:pre-wrap">${e(m.text)}</div><p style="margin-top:6px"><button onclick="replyTo('${e(m.uid)}')">Reply</button> <button onclick="delIn('${e(m.id)}')">Delete</button></p></div>`).join('')||'<p class="m">No messages yet.</p>'}</div>
+<div class="c"><b>Messages from participants (${AIN.length})</b>${AIN.slice(0,30).map(m=>{const isAutoLog=String(m.text||'').startsWith('[AUTO BACKUP]');const senderLbl=m.name||m.singer||(isAutoLog?'SFH Auto Backup':'Participant');return `<div style="margin:8px 0;border-top:1px solid var(--bd);padding-top:8px"><b>${e(senderLbl)}</b> <span class="m">${fdt(m.ts)}</span>${m.ts>seenAdm?' <span class="zm" style="padding:1px 6px;font-size:11px;border-radius:6px">NEW</span>':''}<div style="white-space:pre-wrap">${e(m.text)}</div><p style="margin-top:6px">${isAutoLog?'':`<button onclick="replyTo('${e(m.uid)}')">Reply</button> `}<button onclick="delIn('${e(m.id)}')">Delete</button></p></div>`;}).join('')||'<p class="m">No messages yet.</p>'}</div>
 <div class="c"><b>Send a message</b><input id="mt" placeholder="Title" style="width:100%;margin-top:8px"><textarea id="mb" rows="4" placeholder="Message" style="width:100%;margin-top:8px"></textarea><div class="f"><select id="mto"><option value="all">All approved participants</option>${ok.map(u=>`<option value="${e(u.id)}">${e(u.singer||u.name)}</option>`).join('')}</select></div><button class="pri" onclick="sendMsg()">Send</button><p class="m">${AM.length} sent so far.</p></div>
 ${AM.length?`<div class="c"><b>Sent messages</b>${AM.slice(0,20).map(m=>`<p style="margin:8px 0"><b>${e(m.title)}</b> <span class="m">→ ${e(m.toName||m.to)} · ${fdt(m.ts)}</span> <button onclick="delMsg('${e(m.id)}')">Delete</button></p>`).join('')}</div>`:''}
-<div class="c"><b>Waiting for approval (${pend.length})</b></div>
-${pend.map(u=>`<div class="c"><div class="row">${img(u)}<div><b>${e(u.name)}</b><br><span class="m">${e(idOf(u.email))} · ${e(u.status||'')}</span></div></div>
+<div class="c"><b>Waiting for approval (${pend.length})</b>${pend.length ? '' : '<p class="m" style="margin:4px 0 0">No pending requests.</p>'}</div>
+${pend.map(u=>{const dispName=String(u.name||u.singer||idOf(u.email)||'this user').replace(/'/g,"\\'");return `<div class="c"><div class="row">${img(u)}<div><b>${e(u.name||'(no name)')}</b><br><span class="m">${e(idOf(u.email))} · pending</span></div></div>
 <div class="f"><select id="lk_${e(u.id)}">${opt}</select><input id="lt_${e(u.id)}" placeholder="or type singer name"></div>
-<p style="margin-top:8px"><button class="pri" onclick="appr('${e(u.id)}')">Approve</button> <button onclick="rej('${e(u.id)}')">Reject</button> <button onclick="editU('${e(u.id)}')">Profile</button></p></div>`).join('')}
+<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"><button class="pri" onclick="appr('${e(u.id)}')">Approve</button><button onclick="rej('${e(u.id)}')">Reject</button><button onclick="editU('${e(u.id)}')">Profile</button><button style="border-color:#dc2626;color:#dc2626" onclick="deleteUserAccount('${e(u.id)}','${e(dispName)}')">🗑️ Delete</button></div></div>`;}).join('')}
+${revoked.length ? `<div class="c">
+  <div class="row" style="justify-content:space-between">
+    <b>Revoked / Rejected (${revoked.length})</b>
+    <button onclick="toggleRevokedList()" style="font-size:11.5px;padding:4px 9px">${revokedListExpanded ? 'Collapse ▲' : 'Show ▼'}</button>
+  </div>
+  ${revokedListExpanded ? `<div style="margin-top:8px;display:flex;flex-direction:column;gap:8px">${revoked.map(u=>{
+    const dispName = String(u.singer || u.name || idOf(u.email) || 'this user').replace(/'/g, "\\'");
+    return `<div style="border:1px solid var(--bd);border-radius:10px;padding:10px;background:var(--bg)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
+        <div><b>${e(u.singer || u.name || '(no name)')}</b><div class="m" style="font-size:12px;word-break:break-all">${e(idOf(u.email))}</div></div>
+        <span class="m" style="font-size:11.5px;color:#b45309;font-weight:700">Revoked</span>
+      </div>
+      <div class="f" style="margin-top:8px"><select id="lk_${e(u.id)}">${opt}</select><input id="lt_${e(u.id)}" value="${e(u.singer||'')}" placeholder="singer name"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+        <button class="pri" style="font-size:12px;padding:5px 10px" onclick="appr('${e(u.id)}')">Restore Access</button>
+        <button style="font-size:12px;padding:5px 10px" onclick="editU('${e(u.id)}')">Profile</button>
+        <button style="font-size:12px;padding:5px 10px;border-color:#dc2626;color:#dc2626" onclick="deleteUserAccount('${e(u.id)}','${e(dispName)}')">🗑️ Delete Permanently</button>
+      </div>
+    </div>`;
+  }).join('')}</div>` : `<p class="m" style="margin:4px 0 0">${revoked.length} revoked account(s). Tap "Show" to restore or permanently delete.</p>`}
+</div>` : ''}
 ${effSuper()?`<div class="c">
   <div class="row" style="justify-content:space-between">
     <b>Approved Participants (${ok.length})</b>
     <button onclick="toggleApprovedList()" style="font-size:11.5px;padding:4px 9px">${approvedListExpanded ? 'Collapse ▲' : 'Expand List ▼'}</button>
   </div>
-  ${approvedListExpanded ? (ok.length ? `<div class="tbl"><table>
-  <tr>
-    <th>Singer</th>
-    <th>Contact</th>
-    <th>Role</th>
-    <th style="text-align:center">Actions</th>
-  </tr>
-  ${ok.map(u => {
+  ${approvedListExpanded ? (ok.length ? `
+    <div style="margin:10px 0 8px">
+      <input id="approved_search_inp" type="text" value="${e(approvedSearch)}" oninput="filterApprovedList(this.value)" placeholder="Search by singer name or email…" style="width:100%;padding:8px 10px;font-size:13px">
+    </div>
+    <div id="approved_list_body" style="display:flex;flex-direction:column;gap:8px">
+      ${renderApprovedParticipantCards(ok, approvedSearch)}
+    </div>
+  ` : '<p class="m">No approved participants yet.</p>') : `<p class="m" style="margin:4px 0 0">Tap "Expand List" to view or manage ${ok.length} approved participant(s).</p>`}</div>`:''}`;
+}
+
+function renderApprovedParticipantCards(okList, queryStr) {
+  const q = String(queryStr || '').trim().toUpperCase();
+  const filtered = q
+    ? okList.filter(u =>
+        String(u.singer || '').toUpperCase().includes(q) ||
+        String(u.name || '').toUpperCase().includes(q) ||
+        String(idOf(u.email) || '').toUpperCase().includes(q)
+      )
+    : okList;
+  if (!filtered.length) return '<p class="m" style="margin:4px 0">No matching participants.</p>';
+  return filtered.map(u => {
     const isSup = (CFG.superadmins || []).map(x => x.toLowerCase()).includes((u.email || '').toLowerCase());
     const isAdm = u.role == 'admin';
     const isJdg = isUserJudge(u);
@@ -3681,36 +4376,56 @@ ${effSuper()?`<div class="c">
       ? 'color:var(--ac);font-weight:800'
       : (isAdm ? 'color:var(--ac);font-weight:700' : (isHst ? 'color:#0284c7;font-weight:700' : (isJdg ? 'color:#b45309;font-weight:700' : 'color:var(--mut)')));
     const dispName = String(u.singer || u.name || idOf(u.email) || '').replace(/'/g, "\\'");
-    return `<tr>
-      <td><b>${e(u.singer || '(not linked)')}</b></td>
-      <td><span class="m">${e(idOf(u.email))}</span></td>
-      <td><span style="${roleStyle}">${roleTxt}</span></td>
-      <td style="text-align:center;white-space:nowrap">
-        ${isSup ? `<button onclick="editU('${e(u.id)}')">Profile</button>` : `
+    return `<div style="border:1px solid var(--bd);border-radius:10px;padding:9px 11px;background:var(--bg)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
+        <div style="min-width:0">
+          <b style="font-size:14px">${e(u.singer || '(not linked)')}</b>
+          <div class="m" style="font-size:12px;word-break:break-all">${e(idOf(u.email))}</div>
+        </div>
+        <span style="font-size:11.5px;${roleStyle}">${roleTxt}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+        ${isSup ? `<button style="font-size:12px;padding:4px 9px" onclick="editU('${e(u.id)}')">Profile</button>` : `
           ${IS_SUPER ? (
             isAdm
-              ? `<button onclick="revokeAdmin('${e(u.id)}','${e(dispName)}')">Revoke Admin</button> `
-              : `<button onclick="makeAdmin('${e(u.id)}','${e(dispName)}')">Make Admin</button> `
+              ? `<button style="font-size:12px;padding:4px 9px" onclick="revokeAdmin('${e(u.id)}','${e(dispName)}')">Revoke Admin</button>`
+              : `<button style="font-size:12px;padding:4px 9px" onclick="makeAdmin('${e(u.id)}','${e(dispName)}')">Make Admin</button>`
           ) : ''}
           ${IS_SUPER ? (
             isHst
-              ? `<button style="border-color:#0284c7;color:#0284c7" onclick="revokeHost('${e(u.id)}','${e(dispName)}')">Revoke Host</button> `
-              : `<button onclick="makeHost('${e(u.id)}','${e(dispName)}')">Make Host</button> `
+              ? `<button style="font-size:12px;padding:4px 9px;border-color:#0284c7;color:#0284c7" onclick="revokeHost('${e(u.id)}','${e(dispName)}')">Revoke Host</button>`
+              : `<button style="font-size:12px;padding:4px 9px" onclick="makeHost('${e(u.id)}','${e(dispName)}')">Make Host</button>`
           ) : ''}
           ${IS_SUPER ? (
             isJdg
-              ? `<button style="border-color:#d97706;color:#b45309" onclick="revokeJudge('${e(u.id)}','${e(dispName)}')">Revoke Judge</button> `
-              : `<button onclick="makeJudge('${e(u.id)}','${e(dispName)}')">Make Judge</button> `
+              ? `<button style="font-size:12px;padding:4px 9px;border-color:#d97706;color:#b45309" onclick="revokeJudge('${e(u.id)}','${e(dispName)}')">Revoke Judge</button>`
+              : `<button style="font-size:12px;padding:4px 9px" onclick="makeJudge('${e(u.id)}','${e(dispName)}')">Make Judge</button>`
           ) : ''}
-          <button onclick="editU('${e(u.id)}')">Profile</button>
-          <button onclick="rej('${e(u.id)}')">Revoke Access</button>
+          <button style="font-size:12px;padding:4px 9px" onclick="editU('${e(u.id)}')">Profile</button>
+          <button style="font-size:12px;padding:4px 9px;border-color:#d97706;color:#b45309" onclick="rej('${e(u.id)}')">Revoke</button>
+          <button style="font-size:12px;padding:4px 9px;border-color:#dc2626;color:#dc2626" onclick="deleteUserAccount('${e(u.id)}','${e(dispName)}')">🗑️ Remove</button>
         `}
-      </td>
-    </tr>`;
-  }).join('')}
-</table></div>` : '<p class="m">No approved participants yet.</p>') : `<p class="m" style="margin:4px 0 0">Tap "Expand List" to view or manage ${ok.length} approved participant(s).</p>`}</div>`:''}`;
+      </div>
+    </div>`;
+  }).join('');
 }
 
+window.filterApprovedList = (val) => {
+  approvedSearch = String(val || '');
+  const el = document.getElementById('approved_list_body');
+  if (!el) return;
+  const ok = AU.filter(u => u.status === 'approved').slice().sort((a, b) => {
+    const na = String(a.singer || a.name || idOf(a.email) || '').toUpperCase();
+    const nb = String(b.singer || b.name || idOf(b.email) || '').toUpperCase();
+    return na.localeCompare(nb);
+  });
+  el.innerHTML = renderApprovedParticipantCards(ok, approvedSearch);
+};
+
+window.toggleRevokedList = () => {
+  revokedListExpanded = !revokedListExpanded;
+  draw();
+};
 
 window.toggleApprovedList = () => {
   approvedListExpanded = !approvedListExpanded;
@@ -4180,9 +4895,9 @@ window.syncJudgeFinalistsFromStars = async () => {
   });
   const nextPanel = {
     monthLabel: (SOTM_PANEL_CACHE && SOTM_PANEL_CACHE.monthLabel) || fm(nowM()).toUpperCase(),
-    judges: (CONF && Array.isArray(CONF.sotmJudges) && CONF.sotmJudges.length)
+    judges: (CONF && Array.isArray(CONF.sotmJudges))
       ? CONF.sotmJudges.slice()
-      : ((SOTM_PANEL_CACHE && SOTM_PANEL_CACHE.judges) || ['SOHAN KUMAR']),
+      : ((SOTM_PANEL_CACHE && Array.isArray(SOTM_PANEL_CACHE.judges)) ? SOTM_PANEL_CACHE.judges : []),
     votersCount: (SOTM_PANEL_CACHE && SOTM_PANEL_CACHE.votersCount) || 0,
     finalists: nextFinalists,
     updatedAt: Date.now()
@@ -4365,9 +5080,9 @@ window.submitJudgeScores = async () => {
       const nextPanel = {
         ...(SOTM_PANEL_CACHE || {}),
         monthLabel: (SOTM_PANEL_CACHE && SOTM_PANEL_CACHE.monthLabel) || fm(nowM()).toUpperCase(),
-        judges: (CONF && Array.isArray(CONF.sotmJudges) && CONF.sotmJudges.length)
+        judges: (CONF && Array.isArray(CONF.sotmJudges))
           ? CONF.sotmJudges.slice()
-          : ((SOTM_PANEL_CACHE && SOTM_PANEL_CACHE.judges) || ['SOHAN KUMAR']),
+          : ((SOTM_PANEL_CACHE && Array.isArray(SOTM_PANEL_CACHE.judges)) ? SOTM_PANEL_CACHE.judges : []),
         finalists: nextFinalists,
         updatedAt: Date.now()
       };
@@ -4407,9 +5122,7 @@ async function syncAppointedJudgesToCloud() {
     )].sort();
     await setDoc(doc(fs, 'config', 'app'), { sotmJudges: judgeNames }, { merge: true });
     CONF.sotmJudges = judgeNames;
-    if (judgeNames.length) {
-      await setDoc(doc(fs, 'vote', 'sotm_panel'), { judges: judgeNames, updatedAt: Date.now() }, { merge: true });
-    }
+    await setDoc(doc(fs, 'vote', 'sotm_panel'), { judges: judgeNames, updatedAt: Date.now() }, { merge: true });
   } catch (_je) {}
 }
 
@@ -4510,7 +5223,32 @@ window.revokeAdmin = async (id, name) => {
 
 window.appr=async id=>{const v=(($('#lt_'+id).value||'').trim()||$('#lk_'+id).value||'').toUpperCase();if(!v){showNotice('Choose or type the singer name to link');return}
   try{await updateDoc(doc(fs,'users',id),{status:'approved',singer:v});await loadAdm();draw()}catch(x){showNotice('Failed ('+(x.code||'error')+')')}};
-window.rej=async id=>{showConfirm('Remove access for this person?', async () => {try{await updateDoc(doc(fs,'users',id),{status:'rejected'});await loadAdm();draw()}catch(x){showNotice('Failed ('+(x.code||'error')+')')}})};
+window.rej=async id=>{showConfirm('Revoke app access for this person? They will move to the Revoked list (you can restore or delete them permanently from there).', async () => {try{await updateDoc(doc(fs,'users',id),{status:'rejected',role:'participant',isHost:false,isJudge:false});await syncAppointedJudgesToCloud();await loadAdm();draw()}catch(x){showNotice('Failed ('+(x.code||'error')+')')}}, 'Revoke Access')};
+window.deleteUserAccount=async (id, name)=>{
+  const lbl = name || 'this participant';
+  showConfirm(`Permanently remove "${lbl}" from the participant list?\n\n• Removes their user account record (their past song archive, if any, is kept safe)\n• They will no longer appear in Approved, Waiting, or Revoked lists`, async () => {
+    try {
+      let deletedHard = false;
+      try {
+        await deleteDoc(doc(fs, 'users', id));
+        deletedHard = true;
+      } catch (delErr) {
+        if (delErr && (delErr.code === 'permission-denied' || String(delErr.message || '').includes('permission'))) {
+          await updateDoc(doc(fs, 'users', id), { status: 'removed', role: 'participant', isHost: false, isJudge: false, removedAt: Date.now() });
+        } else {
+          throw delErr;
+        }
+      }
+      try { await deleteDoc(doc(fs, 'birthdays', id)); } catch (_be) {}
+      await syncAppointedJudgesToCloud();
+      await loadAdm();
+      draw();
+      showNotice(`${lbl} has been removed${deletedHard ? ' permanently' : ''}.`, 'Participant Removed');
+    } catch (x) {
+      showNotice('Could not remove participant (' + (x.code || 'error') + ')');
+    }
+  }, 'Remove Participant');
+};
 window.saveZ=async()=>{try{await setDoc(doc(fs,'config','app'),{...CONF, zoom:$('#zl').value.trim()});CONF.zoom=$('#zl').value.trim();showNotice('Zoom link saved');draw()}catch(x){showNotice('Failed ('+(x.code||'error')+')')}};
 const hsh=t=>{let h=5381;for(let i=0;i<t.length;i++)h=((h<<5)+h+t.charCodeAt(i))|0;return String(h>>>0)};
 window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=async()=>{
