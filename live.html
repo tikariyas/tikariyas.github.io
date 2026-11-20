@@ -551,7 +551,8 @@ let LIVE = {
   singers: [],
   performances: [],
   sotdExtras: {},
-  sotdVoteWeight: 1
+  sotdVoteWeight: 1,
+  sotdVoteExcluded: []
 };
 
 const DEFAULT_SINGER_ALIASES = {
@@ -888,7 +889,7 @@ async function init(){
 
   lastScheduleMode = isWithinLiveSchedule();
   lastAdminWindowMode = isWithinAdminLiveWindow();
-  LIVE = { date: tdy(), theme: '', host: '', singers: [], performances: [], sotdExtras: {}, sotdVoteWeight: 1 };
+  LIVE = { date: tdy(), theme: '', host: '', singers: [], performances: [], sotdExtras: {}, sotdVoteWeight: 1, sotdVoteExcluded: [] };
   SOTD_LIST = [];
   currentRound = 1;
 
@@ -1815,35 +1816,89 @@ window.setRound = (r) => {
 // ==============================================================================
 // 1-MINUTE ALL-ACTIVE-SINGERS SOTD VOTING PANEL
 // ==============================================================================
-function getAllActiveSOTDCandidates() {
-  const voteWeight = getSotdVoteWeight();
-  return (LIVE.singers || []).map(s => {
-    const perfs = LIVE.performances.filter(p => p.singer === s.name && p.song);
-    const count = perfs.length;
-    const starPts = parseFloat(perfs.reduce((sum, p) => sum + calcStarPoints(p.stars), 0).toFixed(2));
-    const avg = count > 0 ? (starPts / count) : 0;
-    const ex = getSotdExtra(s.name);
-    const opinionPts = parseFloat(ex.opinion) || 0;
-    const quizPts = parseFloat(ex.quiz) || 0;
-    const votes = getSotdVotesFor(s.name);
-    const votePts = parseFloat((votes * voteWeight).toFixed(2));
-    const finalScore = parseFloat((starPts + opinionPts + quizPts + votePts).toFixed(2));
-    return {
-      name: s.name,
-      eligible: s.eligible,
-      joinTime: s.joinTime || '',
-      songsSung: count,
-      starPts,
-      totalPts: starPts,
-      avgPts: parseFloat(avg.toFixed(1)),
-      opinionPts,
-      quizPts,
-      votes,
-      votePts,
-      finalScore
-    };
-  });
+function getSotdExcludedSet() {
+  const arr = (LIVE && Array.isArray(LIVE.sotdVoteExcluded)) ? LIVE.sotdVoteExcluded : [];
+  return new Set(arr.map(x => canonSinger(x)).filter(Boolean));
 }
+
+function getAllActiveSOTDCandidates(includeExcluded = false) {
+  const voteWeight = getSotdVoteWeight();
+  const excluded = includeExcluded ? new Set() : getSotdExcludedSet();
+  return (LIVE.singers || [])
+    .filter(s => s && s.name && !excluded.has(canonSinger(s.name)))
+    .map(s => {
+      const perfs = LIVE.performances.filter(p => p.singer === s.name && p.song);
+      const count = perfs.length;
+      const starPts = parseFloat(perfs.reduce((sum, p) => sum + calcStarPoints(p.stars), 0).toFixed(2));
+      const avg = count > 0 ? (starPts / count) : 0;
+      const ex = getSotdExtra(s.name);
+      const opinionPts = parseFloat(ex.opinion) || 0;
+      const quizPts = parseFloat(ex.quiz) || 0;
+      const votes = getSotdVotesFor(s.name);
+      const votePts = parseFloat((votes * voteWeight).toFixed(2));
+      const finalScore = parseFloat((starPts + opinionPts + quizPts + votePts).toFixed(2));
+      return {
+        name: s.name,
+        eligible: s.eligible,
+        joinTime: s.joinTime || '',
+        songsSung: count,
+        starPts,
+        totalPts: starPts,
+        avgPts: parseFloat(avg.toFixed(1)),
+        opinionPts,
+        quizPts,
+        votes,
+        votePts,
+        finalScore
+      };
+    });
+}
+
+window.removeFromSotdVoteList = async (singerName) => {
+  if (!IS_SUPER && !IS_HOST) return;
+  const cn = canonSinger(singerName);
+  if (!cn) return;
+  if (!Array.isArray(LIVE.sotdVoteExcluded)) LIVE.sotdVoteExcluded = [];
+  if (!LIVE.sotdVoteExcluded.includes(cn)) LIVE.sotdVoteExcluded.push(cn);
+  if (SOTD_30S_VOTE && Array.isArray(SOTD_30S_VOTE.candidates)) {
+    SOTD_30S_VOTE.candidates = SOTD_30S_VOTE.candidates.filter(c => canonSinger(c.name) !== cn);
+  }
+  saveLocal();
+  drawSOTDSection();
+  if (SOTD_30S_VOTE && SOTD_30S_VOTE.active) {
+    await pushLiveSessionNow();
+  }
+};
+
+window.restoreToSotdVoteList = async (singerName) => {
+  if (!IS_SUPER && !IS_HOST) return;
+  const cn = canonSinger(singerName);
+  if (!cn) return;
+  LIVE.sotdVoteExcluded = (LIVE.sotdVoteExcluded || []).filter(x => canonSinger(x) !== cn);
+  if (SOTD_30S_VOTE && SOTD_30S_VOTE.active) {
+    const allActive = getAllActiveSOTDCandidates();
+    SOTD_30S_VOTE.candidates = allActive.map(c => ({ name: c.name, totalPts: c.starPts, avgPts: c.avgPts, finalScore: c.finalScore }));
+  }
+  saveLocal();
+  drawSOTDSection();
+  if (SOTD_30S_VOTE && SOTD_30S_VOTE.active) {
+    await pushLiveSessionNow();
+  }
+};
+
+window.restoreAllToSotdVoteList = async () => {
+  if (!IS_SUPER && !IS_HOST) return;
+  LIVE.sotdVoteExcluded = [];
+  if (SOTD_30S_VOTE && SOTD_30S_VOTE.active) {
+    const allActive = getAllActiveSOTDCandidates();
+    SOTD_30S_VOTE.candidates = allActive.map(c => ({ name: c.name, totalPts: c.starPts, avgPts: c.avgPts, finalScore: c.finalScore }));
+  }
+  saveLocal();
+  drawSOTDSection();
+  if (SOTD_30S_VOTE && SOTD_30S_VOTE.active) {
+    await pushLiveSessionNow();
+  }
+};
 
 function getSotdExtra(singerName) {
   if (!LIVE.sotdExtras || typeof LIVE.sotdExtras !== 'object') LIVE.sotdExtras = {};
@@ -2125,7 +2180,10 @@ function renderSOTDHTML() {
         `}
       </div>
 
-      ${voteCands.length ? `
+      ${(() => {
+        const exclSet = getSotdExcludedSet();
+        const excludedSingers = (LIVE.singers || []).filter(s => s && s.name && exclSet.has(canonSinger(s.name)));
+        return (voteCands.length ? `
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:6px;margin-top:8px">
           ${voteCands.map((c, i) => {
             const safeName = e(c.name).replace(/'/g, "\\'");
@@ -2145,11 +2203,19 @@ function renderSOTDHTML() {
               <div class="row" style="gap:4px;margin-top:2px">
                 ${IS_SUPER ? `<button style="padding:2px 6px;font-size:11px" onclick="recordSOTD30sJudgePick('${safeName}')">+1 Vote</button>` : ''}
                 <button class="${isDeclared ? 'on' : 'pri'}" style="padding:2px 6px;font-size:11px" onclick="toggleSOTDWinner('${safeName}', 'Score')">${isDeclared ? '✓ SOTD' : '+ SOTD'}</button>
+                <button style="margin-left:auto;padding:2px 7px;font-size:11px;color:#dc2626;border-color:#fca5a5;background:transparent" onclick="removeFromSotdVoteList('${safeName}')" title="Remove from SOTD vote list">Remove</button>
               </div>
             </div>`;
           }).join('')}
         </div>
-      ` : '<p class="m" style="margin:6px 0 0">Add active singers to the queue to open the 1-minute SOTD Vote Meter.</p>'}
+      ` : '<p class="m" style="margin:6px 0 0">Add active singers to the queue to open the 1-minute SOTD Vote Meter.</p>') + (excludedSingers.length ? `
+        <div class="row" style="margin-top:8px;padding-top:6px;border-top:1px dashed var(--bd);gap:5px">
+          <span class="m" style="font-size:11px;font-weight:700">Removed from vote list:</span>
+          ${excludedSingers.map(s => `<button style="padding:2px 7px;font-size:11px" onclick="restoreToSotdVoteList('${e(s.name).replace(/'/g, "\\'")}')" title="Restore to SOTD vote list">+ ${e(s.name)}</button>`).join('')}
+          ${excludedSingers.length > 1 ? `<button style="padding:2px 7px;font-size:11px;color:var(--ac);border-color:var(--ac)" onclick="restoreAllToSotdVoteList()">Restore All</button>` : ''}
+        </div>
+      ` : '');
+      })()}
     </div>` : ''}
 
     <div class="f">
@@ -2919,7 +2985,7 @@ window.resetAndClearLiveBanner = () => {
     if (plansEntriesUnsub) { plansEntriesUnsub(); plansEntriesUnsub = null; }
 
     SESSION_CLEARED_AT = Date.now();
-    LIVE = { date: LIVE.date, theme: '', host: IS_HOST ? HOST_SINGER_NAME : '', singers: [], performances: [], sotdExtras: {}, sotdVoteWeight: 1 };
+    LIVE = { date: LIVE.date, theme: '', host: IS_HOST ? HOST_SINGER_NAME : '', singers: [], performances: [], sotdExtras: {}, sotdVoteWeight: 1, sotdVoteExcluded: [] };
     SOTD_LIST = [];
     PRACTICE_COUNTER = 0;
     try { localStorage.removeItem('sfh_live_session_' + LIVE.date); } catch(x){}
@@ -2959,7 +3025,7 @@ window.endSession = async () => {
       const practiceSongs = performed.map(p => [p.songId, LIVE.date, p.singer, p.song]);
       const { fileName: backupFileName } = await buildAndSaveMasterBackup(practiceSongs, PUB_CACHE || { singers: KNOWN_SINGERS, sotd: [], som: {}, somd: {}, stars: {} }, null, true);
       try { sessionStorage.removeItem('sfh_practice_session'); } catch(x){}
-      LIVE = { date: LIVE.date, theme: '', host: '', singers: [], performances: [], sotdExtras: {}, sotdVoteWeight: 1 };
+      LIVE = { date: LIVE.date, theme: '', host: '', singers: [], performances: [], sotdExtras: {}, sotdVoteWeight: 1, sotdVoteExcluded: [] };
       SOTD_LIST = [];
       PRACTICE_COUNTER = 0;
       SESSION_ENDED = false;
@@ -3055,7 +3121,7 @@ window.endSession = async () => {
 
     const mailtoHref = `mailto:${encodeURIComponent(emailRes.recipient)}?subject=${encodeURIComponent('SFH Master Backup - ' + fd(LIVE.date) + (waHost ? ' (Host: ' + waHost + ')' : ''))}&body=${encodeURIComponent('Sing From Home session ended.\nBackup file downloaded: ' + backupFileName + '\n(Please attach ' + backupFileName + ' from your Downloads folder if not already delivered.)\n\n' + waText)}`;
 
-    LIVE = { date: LIVE.date, theme: '', host: IS_HOST ? HOST_SINGER_NAME : '', singers: [], performances: [], sotdExtras: {}, sotdVoteWeight: 1 };
+    LIVE = { date: LIVE.date, theme: '', host: IS_HOST ? HOST_SINGER_NAME : '', singers: [], performances: [], sotdExtras: {}, sotdVoteWeight: 1, sotdVoteExcluded: [] };
     SOTD_LIST = [];
 
     const m = $('#custom-modal');
