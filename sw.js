@@ -1,5 +1,13 @@
+// SFH Service Worker v43
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.map(k => caches.delete(k))))
+      .catch(() => {})
+      .then(() => self.clients.claim())
+  );
+});
 self.addEventListener('fetch', () => {});
 self.addEventListener('notificationclick', e => {
   e.notification.close();

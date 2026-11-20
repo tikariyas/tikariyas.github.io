@@ -3,8 +3,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0f3460">
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json?v=43">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=43">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=43">
 <title>Sing From Home</title>
 <style>
 :root{
@@ -2259,8 +2260,8 @@ async function sendSessionPushNotification(title, body, tag = 'sfh-session') {
         await reg.showNotification(title, {
           body,
           tag,
-          icon: 'icon-192.png',
-          badge: 'icon-192.png',
+          icon: 'icon-192.png?v=43',
+          badge: 'icon-192.png?v=43',
           vibrate: [180, 90, 180],
           renotify: true
         });
@@ -2269,7 +2270,7 @@ async function sendSessionPushNotification(title, body, tag = 'sfh-session') {
     }
   } catch (_swErr) {}
   try {
-    new Notification(title, { body, tag, icon: 'icon-192.png' });
+    new Notification(title, { body, tag, icon: 'icon-192.png?v=43' });
     return true;
   } catch (_nErr) {
     return false;
@@ -4540,5 +4541,5 @@ window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.on
     }, label);
   }catch(z){showNotice(z=='size'?'One month of songs is too large for a single document.':(z&&z.code?'Restore/Publish failed ('+z.code+'). Check Firebase rules.':'That is not a valid SFH backup or participants file.'))}};r.readAsText(f)};
 
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=42').then(r=>r.update()).catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=43').then(r=>r.update()).catch(()=>{});}
 </script></body></html>
