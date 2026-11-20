@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GoogleGenAI, ThinkingLevel, Type } from '@google/genai';
+import nodemailer from 'nodemailer';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,7 +35,7 @@ const BLOCKED_FILES = new Set([
   '/.env.example',
 ]);
 
-app.use(express.json({ limit: '256kb' }));
+app.use(express.json({ limit: '5mb' }));
 
 app.use((req, res, next) => {
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
@@ -249,6 +250,76 @@ async function handleSongMetadataRequest(req, res) {
 
 app.post('/api/song-metadata', handleSongMetadataRequest);
 app.get('/api/song-metadata', handleSongMetadataRequest);
+
+const SUPERADMIN_EMAIL = 'musicsnsounds@gmail.com';
+
+function createMailTransporter() {
+  const user = process.env.SMTP_USER || process.env.GMAIL_USER || '';
+  const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || '';
+  if (!user || !pass) return null;
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = Number(process.env.SMTP_PORT) || 465;
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass },
+  });
+}
+
+app.post('/api/email-backup', async (req, res) => {
+  const { fileName, jsonContent, date, host, theme, songCount, sotdSummary } = req.body || {};
+  if (!fileName || typeof jsonContent !== 'string' || !jsonContent.trim()) {
+    return res.status(400).json({ ok: false, error: 'Missing backup file content.' });
+  }
+  const transporter = createMailTransporter();
+  if (!transporter) {
+    return res.json({
+      ok: false,
+      configured: false,
+      recipient: SUPERADMIN_EMAIL,
+      message: 'SMTP credentials not configured on server.',
+    });
+  }
+  try {
+    const fromAddr = process.env.SMTP_FROM || process.env.SMTP_USER || process.env.GMAIL_USER;
+    const safeName = String(fileName).replace(/[^a-zA-Z0-9._-]/g, '_');
+    const subject = `Sing From Home Backup — ${date || 'Live Session'}${host ? ` (Host: ${host})` : ''}`;
+    const bodyLines = [
+      `Sing From Home — Automatic Session Backup`,
+      `Date: ${date || '-'}`,
+      `Host: ${host || '-'}`,
+      `Theme: ${theme || '-'}`,
+      `Songs Performed: ${Number(songCount) || 0}`,
+      sotdSummary ? `SOTD: ${sotdSummary}` : '',
+      ``,
+      `The complete Master Backup JSON (${safeName}) is attached to this email.`,
+    ].filter(Boolean);
+
+    await transporter.sendMail({
+      from: fromAddr,
+      to: SUPERADMIN_EMAIL,
+      subject,
+      text: bodyLines.join('\n'),
+      attachments: [
+        {
+          filename: safeName,
+          content: jsonContent,
+          contentType: 'application/json',
+        },
+      ],
+    });
+    return res.json({ ok: true, configured: true, recipient: SUPERADMIN_EMAIL, fileName: safeName });
+  } catch (err) {
+    console.error('Backup email error:', err?.message || err);
+    return res.status(502).json({
+      ok: false,
+      configured: true,
+      recipient: SUPERADMIN_EMAIL,
+      error: err?.message || 'Failed to send backup email.',
+    });
+  }
+});
 
 app.use(
   '/.well-known',

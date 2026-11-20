@@ -81,7 +81,6 @@ nav{
   margin-bottom:8px;
 }
 nav > button:not(.zm),
-nav > button.on:not(.zm),
 nav > button.pri:not(.zm),
 nav > button.warn:not(.zm){
   width:100%;
@@ -101,12 +100,33 @@ nav > button.warn:not(.zm){
   box-shadow:none !important;
   border:1px solid var(--bd);
 }
+@media (prefers-color-scheme:dark){
+  nav > button:not(.zm),
+  nav > button.pri:not(.zm),
+  nav > button.warn:not(.zm){
+    color:#f8fafc !important;
+  }
+}
 nav > button:not(.zm):hover{
-  border-color:#000000;
+  border-color:var(--ac);
 }
 nav > button.on:not(.zm){
+  width:100%;
+  height:100%;
+  min-height:34px;
+  padding:4px 2px;
+  font-size:12px;
   font-weight:800;
-  border:1.5px solid #000000;
+  text-align:center;
+  box-sizing:border-box;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  line-height:1.2;
+  background:var(--btn-pri-bg) !important;
+  color:#ffffff !important;
+  border:1.5px solid var(--ac) !important;
+  box-shadow:0 3px 10px -2px rgba(15,52,96,0.35) !important;
 }
 nav > .zm{
   grid-column:1 / -1;
@@ -396,6 +416,86 @@ function isWithinLiveScheduleNow(now = new Date()) {
   return false;
 }
 
+function isWithinAdminLiveWindowNow(now = new Date()) {
+  const sc = (typeof getSchedule === 'function')
+    ? getSchedule()
+    : { days: [1,2,3,4,5], startTime: '20:20', endTime: '23:30', cutoffMins: 26, forceLiveOverride: false };
+  if (sc.forceLiveOverride) return true;
+  const holidays = (typeof getHolidayDateSet === 'function') ? getHolidayDateSet() : new Set();
+  const todayKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+  if (holidays.has(todayKey)) return false;
+  const day = now.getDay();
+  const prevDay = (day + 6) % 7;
+  const [sh, sm] = (sc.startTime || '20:20').split(':').map(Number);
+  const [eh, em] = (sc.endTime || '23:30').split(':').map(Number);
+  const curMins = now.getHours() * 60 + now.getMinutes();
+  const startMins = (sh * 60 + sm) - 5;
+  let endMins = eh * 60 + em;
+  if (endMins <= (sh * 60 + sm)) {
+    endMins = Math.max(endMins + 1440, (sh * 60 + sm) + 120);
+  }
+  if (sc.days.includes(day) && curMins >= startMins && curMins <= endMins) return true;
+  if (sc.days.includes(prevDay) && (curMins + 1440) >= startMins && (curMins + 1440) <= endMins) return true;
+  return false;
+}
+
+const FAMILY_IGNORE_TOKENS = new Set(['MR', 'MRS', 'MS', 'MISS', 'DR', 'SMT', 'SHRI', 'SHREE', 'JI', 'KUMAR', 'KUMARI', 'DEVI', 'BAI', 'LAL', 'RAO']);
+
+function extractFamilyTokens(nameRaw) {
+  const cn = canonSinger(nameRaw);
+  if (!cn) return [];
+  const parts = cn.split(/[\s._\-/]+/).filter(Boolean);
+  if (parts.length <= 1) return [];
+  return parts.slice(1).filter(tok => tok.length >= 3 && !FAMILY_IGNORE_TOKENS.has(tok));
+}
+
+function isSelfOrFamily(voterRaw, candRaw) {
+  const v = canonSinger(voterRaw);
+  const c = canonSinger(candRaw);
+  if (!v || !c) return false;
+  if (v === c) return true;
+  const groups = (CONF && Array.isArray(CONF.familyGroups)) ? CONF.familyGroups : [];
+  for (const grp of groups) {
+    if (!Array.isArray(grp)) continue;
+    const normGrp = grp.map(canonSinger).filter(Boolean);
+    if (normGrp.includes(v) && normGrp.includes(c)) return true;
+  }
+  const vToks = extractFamilyTokens(v);
+  const cToks = extractFamilyTokens(c);
+  if (vToks.length && cToks.length && vToks.some(t => cToks.includes(t))) return true;
+  if (Array.isArray(AU) && AU.length) {
+    const vAcc = AU.find(u => canonSinger(u.singer) === v);
+    const cAcc = AU.find(u => canonSinger(u.singer) === c);
+    const vPh = String((vAcc && vAcc.phone) || '').replace(/\D/g, '').slice(-10);
+    const cPh = String((cAcc && cAcc.phone) || '').replace(/\D/g, '').slice(-10);
+    if (vPh.length === 10 && vPh === cPh) return true;
+  }
+  return false;
+}
+
+function sotdVoteStorageKey(dateStr) {
+  const uid = (U && U.uid) || 'anon';
+  return `sfh_sotd_voted_${normDate(dateStr || tdy())}_${uid}`;
+}
+
+function getSavedSotdVoteForDate(dateStr) {
+  const dk = normDate(dateStr || tdy());
+  if (PLAN && PLAN.sotdPick && (!PLAN.date || normDate(PLAN.date) === dk)) {
+    return String(PLAN.sotdPick).trim().toUpperCase();
+  }
+  try {
+    const localVal = localStorage.getItem(sotdVoteStorageKey(dk));
+    if (localVal) return String(localVal).trim().toUpperCase();
+  } catch (_e) {}
+  return '';
+}
+
+function saveSotdVoteLocally(dateStr, pick) {
+  try {
+    localStorage.setItem(sotdVoteStorageKey(dateStr), String(pick || '').trim().toUpperCase());
+  } catch (_e) {}
+}
+
 window.showNotice = (msg, title="Sing From Home") => {
   const m = $('#custom-modal');
   $('#custom-modal-body').innerHTML = `<h3>${e(title)}</h3><p style="margin:12px 0 16px;white-space:pre-line">${e(msg)}</p><p style="text-align:right;margin:0"><button class="pri" onclick="closeModal()">OK</button></p>`;
@@ -481,7 +581,7 @@ const fd=k=>k.slice(8)+'/'+k.slice(5,7)+'/'+k.slice(0,4);
 const fm=m=>new Date(m+'-01T00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
 const nowM=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
 const okImg=s=>typeof s=='string'&&s.startsWith('data:image/');
-let U=null,P=null,PUB=null,SONGS=[],CONF={},AU=[],tab='home',ADM=false,IS_SUPER=false,IS_ADMIN=false,IS_JUDGE=false,LIVE_SESSION=null,SOTM_RESULT=null,SOTM_PANEL_CACHE=null,HOLIDAYS=[],loadErr='',HDATE='',EDU='',GRT=[],BD=[],GQ=[],showAbout=location.hash=='#about',MSGS=[],AM=[],AIN=[],PL=[],PD='',PLAN=null,pendingName='',seenAdm=(()=>{try{return +localStorage.getItem('sfh_seen_adm')||0}catch(x){return 0}})(),seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
+let U=null,P=null,PUB=null,SONGS=[],CONF={},AU=[],tab='home',ADM=false,IS_SUPER=false,IS_ADMIN=false,IS_JUDGE=false,IS_HOST=false,LIVE_SESSION=null,SOTM_RESULT=null,SOTM_PANEL_CACHE=null,HOLIDAYS=[],loadErr='',HDATE='',EDU='',GRT=[],BD=[],GQ=[],showAbout=location.hash=='#about',MSGS=[],AM=[],AIN=[],PL=[],PD='',PLAN=null,pendingName='',seenAdm=(()=>{try{return +localStorage.getItem('sfh_seen_adm')||0}catch(x){return 0}})(),seenPrev=0,seen=(()=>{try{return +localStorage.getItem('sfh_seen')||0}catch(x){return 0}})();
 let PREVIEW_PARTICIPANT = false;
 let PREVIEW_SINGER = '';
 const URL_PARAMS = new URLSearchParams(location.search);
@@ -491,9 +591,14 @@ const effSuper = () => IS_SUPER && !PREVIEW_PARTICIPANT;
 const effAdmin = () => IS_ADMIN && !PREVIEW_PARTICIPANT;
 const effAdm = () => ADM && !PREVIEW_PARTICIPANT;
 const isUserJudge = u => Boolean(u && (u.isJudge === true || u.role === 'judge'));
+const isUserHost = u => Boolean(u && (u.isHost === true || u.role === 'host'));
 const effJudge = () => {
   const vp = curP();
   return Boolean(vp && vp.status == 'approved' && isUserJudge(vp));
+};
+const effHost = () => {
+  const vp = curP();
+  return Boolean(vp && vp.status == 'approved' && isUserHost(vp) && !effSuper() && !effAdmin());
 };
 const isExternalJudgeOnly = () => effJudge() && !effSuper() && !effAdmin();
 const curP = () => {
@@ -672,6 +777,7 @@ onAuthStateChanged(auth, async u => {
 
     IS_ADMIN = IS_SUPER || (P && P.status == 'approved' && P.role == 'admin');
     IS_JUDGE = Boolean(P && P.status == 'approved' && isUserJudge(P));
+    IS_HOST = Boolean(!IS_SUPER && !IS_ADMIN && P && P.status == 'approved' && isUserHost(P));
     ADM = IS_ADMIN;
     if (IS_JUDGE && !IS_SUPER && !IS_ADMIN) {
       tab = 'judge';
@@ -810,29 +916,48 @@ window.submitLiveBallot = async (kind, targetSinger, score) => {
   if (!U || !P || (P.status !== 'approved' && !ADM)) return;
   const vp = curP();
   const todayStr = (LIVE_SESSION && LIVE_SESSION.date) ? LIVE_SESSION.date : tdy();
-  const voterName = ((vp && vp.singer) || (vp && vp.name) || (U && U.displayName) || '').trim().toUpperCase();
-  if (kind === 'sotd_pick' && voterName && voterName === String(targetSinger || '').trim().toUpperCase()) {
-    showNotice('You cannot vote for yourself. Please vote for another participant.');
-    return;
+  const voterName = canonSinger((vp && vp.singer) || (vp && vp.name) || (U && U.displayName) || '');
+  const targetClean = canonSinger(targetSinger);
+  if (kind === 'sotd_pick') {
+    if (!targetClean || isSelfOrFamily(voterName, targetClean)) return;
+    const alreadyLocal = getSavedSotdVoteForDate(todayStr);
+    if (alreadyLocal) {
+      showNotice('Your vote has already been recorded for this session.');
+      draw();
+      return;
+    }
   }
   try {
     const planRef = doc(fs, 'plans', `${todayStr}_${U.uid}`);
     if (kind === 'sotd_pick') {
+      const existingSnap = await getDoc(planRef);
+      const existingData = existingSnap.exists() ? existingSnap.data() : null;
+      if (existingData && existingData.sotdPick) {
+        const lockedPick = canonSinger(existingData.sotdPick);
+        if (!PLAN) PLAN = { uid: U.uid, date: todayStr, singer: voterName, songs: [] };
+        PLAN.sotdPick = lockedPick;
+        saveSotdVoteLocally(todayStr, lockedPick);
+        draw();
+        showNotice('Your vote has already been recorded for this session.');
+        return;
+      }
       await setDoc(planRef, {
         uid: U.uid,
         date: todayStr,
         singer: voterName,
-        sotdPick: targetSinger,
+        sotdPick: targetClean,
         sotdPickTs: Date.now(),
         upd: Date.now()
       }, { merge: true });
       if (!PLAN) PLAN = { uid: U.uid, date: todayStr, singer: voterName, songs: [] };
-      PLAN.sotdPick = targetSinger;
+      PLAN.date = todayStr;
+      PLAN.sotdPick = targetClean;
+      saveSotdVoteLocally(todayStr, targetClean);
       draw();
-      showNotice(`Your SOTD vote for ${targetSinger} has been recorded!`);
+      showNotice(`Your vote for ${targetClean} has been recorded!`);
     } else {
       const ballotObj = {
-        target: targetSinger,
+        target: targetClean,
         score: Number(score),
         voter: voterName,
         uid: U.uid,
@@ -842,22 +967,28 @@ window.submitLiveBallot = async (kind, targetSinger, score) => {
         uid: U.uid,
         date: todayStr,
         singer: voterName,
-        sotmBallots: { [targetSinger]: ballotObj },
+        sotmBallots: { [targetClean]: ballotObj },
         upd: Date.now()
       }, { merge: true });
       if (!PLAN) PLAN = { uid: U.uid, date: todayStr, singer: voterName, songs: [] };
-      PLAN.sotmBallots = { ...(PLAN.sotmBallots || {}), [targetSinger]: ballotObj };
+      PLAN.sotmBallots = { ...(PLAN.sotmBallots || {}), [targetClean]: ballotObj };
       draw();
-      showNotice(`Blind vote (${score}/10) recorded for ${targetSinger}!`);
+      showNotice(`Blind vote (${score}/10) recorded for ${targetClean}!`);
     }
   } catch (err) {
     showNotice('Could not submit vote: ' + (err.code || err.message));
   }
 };
 
+window.openZoomDirect = () => {
+  if (!CONF.zoom) return;
+  closeModal();
+  window.open(CONF.zoom, '_blank', 'noopener');
+};
+
 window.joinZoom = async () => {
   if (!CONF.zoom) return;
-  const singerName = ((P && P.singer) || (P && P.name) || (U && U.displayName) || '').trim().toUpperCase();
+  const singerName = canonSinger((P && P.singer) || (P && P.name) || (U && U.displayName) || '');
   const todayStr = (LIVE_SESSION && LIVE_SESSION.active && LIVE_SESSION.date) ? LIVE_SESSION.date : tdy();
   const now = new Date();
   const sc = getSchedule();
@@ -867,12 +998,44 @@ window.joinZoom = async () => {
     schedStart.setDate(schedStart.getDate() - 1);
   }
   const cutoffMs = schedStart.getTime() + ((sc.cutoffMins ?? 26) * 60000);
-  const preOpenMs = schedStart.getTime() - (5 * 60000);
-  const schedDays = Array.isArray(sc.days) ? sc.days : [1, 2, 3, 4, 5];
-  const isSchedDay = schedDays.includes(schedStart.getDay());
-  const canAutoQueue = Boolean(sc.forceLiveOverride || (LIVE_SESSION && LIVE_SESSION.active) || (isSchedDay && now.getTime() >= preOpenMs));
+  const sessionOpenNow = Boolean(sc.forceLiveOverride || (LIVE_SESSION && LIVE_SESSION.active) || isWithinAdminLiveWindowNow(now));
 
-  if (singerName && U && canAutoQueue) {
+  if (!sessionOpenNow) {
+    const holidays = getHolidayDateSet();
+    const todayIsHoliday = holidays.has(localDateKeyOf(now));
+    const st = getNextSessionState(now);
+    const nextLine = st.state === 'upcoming'
+      ? `${st.dayLabel} at ${st.timeLabel}`
+      : 'Check scheduled session timings';
+    const countdownLine = st.state === 'upcoming' ? formatCountdownClock(st.msRemaining) : '';
+    const needAlertsBtn = !effAdm() && isNotifSupported() && Notification.permission === 'default';
+    const m = $('#custom-modal');
+    $('#custom-modal-body').innerHTML = `
+      <div style="text-align:center">
+        <div style="display:inline-block;padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:800;letter-spacing:0.3px;background:${todayIsHoliday ? '#fef3c7' : 'var(--ac-light)'};color:${todayIsHoliday ? '#b45309' : 'var(--ac)'};margin-bottom:8px">
+          ${todayIsHoliday ? 'SCHEDULED HOLIDAY TODAY' : 'SESSION NOT STARTED YET'}
+        </div>
+        <h3 style="margin:0 0 8px;text-align:center">Zoom Opens 5 Minutes Before Session</h3>
+        <div style="padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);margin:10px 0">
+          <div class="m" style="font-size:12px">Next Scheduled Session</div>
+          <div style="font-size:16px;font-weight:800;color:var(--fg);margin-top:2px">${e(nextLine)}</div>
+          ${countdownLine ? `<div id="zoom-modal-cd" style="font-size:22px;font-weight:900;color:var(--ac);font-variant-numeric:tabular-nums;margin-top:4px">${e(countdownLine)}</div>` : ''}
+        </div>
+        <p class="m" style="margin:8px 0 14px;line-height:1.45">
+          Tap <b>Start Zoom</b> within 5 minutes of session start to join the Zoom room and automatically enter today's singing queue.
+        </p>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+          ${needAlertsBtn ? `<button onclick="closeModal();enableSessionNotifications()">🔔 Enable Auto Reminders</button>` : ''}
+          ${effSuper() ? `<button onclick="openZoomDirect()">Open Zoom Anyway</button>` : ''}
+          <button class="pri" onclick="closeModal()">OK</button>
+        </div>
+      </div>
+    `;
+    m.style.display = 'flex';
+    return;
+  }
+
+  if (singerName && U) {
     const entryTimeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
     const eligible = (sc.forceLiveOverride || now.getTime() < schedStart.getTime()) ? true : (now.getTime() <= cutoffMs);
     const entryDocId = `${todayStr}_${U.uid}`;
@@ -1036,7 +1199,8 @@ const tabs = () => {
       ['today', 'Today'],
       ['msg', 'Messages' + unread()],
       ['prof', 'My profile'],
-      ['about', 'About']
+      ['about', 'About'],
+      ...(effHost() && isWithinAdminLiveWindowNow() ? [['live', 'Live Session']] : [])
     ];
   }
 
@@ -1509,6 +1673,13 @@ async function fetchPublicSongMetaIdx(songTitle) {
 window.fetchArchiveMetaAI = async (songTitle) => {
   const statusEl = $('#arch_meta_status');
   const btnEl = $('#btn_arch_meta_ai');
+  if (!isWithinAdminLiveWindowNow()) {
+    if (statusEl) {
+      statusEl.style.color = '#d97706';
+      statusEl.textContent = 'Offline mode (out of session time): AI metadata collection is active during session time only.';
+    }
+    return;
+  }
   if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'AI Loading…'; }
   if (statusEl) { statusEl.style.color = 'var(--ac)'; statusEl.textContent = `Fetching metadata for "${songTitle}"…`; }
   try {
@@ -2229,6 +2400,25 @@ function tickSessionTimerAndAlerts() {
     cardEl.style.background = bgCol;
   }
 
+  const zoomModalCd = document.getElementById('zoom-modal-cd');
+  if (zoomModalCd && st.state === 'upcoming') {
+    zoomModalCd.textContent = formatCountdownClock(st.msRemaining);
+  }
+
+  const sotdBadge = document.getElementById('sotd-vote-secs');
+  if (sotdBadge && LIVE_SESSION && LIVE_SESSION.sotdVote && LIVE_SESSION.sotdVote.active && LIVE_SESSION.sotdVote.endsAt) {
+    const rem = Math.max(0, Math.min(60, Math.ceil((LIVE_SESSION.sotdVote.endsAt - Date.now()) / 1000)));
+    sotdBadge.textContent = `${rem}s`;
+  }
+
+  const hostWinNow = effHost() ? isWithinAdminLiveWindowNow(new Date()) : false;
+  if (window._lastHostLiveWin !== undefined && window._lastHostLiveWin !== hostWinNow) {
+    window._lastHostLiveWin = hostWinNow;
+    draw();
+  } else {
+    window._lastHostLiveWin = hostWinNow;
+  }
+
   if (_lastSessionTimerState !== null && _lastSessionTimerState !== st.state && !effAdm() && tab === 'home') {
     _lastSessionTimerState = st.state;
     draw();
@@ -2290,7 +2480,7 @@ function vHome(){
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
         <div style="flex:1;min-width:0">
           <b>Your position</b>
-          ${sk?`<p class="big" style="margin:3px 0 2px 0">${e(sk)}${effSuper()?' <span style="font-size:12px;color:var(--ac);font-weight:700">(Superadmin)</span>':(effAdmin()?' <span style="font-size:12px;color:var(--ac);font-weight:700">(Admin)</span>':'')}</p>
+          ${sk?`<p class="big" style="margin:3px 0 2px 0">${e(sk)}${effSuper()?' <span style="font-size:12px;color:var(--ac);font-weight:700">(Superadmin)</span>':(effAdmin()?' <span style="font-size:12px;color:var(--ac);font-weight:700">(Admin)</span>':(effHost()?' <span style="font-size:12px;color:#0284c7;font-weight:700">(Host)</span>':''))}</p>
           <p style="margin:2px 0 0 0;line-height:1.35">Your stars: <b>${s?s.t:0}</b>${(s&&s.t>=4)?' <span style="color:var(--ac);font-weight:600">– eligible for the Singer of the Month round</span>':''}${s&&s.d&&s.d.length?'<br><span class="m">Singer of the Day: '+s.d.map(fd).join(', ')+'</span>':''}${som.filter(x=>x[1]==sk).length?'<br>Singer of the Month: <b>'+som.filter(x=>x[1]==sk).map(x=>fm(x[0])).join(', ')+'</b>':''}</p>`:'<p class="m" style="margin:3px 0 0">Your name is not linked yet. Please ask the host.</p>'}
         </div>
         <div class="ph" style="width:52px;height:52px;border-radius:50%;flex:none">
@@ -2306,26 +2496,29 @@ function vHome(){
   const allowLiveVoting = !(effAdmin() && !effSuper());
   if (allowLiveVoting && LIVE_SESSION && LIVE_SESSION.sotdVote && LIVE_SESSION.sotdVote.active) {
     const sv = LIVE_SESSION.sotdVote;
-    const cands = Array.isArray(sv.candidates) ? sv.candidates : [];
-    const myPick = PLAN && PLAN.sotdPick;
-    const secsLeft = sv.endsAt ? Math.max(1, Math.min(30, Math.ceil((sv.endsAt - Date.now()) / 1000))) : (sv.remaining || 30);
+    const rawCands = Array.isArray(sv.candidates) ? sv.candidates : [];
+    const cands = rawCands.filter(c => c && c.name && !isSelfOrFamily(sk, c.name));
+    const voteDateKey = (LIVE_SESSION && LIVE_SESSION.date) ? LIVE_SESSION.date : tdy();
+    const myPick = getSavedSotdVoteForDate(voteDateKey);
+    const hasVoted = Boolean(myPick);
+    const secsLeft = sv.endsAt ? Math.max(1, Math.min(60, Math.ceil((sv.endsAt - Date.now()) / 1000))) : (sv.remaining || 60);
     h += `<div class="c" style="border:2px solid #d97706;background:#fffbeb">
       <div class="row" style="justify-content:space-between">
-        <b style="color:#b45309">⏱️ LIVE 30s SOTD VOTE METER — Vote for Another Singer</b>
-        <span class="badge-round" style="background:#d97706;color:#fff">${secsLeft}s</span>
+        <b style="color:#b45309">⏱️ LIVE 1 MIN SOTD VOTE METER</b>
+        <span id="sotd-vote-secs" class="badge-round" style="background:#d97706;color:#fff">${secsLeft}s</span>
       </div>
-      <p class="m" style="margin:4px 0 8px">Tap your choice for today's Singer of the Day (self-voting is disabled):</p>
+      <p class="m" style="margin:4px 0 8px">${hasVoted ? 'Your vote for this session is locked in.' : "Tap your choice for today's Singer of the Day:"}</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px">
         ${cands.map((c, idx) => {
-          const isSelf = sk && c.name === sk;
+          const isPicked = myPick === canonSinger(c.name);
           return `
-          <button class="${myPick === c.name ? 'pri' : ''}" ${isSelf ? 'disabled style="opacity:0.55;cursor:not-allowed;padding:8px 10px;text-align:left;display:flex;flex-direction:column;align-items:flex-start;gap:2px"' : 'style="padding:8px 10px;text-align:left;display:flex;flex-direction:column;align-items:flex-start;gap:2px"'} onclick="submitLiveBallot('sotd_pick','${e(c.name).replace(/'/g, "\\'")}',1)">
-            <b>${idx + 1}. ${e(c.name)}${isSelf ? ' (You)' : ''}</b>
+          <button class="${isPicked ? 'pri' : ''}" ${hasVoted ? 'disabled style="opacity:' + (isPicked ? '1' : '0.5') + ';cursor:default;padding:8px 10px;text-align:left;display:flex;flex-direction:column;align-items:flex-start;gap:2px"' : 'style="padding:8px 10px;text-align:left;display:flex;flex-direction:column;align-items:flex-start;gap:2px"'} onclick="submitLiveBallot('sotd_pick','${e(c.name).replace(/'/g, "\\'")}',1)">
+            <b>${idx + 1}. ${e(c.name)}</b>
             ${effSuper() ? `<span style="font-size:11px;opacity:0.85">Final: ${c.finalScore != null ? c.finalScore : c.totalPts} pts</span>` : ''}
           </button>`;
         }).join('')}
       </div>
-      ${myPick ? `<p class="m" style="margin:6px 0 0;color:#15803d;font-weight:700">✓ Your vote for <b>${e(myPick)}</b> is locked in.</p>` : ''}
+      ${hasVoted ? `<p class="m" style="margin:6px 0 0;color:#15803d;font-weight:700">✓ Your vote for <b>${e(myPick)}</b> has been recorded.</p>` : ''}
     </div>`;
   }
 
@@ -3477,12 +3670,15 @@ ${effSuper()?`<div class="c">
     const isSup = (CFG.superadmins || []).map(x => x.toLowerCase()).includes((u.email || '').toLowerCase());
     const isAdm = u.role == 'admin';
     const isJdg = isUserJudge(u);
-    const roleTxt = isSup
-      ? 'Superadmin'
-      : (isAdm && isJdg ? 'Admin · Judge' : (isAdm ? 'Admin' : (isJdg ? 'Judge' : 'Participant')));
+    const isHst = isUserHost(u);
+    const rolesList = [];
+    if (isAdm) rolesList.push('Admin');
+    if (isHst) rolesList.push('Host');
+    if (isJdg) rolesList.push('Judge');
+    const roleTxt = isSup ? 'Superadmin' : (rolesList.length ? rolesList.join(' · ') : 'Participant');
     const roleStyle = isSup
       ? 'color:var(--ac);font-weight:800'
-      : (isAdm ? 'color:var(--ac);font-weight:700' : (isJdg ? 'color:#b45309;font-weight:700' : 'color:var(--mut)'));
+      : (isAdm ? 'color:var(--ac);font-weight:700' : (isHst ? 'color:#0284c7;font-weight:700' : (isJdg ? 'color:#b45309;font-weight:700' : 'color:var(--mut)')));
     const dispName = String(u.singer || u.name || idOf(u.email) || '').replace(/'/g, "\\'");
     return `<tr>
       <td><b>${e(u.singer || '(not linked)')}</b></td>
@@ -3494,6 +3690,11 @@ ${effSuper()?`<div class="c">
             isAdm
               ? `<button onclick="revokeAdmin('${e(u.id)}','${e(dispName)}')">Revoke Admin</button> `
               : `<button onclick="makeAdmin('${e(u.id)}','${e(dispName)}')">Make Admin</button> `
+          ) : ''}
+          ${IS_SUPER ? (
+            isHst
+              ? `<button style="border-color:#0284c7;color:#0284c7" onclick="revokeHost('${e(u.id)}','${e(dispName)}')">Revoke Host</button> `
+              : `<button onclick="makeHost('${e(u.id)}','${e(dispName)}')">Make Host</button> `
           ) : ''}
           ${IS_SUPER ? (
             isJdg
@@ -4259,12 +4460,44 @@ window.makeAdmin = async (id, name) => {
   });
 };
 
+window.makeHost = async (id, name) => {
+  if (!IS_SUPER) return;
+  const uObj = AU.find(x => x.id === id) || {};
+  showConfirm(`Assign ${name} as Session Host?\n\n• Adds the Live Session button to their view during scheduled session time only\n• Prefills their name as Host and lets them decide the Theme\n• Includes Live Vote Meter (no SOTM panel) with Publish, End & Home controls\n• Automatically emails session backup to Superadmin on End`, async () => {
+    try {
+      const nextRole = uObj.role === 'admin' ? 'admin' : (uObj.isJudge ? 'judge' : 'host');
+      await updateDoc(doc(fs, 'users', id), { isHost: true, role: nextRole });
+      await loadAdm();
+      draw();
+      showNotice(`${name} has been assigned as Session Host.`, 'Host Assigned');
+    } catch (x) {
+      showNotice('Failed (' + (x.code || 'error') + ')');
+    }
+  }, 'Assign Session Host');
+};
+
+window.revokeHost = async (id, name) => {
+  if (!IS_SUPER) return;
+  const uObj = AU.find(x => x.id === id) || {};
+  showConfirm(`Remove Host mode from ${name}?`, async () => {
+    try {
+      const nextRole = uObj.role === 'admin' ? 'admin' : (uObj.isJudge ? 'judge' : 'participant');
+      await updateDoc(doc(fs, 'users', id), { isHost: false, role: nextRole });
+      await loadAdm();
+      draw();
+      showNotice(`Host mode removed for ${name}.`);
+    } catch (x) {
+      showNotice('Failed (' + (x.code || 'error') + ')');
+    }
+  }, 'Revoke Host');
+};
+
 window.revokeAdmin = async (id, name) => {
   if (!IS_SUPER) return;
   const uObj = AU.find(x => x.id === id) || {};
   showConfirm('Remove Admin role from ' + name + '? They will become a standard participant.', async () => {
     try {
-      await updateDoc(doc(fs, 'users', id), { role: uObj.isJudge ? 'judge' : 'participant' });
+      await updateDoc(doc(fs, 'users', id), { role: uObj.isJudge ? 'judge' : (uObj.isHost ? 'host' : 'participant') });
       await loadAdm();
       draw();
       showNotice('Admin privileges removed for ' + name);
@@ -4307,5 +4540,5 @@ window.pubUp=el=>{const f=el.files[0];if(!f)return;const r=new FileReader();r.on
     }, label);
   }catch(z){showNotice(z=='size'?'One month of songs is too large for a single document.':(z&&z.code?'Restore/Publish failed ('+z.code+'). Check Firebase rules.':'That is not a valid SFH backup or participants file.'))}};r.readAsText(f)};
 
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=41').then(r=>r.update()).catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=42').then(r=>r.update()).catch(()=>{});}
 </script></body></html>
