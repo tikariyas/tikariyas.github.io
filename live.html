@@ -1889,39 +1889,44 @@ function shouldEnforceStarEligibility() {
   return (LIVE.performances || []).some(p => Array.isArray(p.stars) && p.stars.some(Boolean));
 }
 
+function computeSingerSotdMetrics(s, voteWeight) {
+  const perfs = LIVE.performances.filter(p => p.singer === s.name && p.song);
+  const starPerfs = LIVE.performances.filter(p => p.singer === s.name && Array.isArray(p.stars) && p.stars.some(Boolean));
+  const count = perfs.length;
+  const starRoundCount = new Set([...perfs.map(p => p.round), ...starPerfs.map(p => p.round)]).size;
+  const starTotalPts = parseFloat(starPerfs.reduce((sum, p) => sum + calcStarPoints(p.stars), 0).toFixed(2));
+  const starAvgPts = starRoundCount > 0 ? parseFloat((starTotalPts / starRoundCount).toFixed(2)) : 0;
+  const ex = getSotdExtra(s.name);
+  const opinionPts = parseFloat(ex.opinion) || 0;
+  const quizPts = parseFloat(ex.quiz) || 0;
+  const votes = getSotdVotesFor(s.name);
+  const votePts = parseFloat((votes * voteWeight).toFixed(2));
+  const finalScore = parseFloat((starAvgPts + opinionPts + quizPts + votePts).toFixed(2));
+  return {
+    name: s.name,
+    eligible: s.eligible,
+    joinTime: s.joinTime || '',
+    songsSung: count,
+    starRounds: starRoundCount,
+    starTotalPts,
+    starPts: starAvgPts,
+    totalPts: starTotalPts,
+    avgPts: starAvgPts,
+    opinionPts,
+    quizPts,
+    votes,
+    votePts,
+    finalScore
+  };
+}
+
 function getAllActiveSOTDCandidates(includeExcluded = false) {
   const voteWeight = getSotdVoteWeight();
   const excluded = includeExcluded ? new Set() : getSotdExcludedSet();
   const requireStars = shouldEnforceStarEligibility();
   return (LIVE.singers || [])
     .filter(s => s && s.name && !excluded.has(canonSinger(s.name)) && (!requireStars || hasGivenStarsForSinger(s.name)))
-    .map(s => {
-      const perfs = LIVE.performances.filter(p => p.singer === s.name && p.song);
-      const starPerfs = LIVE.performances.filter(p => p.singer === s.name && Array.isArray(p.stars) && p.stars.some(Boolean));
-      const count = perfs.length;
-      const starPts = parseFloat(starPerfs.reduce((sum, p) => sum + calcStarPoints(p.stars), 0).toFixed(2));
-      const avg = count > 0 ? (starPts / count) : 0;
-      const ex = getSotdExtra(s.name);
-      const opinionPts = parseFloat(ex.opinion) || 0;
-      const quizPts = parseFloat(ex.quiz) || 0;
-      const votes = getSotdVotesFor(s.name);
-      const votePts = parseFloat((votes * voteWeight).toFixed(2));
-      const finalScore = parseFloat((starPts + opinionPts + quizPts + votePts).toFixed(2));
-      return {
-        name: s.name,
-        eligible: s.eligible,
-        joinTime: s.joinTime || '',
-        songsSung: count,
-        starPts,
-        totalPts: starPts,
-        avgPts: parseFloat(avg.toFixed(1)),
-        opinionPts,
-        quizPts,
-        votes,
-        votePts,
-        finalScore
-      };
-    });
+    .map(s => computeSingerSotdMetrics(s, voteWeight));
 }
 
 window.removeFromSotdVoteList = async (singerName) => {
@@ -2135,33 +2140,9 @@ function getRankedSOTDCandidates() {
   const basePool = IS_SUPER ? LIVE.singers : LIVE.singers.filter(s => s.eligible);
   const pool = requireStars ? basePool.filter(s => hasGivenStarsForSinger(s.name)) : basePool;
   const voteWeight = getSotdVoteWeight();
-  return pool.map(s => {
-    const perfs = LIVE.performances.filter(p => p.singer === s.name && p.song);
-    const starPerfs = LIVE.performances.filter(p => p.singer === s.name && Array.isArray(p.stars) && p.stars.some(Boolean));
-    const count = perfs.length;
-    const starPts = parseFloat(starPerfs.reduce((sum, p) => sum + calcStarPoints(p.stars), 0).toFixed(2));
-    const avg = count > 0 ? (starPts / count) : 0;
-    const ex = getSotdExtra(s.name);
-    const opinionPts = parseFloat(ex.opinion) || 0;
-    const quizPts = parseFloat(ex.quiz) || 0;
-    const votes = getSotdVotesFor(s.name);
-    const votePts = parseFloat((votes * voteWeight).toFixed(2));
-    const finalScore = parseFloat((starPts + opinionPts + quizPts + votePts).toFixed(2));
-    return {
-      name: s.name,
-      eligible: s.eligible,
-      joinTime: s.joinTime || '',
-      songsSung: count,
-      starPts,
-      totalPts: starPts,
-      avgPts: parseFloat(avg.toFixed(1)),
-      opinionPts,
-      quizPts,
-      votes,
-      votePts,
-      finalScore
-    };
-  }).sort((a, b) => b.finalScore - a.finalScore || b.starPts - a.starPts || b.votes - a.votes || b.avgPts - a.avgPts || b.songsSung - a.songsSung);
+  return pool
+    .map(s => computeSingerSotdMetrics(s, voteWeight))
+    .sort((a, b) => b.finalScore - a.finalScore || b.starPts - a.starPts || b.votes - a.votes || b.starTotalPts - a.starTotalPts || b.songsSung - a.songsSung);
 }
 
 window.inspectSotdAudienceBallots = () => {
@@ -2227,11 +2208,15 @@ function renderSOTDHTML() {
   const allActive = getAllActiveSOTDCandidates();
   const voteCands = allActive.length
     ? allActive
-    : ((SOTD_30S_VOTE && Array.isArray(SOTD_30S_VOTE.candidates)) ? SOTD_30S_VOTE.candidates.map(vc => ({
-        name: vc.name, eligible: true, joinTime: '', starPts: vc.totalPts || 0, opinionPts: 0, quizPts: 0,
-        votes: getSotdVotesFor(vc.name), votePts: getSotdVotesFor(vc.name) * getSotdVoteWeight(),
-        finalScore: (vc.totalPts || 0) + getSotdVotesFor(vc.name) * getSotdVoteWeight()
-      })) : []);
+    : ((SOTD_30S_VOTE && Array.isArray(SOTD_30S_VOTE.candidates)) ? SOTD_30S_VOTE.candidates.map(vc => {
+        const starAvg = vc.avgPts != null ? vc.avgPts : (vc.totalPts || 0);
+        const vPts = parseFloat((getSotdVotesFor(vc.name) * getSotdVoteWeight()).toFixed(2));
+        return {
+          name: vc.name, eligible: true, joinTime: '', starPts: starAvg, starTotalPts: starAvg, starRounds: 1,
+          opinionPts: 0, quizPts: 0, votes: getSotdVotesFor(vc.name), votePts: vPts,
+          finalScore: parseFloat((starAvg + vPts).toFixed(2))
+        };
+      }) : []);
   const totalMeterVotes = voteCands.reduce((sum, c) => sum + getSotdVotesFor(c.name), 0);
   const voteWeight = getSotdVoteWeight();
   const canRunVoteMeter = IS_SUPER || IS_HOST;
@@ -2250,14 +2235,14 @@ function renderSOTDHTML() {
           </label>
         </div>
         <div class="m" style="font-size:11.5px;margin-bottom:6px">
-          <b>Final SOTD</b> = <b>My Opinion</b> + <b>5-Star Marks</b> + <b>Quiz Answers</b> + <b>Live Votes (Vote Meter)</b>
+          <b>Final SOTD</b> = <b>Avg 5-Star Marks</b> + <b>My Opinion</b> + <b>Quiz Answers</b> + <b>Live Votes (Vote Meter)</b>
         </div>
         ${ranked.length ? `
           <div class="tbl" style="margin-top:4px;background:var(--card)"><table>
             <tr>
               <th class="n">#</th>
               <th>Singer</th>
-              <th class="n" title="5-Star Marks">Stars</th>
+              <th class="n" title="Average of 5-Star Marks across rounds sung">Avg Stars</th>
               <th class="n" title="My Opinion">Opinion</th>
               <th class="n" title="Quiz Answers">Quiz</th>
               <th class="n" title="Live Vote Meter">Votes</th>
@@ -2273,7 +2258,7 @@ function renderSOTDHTML() {
               return `<tr style="${isDeclared || (idx === 0 && r.finalScore > 0) ? 'background:rgba(22,163,74,0.09)' : ''}">
                 <td class="n"><b>${idx + 1}</b></td>
                 <td><b class="${!r.eligible ? 'singer-late' : ''}"${lateTip ? ` title="${e(lateTip)}"` : ''}>${e(r.name)}</b></td>
-                <td class="n"><b>${r.starPts}</b></td>
+                <td class="n" title="Total ${r.starTotalPts} pts ÷ ${r.starRounds} round${r.starRounds === 1 ? '' : 's'} = ${r.starPts} avg"><b>${r.starPts}</b><div class="m" style="font-size:10.5px;line-height:1.15">${r.starTotalPts} ÷ ${r.starRounds}R</div></td>
                 <td class="n">
                   <input type="number" step="0.5" value="${r.opinionPts}" oninput="onSotdExtraInput('${safeName}', 'opinion', this.value)" onchange="setSotdExtra('${safeName}', 'opinion', this.value)" style="width:64px;padding:3px 5px;font-size:12px;text-align:center" title="Your Opinion marks">
                 </td>
@@ -2332,7 +2317,7 @@ function renderSOTDHTML() {
               <div style="height:6px;background:var(--bd);border-radius:4px;overflow:hidden">
                 <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#0284c7,#16a34a);transition:width 0.25s"></div>
               </div>
-              ${IS_SUPER ? `<span class="m" style="font-size:11px">Final: <b>${c.finalScore} pts</b> (★${c.starPts} + Op ${c.opinionPts} + Q ${c.quizPts} + V ${c.votePts})</span>` : ''}
+              ${IS_SUPER ? `<span class="m" style="font-size:11px">Final: <b>${c.finalScore} pts</b> (★avg ${c.starPts} + Op ${c.opinionPts} + Q ${c.quizPts} + V ${c.votePts})</span>` : ''}
               <div class="row" style="gap:4px;margin-top:2px">
                 ${IS_SUPER ? `<button style="padding:2px 6px;font-size:11px" onclick="recordSOTD30sJudgePick('${safeName}')">+1 Vote</button>` : ''}
                 <button class="${isDeclared ? 'on' : 'pri'}" style="padding:2px 6px;font-size:11px" onclick="toggleSOTDWinner('${safeName}', 'Score')">${isDeclared ? '✓ SOTD' : '+ SOTD'}</button>
@@ -2354,7 +2339,7 @@ function renderSOTDHTML() {
     <div class="f">
       <select id="sotd_winner">
         <option value="">Add Another SOTD Singer…</option>
-        ${ranked.map((c, idx) => `<option value="${e(c.name)}"${!c.eligible ? ` title="Late ${e(c.joinTime || '')}"` : ''}>${idx < 4 ? '★ ' : ''}${e(c.name)}${IS_SUPER && c.finalScore > 0 ? ` — Final: ${c.finalScore} pts (★${c.starPts} + Op ${c.opinionPts} + Q ${c.quizPts} + V ${c.votePts})` : ''}</option>`).join('')}
+        ${ranked.map((c, idx) => `<option value="${e(c.name)}"${!c.eligible ? ` title="Late ${e(c.joinTime || '')}"` : ''}>${idx < 4 ? '★ ' : ''}${e(c.name)}${IS_SUPER && c.finalScore > 0 ? ` — Final: ${c.finalScore} pts (★avg ${c.starPts} + Op ${c.opinionPts} + Q ${c.quizPts} + V ${c.votePts})` : ''}</option>`).join('')}
       </select>
       ${IS_SUPER ? `<input id="sotd_override_singer" list="dl_known" placeholder="Superadmin Rule Override (Any Singer)" style="text-transform:uppercase;border-color:#d97706">` : ''}
       <select id="sotd_mode">
