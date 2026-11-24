@@ -718,13 +718,75 @@ function loadLocal(){
   }catch(x){}
 }
 
+// Reserved 1st position in singing queue: active Host (if set) or MANOJ TIKARIYA
+const DEFAULT_RESERVED_FIRST = 'MANOJ TIKARIYA';
+function getReservedFirstSinger() {
+  const h = canonSinger(LIVE && LIVE.host ? LIVE.host : '');
+  return h || DEFAULT_RESERVED_FIRST;
+}
+
+function hasPerfActivity(singerName) {
+  const cn = canonSinger(singerName);
+  return (LIVE.performances || []).some(p =>
+    canonSinger(p.singer) === cn &&
+    ((p.song && String(p.song).trim()) || (Array.isArray(p.stars) && p.stars.some(Boolean)))
+  );
+}
+
+function enforceReservedFirstPosition(forceEnsure = false) {
+  const firstSinger = getReservedFirstSinger();
+  if (!firstSinger) return false;
+  if (!Array.isArray(LIVE.singers)) LIVE.singers = [];
+  if (!LIVE.singers.length && !forceEnsure) return false;
+
+  let changed = false;
+
+  // Clean up any unused auto-reserved placeholder from an earlier host/default
+  for (let i = LIVE.singers.length - 1; i >= 0; i--) {
+    const s = LIVE.singers[i];
+    if (s && s.reservedFirst && !s.viaZoomBtn && !s.manualAdded && canonSinger(s.name) !== firstSinger && !hasPerfActivity(s.name)) {
+      LIVE.singers.splice(i, 1);
+      changed = true;
+    }
+  }
+
+  const idx = LIVE.singers.findIndex(s => s && canonSinger(s.name) === firstSinger);
+  if (idx > 0) {
+    const [entry] = LIVE.singers.splice(idx, 1);
+    entry.reservedFirst = true;
+    LIVE.singers.unshift(entry);
+    changed = true;
+  } else if (idx === 0) {
+    if (!LIVE.singers[0].reservedFirst) {
+      LIVE.singers[0].reservedFirst = true;
+      changed = true;
+    }
+  } else {
+    const dismissed = canonSinger(LIVE._firstSlotDismissed || '');
+    if (dismissed !== firstSinger && (LIVE.singers.length > 0 || forceEnsure)) {
+      LIVE.singers.unshift({
+        name: firstSinger,
+        joinTime: 'Host #1',
+        eligible: true,
+        reservedFirst: true
+      });
+      getOrCreatePerf(firstSinger, 1);
+      getOrCreatePerf(firstSinger, 2);
+      getOrCreatePerf(firstSinger, 3);
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 // Real-Time Listener for Singers Entering via "Start Zoom" Button on App
 let zoomEntriesUnsub = null;
 let plansEntriesUnsub = null;
 function mergeZoomEntryIntoQueue(singerRaw, entryTime, eligible, tsVal) {
   const canonical = resolveCanonicalSingerName(singerRaw);
   if (!canonical) return false;
-  if (!LIVE.singers.some(s => s.name === canonical)) {
+  const existing = LIVE.singers.find(s => canonSinger(s.name) === canonical);
+  if (!existing) {
     LIVE.singers.push({
       name: canonical,
       joinTime: entryTime || curTime(),
@@ -735,6 +797,15 @@ function mergeZoomEntryIntoQueue(singerRaw, entryTime, eligible, tsVal) {
     getOrCreatePerf(canonical, 1);
     getOrCreatePerf(canonical, 2);
     getOrCreatePerf(canonical, 3);
+    enforceReservedFirstPosition();
+    return true;
+  }
+  if (existing.reservedFirst && !existing.viaZoomBtn) {
+    existing.joinTime = entryTime || curTime();
+    existing.eligible = eligible !== false;
+    existing.viaZoomBtn = true;
+    existing._ts = tsVal || Date.now();
+    enforceReservedFirstPosition();
     return true;
   }
   return false;
@@ -1076,6 +1147,10 @@ async function init(){
     }
   });
 
+  if (LIVE.singers.length > 0) {
+    enforceReservedFirstPosition();
+  }
+
   listenToZoomButtonEntries();
   draw();
 }
@@ -1221,18 +1296,38 @@ window.addSinger = () => {
   const timeInp = $('#in_singer_time');
   const name = resolveCanonicalSingerName(inp.value);
   if(!name){ showNotice('Please enter or select singer name.'); return; }
-  if(LIVE.singers.some(s => s.name === name)){ showNotice('Singer already in session.'); return; }
 
   const entryDt = (timeInp && timeInp.value) ? parseManualTime24ToDate(timeInp.value) : new Date();
+  const existing = LIVE.singers.find(s => canonSinger(s.name) === name);
+  if (existing) {
+    if (existing.reservedFirst && !existing.viaZoomBtn && !existing.manualAdded) {
+      existing.joinTime = format12HourTime(entryDt);
+      existing.eligible = isBeforeCutoff(entryDt);
+      existing.manualAdded = true;
+      inp.value = '';
+      saveLocal();
+      draw();
+      return;
+    }
+    showNotice('Singer already in session.');
+    return;
+  }
+
+  if (canonSinger(LIVE._firstSlotDismissed || '') === name) {
+    LIVE._firstSlotDismissed = '';
+  }
+
   LIVE.singers.push({
     name,
     joinTime: format12HourTime(entryDt),
-    eligible: isBeforeCutoff(entryDt)
+    eligible: isBeforeCutoff(entryDt),
+    manualAdded: true
   });
 
   getOrCreatePerf(name, 1);
   getOrCreatePerf(name, 2);
   getOrCreatePerf(name, 3);
+  enforceReservedFirstPosition();
 
   inp.value = '';
   saveLocal();
@@ -1244,6 +1339,9 @@ window.removeSinger = (idx) => {
   if (!s) return;
   showConfirm('Remove ' + s.name + " from today's singing order?", async () => {
     const name = s.name;
+    if (canonSinger(name) === getReservedFirstSinger()) {
+      LIVE._firstSlotDismissed = canonSinger(name);
+    }
     LIVE.singers.splice(idx, 1);
     LIVE.performances = LIVE.performances.filter(p => p.singer !== name);
     try { localStorage.setItem('sfh_live_session_'+LIVE.date, JSON.stringify({LIVE, currentRound, SOTD_LIST})); } catch(x){}
@@ -1920,12 +2018,32 @@ function computeSingerSotdMetrics(s, voteWeight) {
   };
 }
 
+function getPreviousSessionSotdInfo() {
+  const arr = (PUB_CACHE && Array.isArray(PUB_CACHE.sotd)) ? PUB_CACHE.sotd : [];
+  const todayKey = String(LIVE.date || tdy());
+  const prevEntries = arr
+    .filter(x => x && x.d && String(x.d) < todayKey && Array.isArray(x.l) && x.l.length > 0)
+    .sort((a, b) => String(b.d).localeCompare(String(a.d)));
+  if (!prevEntries.length) return { date: '', winners: new Set(), names: [] };
+  const prev = prevEntries[0];
+  const names = prev.l
+    .map(w => canonSinger(typeof w === 'string' ? w : (w && w.n)))
+    .filter(Boolean);
+  return { date: prev.d, winners: new Set(names), names };
+}
+
+function isPreviousDaySotd(singerName) {
+  const cn = canonSinger(singerName);
+  if (!cn) return false;
+  return getPreviousSessionSotdInfo().winners.has(cn);
+}
+
 function getAllActiveSOTDCandidates(includeExcluded = false) {
   const voteWeight = getSotdVoteWeight();
   const excluded = includeExcluded ? new Set() : getSotdExcludedSet();
   const requireStars = shouldEnforceStarEligibility();
   return (LIVE.singers || [])
-    .filter(s => s && s.name && !excluded.has(canonSinger(s.name)) && (!requireStars || hasGivenStarsForSinger(s.name)))
+    .filter(s => s && s.name && !isPreviousDaySotd(s.name) && !excluded.has(canonSinger(s.name)) && (!requireStars || hasGivenStarsForSinger(s.name)))
     .map(s => computeSingerSotdMetrics(s, voteWeight));
 }
 
@@ -2097,11 +2215,17 @@ window.recordSOTD30sJudgePick = (singerName) => {
 window.toggleSOTDWinner = (name, modeLabel = 'Score') => {
   const cn = canonSinger(name);
   if (!cn) return;
-  SOTD_TOUCHED = true;
   const idx = SOTD_LIST.findIndex(x => canonSinger(x.n) === cn);
   if (idx >= 0) {
+    SOTD_TOUCHED = true;
     SOTD_LIST.splice(idx, 1);
   } else {
+    if (isPreviousDaySotd(cn)) {
+      const prevInfo = getPreviousSessionSotdInfo();
+      showNotice(`${cn} won SOTD in the previous session (${fd(prevInfo.date)}) and cannot repeat on the next day.`);
+      return;
+    }
+    SOTD_TOUCHED = true;
     SOTD_LIST.push({ n: cn, h: modeLabel, reason: '' });
   }
   saveLocal();
@@ -2111,21 +2235,35 @@ window.toggleSOTDWinner = (name, modeLabel = 'Score') => {
 window.addSOTD = () => {
   const selVal = $('#sotd_winner') ? $('#sotd_winner').value : '';
   const overrideInp = $('#sotd_override_singer') ? ($('#sotd_override_singer').value || '').trim().toUpperCase() : '';
-  const winner = (IS_SUPER && overrideInp) ? resolveCanonicalSingerName(overrideInp) : canonSinger(selVal);
+  const isOverride = Boolean(IS_SUPER && overrideInp);
+  const winner = isOverride ? resolveCanonicalSingerName(overrideInp) : canonSinger(selVal);
   const mode = $('#sotd_mode') ? $('#sotd_mode').value : 'score';
   const reason = $('#sotd_reason') ? $('#sotd_reason').value.trim() : '';
   if(!winner){ showNotice('Please choose or enter an SOTD singer.'); return; }
   if(SOTD_LIST.some(x => canonSinger(x.n) === winner)){ showNotice('This singer is already declared SOTD today.'); return; }
 
   const modeLabel = mode === 'score' ? 'Score' : (mode === 'special' ? 'Special' : 'Quiz');
-  SOTD_TOUCHED = true;
-  SOTD_LIST.push({ n: winner, h: modeLabel, reason });
+  const commitAdd = () => {
+    SOTD_TOUCHED = true;
+    SOTD_LIST.push({ n: winner, h: modeLabel, reason });
+    if ($('#sotd_winner')) $('#sotd_winner').value = '';
+    if ($('#sotd_reason')) $('#sotd_reason').value = '';
+    if ($('#sotd_override_singer')) $('#sotd_override_singer').value = '';
+    saveLocal();
+    drawSOTDSection();
+  };
 
-  if ($('#sotd_winner')) $('#sotd_winner').value = '';
-  if ($('#sotd_reason')) $('#sotd_reason').value = '';
-  if ($('#sotd_override_singer')) $('#sotd_override_singer').value = '';
-  saveLocal();
-  drawSOTDSection();
+  if (isPreviousDaySotd(winner)) {
+    const prevInfo = getPreviousSessionSotdInfo();
+    if (!isOverride) {
+      showNotice(`${winner} won SOTD in the previous session (${fd(prevInfo.date)}) and cannot repeat on the next day.`);
+      return;
+    }
+    showConfirm(`${winner} won SOTD in the previous session (${fd(prevInfo.date)}). Normally SOTD cannot repeat on the next day — still declare via Superadmin Override?`, commitAdd, 'Override No-Repeat Rule');
+    return;
+  }
+
+  commitAdd();
 };
 
 window.removeSOTD = (idx) => {
@@ -2137,7 +2275,8 @@ window.removeSOTD = (idx) => {
 
 function getRankedSOTDCandidates() {
   const requireStars = shouldEnforceStarEligibility();
-  const basePool = IS_SUPER ? LIVE.singers : LIVE.singers.filter(s => s.eligible);
+  const basePool = (IS_SUPER ? LIVE.singers : LIVE.singers.filter(s => s.eligible))
+    .filter(s => s && s.name && !isPreviousDaySotd(s.name));
   const pool = requireStars ? basePool.filter(s => hasGivenStarsForSinger(s.name)) : basePool;
   const voteWeight = getSotdVoteWeight();
   return pool
@@ -2220,10 +2359,13 @@ function renderSOTDHTML() {
   const totalMeterVotes = voteCands.reduce((sum, c) => sum + getSotdVotesFor(c.name), 0);
   const voteWeight = getSotdVoteWeight();
   const canRunVoteMeter = IS_SUPER || IS_HOST;
+  const prevSotd = getPreviousSessionSotdInfo();
+  const prevSotdInQueue = (LIVE.singers || []).filter(s => s && s.name && prevSotd.winners.has(canonSinger(s.name))).map(s => s.name);
 
   return `
     <b>Declare Singer(s) of the Day (SOTD)${canRunVoteMeter ? ' & Live Vote Meter' : ''}</b>
-    <span class="m" style="font-size:11.5px;margin-left:6px">(Multiple SOTDs allowed)</span>
+    <span class="m" style="font-size:11.5px;margin-left:6px">(Multiple SOTDs allowed · No repeat on next day)</span>
+    ${prevSotdInQueue.length ? `<div class="m" style="margin:5px 0 4px;padding:5px 8px;background:#fffbeb;border:1px solid #fcd34d;border-radius:7px;font-size:11.5px;color:#92400e">No-Repeat Rule (${e(fd(prevSotd.date))} SOTD): <b>${e(prevSotdInQueue.join(', '))}</b> ${prevSotdInQueue.length === 1 ? 'is' : 'are'} excluded from repeating SOTD today.</div>` : ''}
 
     ${IS_SUPER ? `
       <div style="margin:6px 0 8px;padding:8px 10px;background:var(--ac-light);border:1px solid var(--ac);border-radius:8px">
@@ -3368,6 +3510,7 @@ window.previewTestZoomJoin = () => {
   const eligible = isBeforeCutoff(now);
   LIVE.singers.push({ name: singer, joinTime, eligible, viaZoomBtn: true });
   getOrCreatePerf(singer, 1);
+  enforceReservedFirstPosition();
   saveLocal();
   draw();
 };
@@ -3549,6 +3692,17 @@ window.setSessionThemeHost = (field, val) => {
   }
 };
 
+window.applyHostFirstPosition = () => {
+  if (IS_HOST && HOST_SINGER_NAME) {
+    LIVE.host = HOST_SINGER_NAME;
+  }
+  LIVE._firstSlotDismissed = '';
+  if (LIVE.singers.length > 0 && enforceReservedFirstPosition()) {
+    saveLocal();
+    draw();
+  }
+};
+
 function draw(){
   const liveNow = isWithinLiveSchedule();
   const adminWinNow = isWithinAdminLiveWindow();
@@ -3621,7 +3775,7 @@ function draw(){
         <input id="in_theme" value="${e(LIVE.theme || '')}" placeholder="${IS_HOST ? "Decide today's Session Theme (e.g. Golden Retro)" : 'Enter Session Theme (e.g. Golden Retro)'}" oninput="setSessionThemeHost('theme', this.value)" style="width:100%;margin-top:2px">
       </label>
       <label style="flex:1;min-width:160px;font-size:11.5px;font-weight:700;color:var(--mut)">Host${IS_HOST ? ' (Assigned)' : ''}
-        <input id="in_host" ${IS_HOST ? 'readonly' : 'list="dl_known"'} value="${e(LIVE.host || '')}" placeholder="Enter Host Name" ${IS_HOST ? '' : `oninput="setSessionThemeHost('host', this.value)"`} style="width:100%;margin-top:2px;text-transform:uppercase${IS_HOST ? ';opacity:0.85;cursor:not-allowed' : ''}">
+        <input id="in_host" ${IS_HOST ? 'readonly' : 'list="dl_known"'} value="${e(LIVE.host || '')}" placeholder="Enter Host Name (Default #1: MANOJ TIKARIYA)" ${IS_HOST ? '' : `oninput="setSessionThemeHost('host', this.value)" onchange="applyHostFirstPosition()" onblur="applyHostFirstPosition()"`} style="width:100%;margin-top:2px;text-transform:uppercase${IS_HOST ? ';opacity:0.85;cursor:not-allowed' : ''}">
       </label>
     </div>
     <div class="f" style="margin-top:8px">
@@ -3633,6 +3787,9 @@ function draw(){
       <button class="pri" onclick="addSinger()">Add</button>
     </div>
   </div>`;
+
+  const reservedFirst = getReservedFirstSinger();
+  const prevSotdMeta = getPreviousSessionSotdInfo();
 
   h += `<div class="c">
     <div class="row" style="justify-content:space-between;margin-bottom:6px">
@@ -3662,17 +3819,19 @@ function draw(){
           const sKey = currentRound + '_' + s.name.replace(/[^a-zA-Z0-9]/g, '_');
           const safeSinger = e(s.name).replace(/'/g, "\\'");
           const isEligible = s.eligible;
+          const isPrevSotd = prevSotdMeta.winners.has(canonSinger(s.name));
+          const isHostFirst = idx === 0 && canonSinger(s.name) === reservedFirst;
           const pts = calcStarPoints(p.stars);
           const hasMeta = hasMetaFields(p.meta);
           const isAiLoading = !!AUTO_META_INFLIGHT[sKey];
           const lateTip = !isEligible ? `Late ${s.joinTime || ''}`.trim() : '';
 
           return `<tr>
-            <td class="col-src">${s.viaZoomBtn ? `<span class="badge-src-z" title="Auto-queued via Start Zoom">Z</span>` : `<span class="badge-src-m" title="Manually entered">M</span>`}</td>
+            <td class="col-src">${s.viaZoomBtn ? `<span class="badge-src-z" title="Auto-queued via Start Zoom">Z</span>` : `<span class="badge-src-m" title="${isHostFirst ? 'Reserved Position #1 (Host / MANOJ TIKARIYA)' : 'Manually entered'}">${isHostFirst ? 'H' : 'M'}</span>`}</td>
             <td class="col-ord"><b>${idx + 1}</b></td>
-            <td><b class="${!isEligible ? 'singer-late' : ''}"${lateTip ? ` title="${e(lateTip)}"` : ''}>${e(s.name)}</b></td>
+            <td><b class="${!isEligible ? 'singer-late' : ''}"${lateTip ? ` title="${e(lateTip)}"` : ''}>${e(s.name)}</b>${isHostFirst ? `<span class="badge-ok" style="font-size:10px;padding:1px 5px;margin-left:5px" title="Position #1 reserved for Host / MANOJ TIKARIYA">Host #1</span>` : ''}</td>
             <td><input type="time" value="${to24HourInput(s.joinTime)}" onchange="updateSingerJoinTime(${idx}, this.value)" style="padding:3px 5px;font-size:12px;width:105px" title="Click to edit arrival time"></td>
-            <td class="n">${isEligible ? '<span class="badge-st-e" title="SOTD Eligible">E</span>' : `<span class="badge-st-i" title="Late ${e(s.joinTime || '')} (&gt;${formatCutoffTime()})">I</span>`}</td>
+            <td class="n">${isPrevSotd ? `<span class="badge-late" title="Won SOTD on ${e(fd(prevSotdMeta.date))} — no repeat today">Prev SOTD</span>` : (isEligible ? '<span class="badge-st-e" title="SOTD Eligible">E</span>' : `<span class="badge-st-i" title="Late ${e(s.joinTime || '')} (&gt;${formatCutoffTime()})">I</span>`)}</td>
             <td>
               <div style="display:flex;align-items:center;white-space:nowrap">
                 <div class="song-ac-wrap">
@@ -3696,7 +3855,7 @@ function draw(){
           </tr>`;
         }).join('')}
       </table></div>
-    ` : '<p class="m">Waiting for singers to tap Start Zoom in the app, or add singers manually above.</p>'}
+    ` : `<p class="m">Waiting for singers to tap Start Zoom in the app, or add singers manually above. Position #1 is automatically reserved for <b>${e(reservedFirst)}</b>.</p>`}
     
     
   </div>`;

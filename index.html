@@ -7,6 +7,9 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=43">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=43">
 <title>Sing From Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Dancing+Script:wght@600;700&family=Great+Vibes&family=Pacifico&family=Sacramento&family=Satisfy&display=swap">
 <style>
 :root{
   --bg:#f8fafc;--fg:#0f172a;--card:#ffffff;--ac:#0f3460;--ac-light:#e8eef7;
@@ -266,6 +269,26 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
   background:#ffffff;box-shadow:0 4px 16px rgba(15,23,42,0.12);margin:10px 0;
 }
 .cert-canvas-wrap canvas{display:block;width:100%;height:auto}
+.cert-cust-panel{
+  margin:10px 0;padding:12px;border:1.5px solid var(--ac);border-radius:10px;
+  background:var(--bg);
+}
+.cert-cust-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.cert-cust-tabs button{padding:5px 10px;font-size:12px}
+.cert-cust-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}
+.cert-cust-grid label{display:flex;flex-direction:column;gap:3px;font-size:11.5px;font-weight:700;color:var(--mut)}
+.cert-cust-grid input[type="text"],.cert-cust-grid select{
+  width:100%;padding:6px 8px;font-size:12.5px;border:1px solid var(--bd);border-radius:7px;
+  background:var(--card);color:var(--fg);box-sizing:border-box;
+}
+.cert-preset-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.cert-preset-btn{padding:5px 10px;font-size:11.5px;border-radius:7px;display:inline-flex;align-items:center;gap:6px}
+.cert-swatch{width:13px;height:13px;border-radius:3px;border:1px solid rgba(15,23,42,0.25);display:inline-block}
+.cert-sig-pad-wrap{
+  border:1.5px dashed var(--ac);border-radius:8px;background:#ffffff;overflow:hidden;
+  margin-top:6px;max-width:460px;
+}
+#cert_sig_pad{display:block;width:100%;height:130px;touch-action:none;cursor:crosshair}
 
 </style></head><body>
 <header>
@@ -287,6 +310,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script type="module">
 
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
@@ -1166,6 +1190,7 @@ function renderPreviewBar(){
 
 function draw(){
   $('#hb').innerHTML=U?`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end"><a href="#" onclick="out();return false" style="color:var(--ac);font-size:14px;text-decoration:underline;cursor:pointer;white-space:nowrap">Sign out</a></div>`:'';
+  if(CERT_VERIFY_STATE){$('#app').innerHTML=renderCertVerifyView();return}
   if(showAbout&&!isExternalJudgeOnly()){$('#app').innerHTML=vAbout(true);return}
   if(!U){$('#app').innerHTML=vLogin();return}
   if(loadErr){$('#app').innerHTML='<div class="c"><b>Could not load data</b><p class="m">'+e(loadErr)+'</p><p class="m">Check your internet and try again.</p><p><button class="pri" onclick="refresh()">↻ Try again</button></p></div>';return}
@@ -2586,13 +2611,358 @@ const CERT_IMG_CACHE = {};
 let ACTIVE_CERT_SPEC = null;
 let ACTIVE_CERT_LIST = [];
 let CERT_AUTO_FLASHED_SESSION = false;
+let CERT_CUSTOMIZER_OPEN = false;
+let CERT_CUSTOMIZER_TAB = 'bg';
+let CERT_DRAFT_CONFIG = null;
+
+const CERT_FONT_OPTIONS = [
+  { key: 'App Sans', label: 'App Sans (Default)', css: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Devanagari", sans-serif', scale: 1, script: false },
+  { key: 'Classic Serif', label: 'Classic Serif (Georgia)', css: 'Georgia, "Times New Roman", serif', scale: 1, script: false },
+  { key: 'Dancing Script', label: 'Dancing Script (Handwriting)', css: '"Dancing Script", cursive', scale: 1.24, script: true, weight: 700 },
+  { key: 'Great Vibes', label: 'Great Vibes (Calligraphy)', css: '"Great Vibes", cursive', scale: 1.32, script: true, weight: 400 },
+  { key: 'Caveat', label: 'Caveat (Natural Pen)', css: '"Caveat", cursive', scale: 1.28, script: true, weight: 700 },
+  { key: 'Satisfy', label: 'Satisfy (Flowing Script)', css: '"Satisfy", cursive', scale: 1.2, script: true, weight: 400 },
+  { key: 'Sacramento', label: 'Sacramento (Delicate Cursive)', css: '"Sacramento", cursive', scale: 1.38, script: true, weight: 400 },
+  { key: 'Pacifico', label: 'Pacifico (Brush Script)', css: '"Pacifico", cursive', scale: 1.08, script: true, weight: 400 }
+];
+
+const CERT_BG_PRESETS = [
+  { id: 'app_classic', label: 'SFH Classic', outer: '#f8fafc', paper: '#ffffff', accent: '#0f3460' },
+  { id: 'warm_ivory', label: 'Warm Ivory', outer: '#f4efe6', paper: '#fffdf7', accent: '#0f3460' },
+  { id: 'soft_royal', label: 'Soft Royal', outer: '#e2ebf7', paper: '#f8fbff', accent: '#0f3460' },
+  { id: 'parchment', label: 'Classic Parchment', outer: '#e9dfd0', paper: '#fbf6ea', accent: '#5c3d1e' },
+  { id: 'pure_white', label: 'Studio White', outer: '#ffffff', paper: '#ffffff', accent: '#0f3460' }
+];
+
+const DEFAULT_CERT_CONFIG = {
+  bgPreset: 'app_classic',
+  bgOuterColor: '#f8fafc',
+  bgPaperColor: '#ffffff',
+  bgAccentColor: '#0f3460',
+  bgImageData: '',
+  bgImageOpacity: 0.25,
+  kickerText: 'C E R T I F I C A T E   O F   A P P R E C I A T I O N',
+  titleSotm: 'SINGER OF THE MONTH',
+  titleSotd: 'SINGER OF THE DAY',
+  presentedText: 'Proudly presented to',
+  bodySotmLine1: 'in recognition of an outstanding musical performance and winning the honour of',
+  bodySotmLine2: 'Singer of the Month ({period}) at the Sing From Home Online Singing Session.',
+  bodySotdLine1: 'in recognition of a melodious performance and being honoured as',
+  bodySotdLine2: 'Singer of the Day on {date} at the Sing From Home Online Singing Session.',
+  footerLeftLine3: "Tikariya's School of Music  ·  Core Committee",
+  nameFont: 'App Sans',
+  bodyFont: 'App Sans',
+  sigMode: 'none',
+  sigTypedText: 'Manoj Tikariya',
+  sigFont: 'Great Vibes',
+  sigColor: '#0f3460',
+  sigImageData: '',
+  sigName: 'MANOJ TIKARIYA',
+  sigTitle1: "Director, Tikariya's School of Music",
+  sigTitle2: 'B. S. Tikariya Cultural Foundation ®',
+  issueDateOverride: ''
+};
+
+let CERT_VERIFY_STATE = null;
+
+function computeCertChecksum(type, singerRaw, periodRaw) {
+  const normT = type === 'sotm' ? 'SOTM' : 'SOTD';
+  const normS = String(singerRaw || '').trim().toUpperCase().replace(/\s+/g, ' ');
+  const normP = String(periodRaw || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const payload = `BS-TIKARIYA-SFH-2025|${normT}|${normS}|${normP}`;
+  let h1 = 0x811c9dc5, h2 = 0x1000193;
+  for (let i = 0; i < payload.length; i++) {
+    const ch = payload.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 0x01000193) >>> 0;
+    h2 = Math.imul(h2 ^ (ch + i * 31), 0x85ebca6b) >>> 0;
+  }
+  const combined = ((h1 >>> 0).toString(36) + (h2 >>> 0).toString(36)).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return (combined + '000000').slice(0, 6);
+}
+
+function buildCertCode(spec) {
+  const isSotm = spec && spec.type === 'sotm';
+  const cleanP = String((spec && spec.period) || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+  const chk = computeCertChecksum(isSotm ? 'sotm' : 'sotd', spec && spec.singer, spec && spec.period);
+  return `SFH-${isSotm ? 'SOTM' : 'SOTD'}-${cleanP}-${chk}`;
+}
+
+function getCertIssueDate(cfg) {
+  const ov = cfg && typeof cfg.issueDateOverride === 'string' ? cfg.issueDateOverride.trim() : '';
+  return ov || fd(tdy());
+}
+
+function buildCertVerifyUrl(spec, certCode, issueDateStr) {
+  const base = (location.origin && location.origin !== 'null')
+    ? (location.origin + location.pathname)
+    : 'https://musicsnsounds.github.io/sing-from-home/';
+  const params = new URLSearchParams({
+    verify: certCode,
+    t: spec.type === 'sotm' ? 'sotm' : 'sotd',
+    s: spec.singer,
+    p: String(spec.period || ''),
+    i: String(issueDateStr || fd(tdy()))
+  });
+  return `${base}?${params.toString()}`;
+}
+
+function drawQrCodeOnCanvas(ctx, text, x, y, size) {
+  ctx.save();
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(x, y, size, size);
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, size, size);
+  if (typeof window.qrcode === 'function') {
+    try {
+      const qr = window.qrcode(0, 'M');
+      qr.addData(text);
+      qr.make();
+      const count = qr.getModuleCount();
+      const pad = 10;
+      const cell = (size - pad * 2) / count;
+      ctx.fillStyle = '#0f172a';
+      for (let r = 0; r < count; r++) {
+        for (let c = 0; c < count; c++) {
+          if (qr.isDark(r, c)) {
+            ctx.fillRect(
+              x + pad + c * cell,
+              y + pad + r * cell,
+              Math.ceil(cell),
+              Math.ceil(cell)
+            );
+          }
+        }
+      }
+    } catch (_qrErr) {}
+  }
+  ctx.restore();
+}
+
+async function startCertVerificationFromParams(paramsObj) {
+  const code = String(paramsObj.verify || '').trim().toUpperCase();
+  const type = String(paramsObj.t || '').toLowerCase() === 'sotm' ? 'sotm' : 'sotd';
+  const singer = canonSinger(paramsObj.s || '');
+  const period = String(paramsObj.p || '').trim();
+  const issueDate = String(paramsObj.i || '').trim();
+
+  const expectedCode = buildCertCode({ type, singer, period });
+  const codeValid = Boolean(code && singer && period && code === expectedCode);
+
+  CERT_VERIFY_STATE = {
+    loading: true,
+    code,
+    expectedCode,
+    codeValid,
+    type,
+    singer,
+    period,
+    issueDate,
+    archiveChecked: false,
+    archiveMatch: false,
+    archiveDetails: []
+  };
+  draw();
+
+  if (!codeValid) {
+    CERT_VERIFY_STATE.loading = false;
+    draw();
+    return;
+  }
+
+  try {
+    let pubDoc = PUB;
+    let sotmDoc = SOTM_RESULT;
+    if (!pubDoc) {
+      const pSnap = await getDoc(doc(fs, 'pub', 'data'));
+      if (pSnap.exists()) pubDoc = pSnap.data();
+    }
+    if (type === 'sotm' && !sotmDoc) {
+      try {
+        const sSnap = await getDoc(doc(fs, 'vote', 'sotm_result'));
+        if (sSnap.exists()) sotmDoc = sSnap.data();
+      } catch (_se) {}
+      if (!sotmDoc && pubDoc && pubDoc.sotmResult) sotmDoc = pubDoc.sotmResult;
+    }
+
+    if (pubDoc) {
+      CERT_VERIFY_STATE.archiveChecked = true;
+      if (type === 'sotd') {
+        const normP = normDate(period);
+        const hitEntry = (pubDoc.sotd || []).find(ent => ent && normDate(ent.d) === normP && Array.isArray(ent.l) && ent.l.some(w => canonSinger((w && w.n) || w) === singer));
+        const starRec = (pubDoc.stars || {})[singer];
+        const hitStar = Boolean(starRec && Array.isArray(starRec.d) && starRec.d.some(dRaw => normDate(dRaw) === normP));
+        if (hitEntry || hitStar) {
+          CERT_VERIFY_STATE.archiveMatch = true;
+          const sm = (pubDoc.sessionMeta && pubDoc.sessionMeta[normP]) || null;
+          if (sm && sm.theme) CERT_VERIFY_STATE.archiveDetails.push(`Session Theme: ${sm.theme}`);
+          if (sm && sm.host) CERT_VERIFY_STATE.archiveDetails.push(`Session Host: ${sm.host}`);
+        }
+      } else {
+        const normLbl = String(period).trim().toUpperCase();
+        const matchCur = Boolean(sotmDoc && canonSinger(sotmDoc.winner) === singer && String(sotmDoc.monthLabel || '').trim().toUpperCase() === normLbl);
+        const matchHist = Object.entries(pubDoc.som || {}).some(([ym, win]) => canonSinger(win) === singer && fm(ym).toUpperCase() === normLbl);
+        if (matchCur || matchHist) {
+          CERT_VERIFY_STATE.archiveMatch = true;
+          if (matchCur && sotmDoc.judge && sotmDoc.judge !== 'Not Appointed') {
+            CERT_VERIFY_STATE.archiveDetails.push(`Appointed Judge: ${sotmDoc.judge}`);
+          }
+          if (matchCur && sotmDoc.declaredDate) {
+            CERT_VERIFY_STATE.archiveDetails.push(`Declared On: ${sotmDoc.declaredDate}`);
+          }
+        }
+      }
+    }
+  } catch (_vErr) {
+    // Public Firestore read may require login; checksum verification still stands
+  }
+  CERT_VERIFY_STATE.loading = false;
+  draw();
+}
+
+window.previewCurrentCertVerification = () => {
+  if (!ACTIVE_CERT_SPEC) return;
+  const cfg = getActiveCertConfig();
+  const code = buildCertCode(ACTIVE_CERT_SPEC);
+  const issueDate = getCertIssueDate(cfg);
+  closeCertModal();
+  startCertVerificationFromParams({
+    verify: code,
+    t: ACTIVE_CERT_SPEC.type,
+    s: ACTIVE_CERT_SPEC.singer,
+    p: ACTIVE_CERT_SPEC.period,
+    i: issueDate
+  });
+};
+
+window.exitCertVerifyView = () => {
+  CERT_VERIFY_STATE = null;
+  try {
+    const cleanUrl = location.origin && location.origin !== 'null' ? (location.origin + location.pathname) : location.pathname;
+    history.replaceState({}, '', cleanUrl);
+  } catch (_e) {}
+  draw();
+};
+
+function renderCertVerifyView() {
+  const st = CERT_VERIFY_STATE;
+  if (!st) return '';
+  const isSotm = st.type === 'sotm';
+  const awardLabel = isSotm ? 'Singer of the Month' : 'Singer of the Day';
+  const periodLabel = isSotm ? st.period : fd(st.period);
+  const verifiedFully = st.codeValid && st.archiveChecked && st.archiveMatch;
+  const verifiedCodeOnly = st.codeValid && !st.archiveChecked;
+  const failedArchive = st.codeValid && st.archiveChecked && !st.archiveMatch;
+  const isValid = verifiedFully || verifiedCodeOnly;
+
+  let bannerBg = '#fef2f2', bannerBd = '#dc2626', bannerCol = '#991b1b', bannerTitle = '❌ Certificate Verification Failed', bannerSub = 'The certificate code does not match the recipient or award details. This certificate may have been altered.';
+  if (st.loading) {
+    bannerBg = 'var(--ac-light)'; bannerBd = 'var(--ac)'; bannerCol = 'var(--ac)';
+    bannerTitle = '⏳ Verifying Official Certificate…';
+    bannerSub = 'Checking authenticity against Sing From Home records.';
+  } else if (verifiedFully) {
+    bannerBg = '#f0fdf4'; bannerBd = '#16a34a'; bannerCol = '#166534';
+    bannerTitle = '✅ Verified Official Certificate';
+    bannerSub = 'Confirmed authentic in the official Sing From Home archive.';
+  } else if (verifiedCodeOnly) {
+    bannerBg = '#f0fdf4'; bannerBd = '#16a34a'; bannerCol = '#166534';
+    bannerTitle = '✅ Authentic Certificate (QR Code Verified)';
+    bannerSub = 'Digital verification code matches Sing From Home issuing records.';
+  } else if (failedArchive) {
+    bannerTitle = '❌ Record Not Found in Official Archive';
+    bannerSub = 'This award entry could not be found in the published Sing From Home records.';
+  }
+
+  return `
+    <div class="c" style="border:2px solid ${bannerBd};background:${bannerBg};padding:14px">
+      <div style="font-size:17px;font-weight:800;color:${bannerCol}">${bannerTitle}</div>
+      <div class="m" style="margin-top:4px;color:${bannerCol};opacity:0.9">${bannerSub}</div>
+    </div>
+    <div class="c">
+      <h2 style="margin:0 0 10px;color:var(--ac)">Official Certificate Verification</h2>
+      <div class="tbl"><table>
+        <tr><th style="width:38%">Certificate No</th><td><b>${e(st.code || '—')}</b></td></tr>
+        <tr><th>Award</th><td><b>${e(awardLabel)}</b></td></tr>
+        <tr><th>Recipient Singer</th><td><b style="font-size:15px">${e(st.singer || '—')}</b></td></tr>
+        <tr><th>${isSotm ? 'Award Month' : 'Session Date'}</th><td>${e(periodLabel || '—')}</td></tr>
+        <tr><th>Date of Issue</th><td>${e(st.issueDate || '—')}</td></tr>
+        <tr><th>Issuing Authority</th><td>B. S. Tikariya Cultural Foundation ®<br><span class="m">Tikariya's School of Music · Sing From Home</span></td></tr>
+        ${st.archiveDetails.length ? `<tr><th>Session Record</th><td>${st.archiveDetails.map(d => e(d)).join('<br>')}</td></tr>` : ''}
+        <tr><th>Status</th><td><b style="color:${isValid ? '#15803d' : '#dc2626'}">${st.loading ? 'Checking…' : (isValid ? 'VALID' : 'INVALID')}</b></td></tr>
+      </table></div>
+      <div class="row" style="margin-top:12px;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <button class="pri" onclick="exitCertVerifyView()">← Open Sing From Home App</button>
+        ${verifiedCodeOnly && !U ? `<button onclick="exitCertVerifyView()">Sign In for Full Archive Cross-Check</button>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+// Auto-trigger verification screen immediately if opened via Certificate QR Code
+(() => {
+  try {
+    const qp = new URLSearchParams(location.search);
+    const vCode = qp.get('verify');
+    if (vCode) {
+      setTimeout(() => {
+        startCertVerificationFromParams({
+          verify: vCode,
+          t: qp.get('t') || 'sotd',
+          s: qp.get('s') || '',
+          p: qp.get('p') || '',
+          i: qp.get('i') || ''
+        });
+      }, 60);
+    }
+  } catch (_e) {}
+})();
+
+function getCertConfig() {
+  const saved = (CONF && CONF.certConfig && typeof CONF.certConfig === 'object') ? CONF.certConfig : {};
+  return { ...DEFAULT_CERT_CONFIG, ...saved };
+}
+
+function getActiveCertConfig() {
+  return CERT_DRAFT_CONFIG ? { ...DEFAULT_CERT_CONFIG, ...CERT_DRAFT_CONFIG } : getCertConfig();
+}
+
+function getCertFontDef(key) {
+  return CERT_FONT_OPTIONS.find(f => f.key === key) || CERT_FONT_OPTIONS[0];
+}
+
+function buildCertFontSpec(fontKey, fallbackWeight, baseSizePx) {
+  const def = getCertFontDef(fontKey);
+  const w = def.script ? (def.weight || 400) : fallbackWeight;
+  const sz = Math.round(baseSizePx * (def.scale || 1));
+  return `${w} ${sz}px ${def.css}`;
+}
+
+async function ensureCertFontsLoaded(cfg) {
+  if (!document.fonts || typeof document.fonts.load !== 'function') return;
+  const keys = [cfg.nameFont, cfg.bodyFont, cfg.sigFont].filter(Boolean);
+  const loads = [];
+  keys.forEach(k => {
+    const def = getCertFontDef(k);
+    if (def && def.script) {
+      loads.push(document.fonts.load(`${def.weight || 400} 64px "${def.key}"`).catch(() => {}));
+    }
+  });
+  if (loads.length) {
+    await Promise.race([Promise.all(loads), new Promise(r => setTimeout(r, 1500))]);
+  }
+}
 
 function loadCertAsset(src) {
-  if (CERT_IMG_CACHE[src]) return Promise.resolve(CERT_IMG_CACHE[src]);
+  if (!src) return Promise.resolve(null);
+  const isData = String(src).startsWith('data:');
+  if (!isData && CERT_IMG_CACHE[src]) return Promise.resolve(CERT_IMG_CACHE[src]);
   return new Promise(resolve => {
     const im = new Image();
-    im.crossOrigin = 'anonymous';
-    im.onload = () => { CERT_IMG_CACHE[src] = im; resolve(im); };
+    if (!isData) im.crossOrigin = 'anonymous';
+    im.onload = () => {
+      if (!isData) CERT_IMG_CACHE[src] = im;
+      resolve(im);
+    };
     im.onerror = () => resolve(null);
     im.src = src;
   });
@@ -2734,6 +3104,8 @@ function maybeAutoFlashWinnerCert() {
 }
 
 window.closeCertModal = () => {
+  CERT_CUSTOMIZER_OPEN = false;
+  CERT_DRAFT_CONFIG = null;
   const m = $('#cert-modal');
   if (m) m.style.display = 'none';
 };
@@ -2745,7 +3117,479 @@ window.switchCertSelection = (idx) => {
   renderCertificateCanvas(item);
 };
 
-window.openCertificateModal = async (type, singerRaw, period, judge = '', declaredDate = '', isCelebrationFlash = false) => {
+window.openSuperadminCertCustomizer = async () => {
+  if (!effSuper()) return;
+  const sotmCur = getSOTMData();
+  const latestSotd = (PUB && Array.isArray(PUB.sotd) && PUB.sotd.length)
+    ? PUB.sotd.slice().sort((a, b) => String(b.d || '').localeCompare(String(a.d || '')))[0]
+    : null;
+  let type = 'sotd', singer = 'MANOJ TIKARIYA', period = tdy(), judge = '', decl = fd(tdy());
+  if (latestSotd && Array.isArray(latestSotd.l) && latestSotd.l.length) {
+    const firstW = latestSotd.l[0];
+    singer = canonSinger(typeof firstW === 'string' ? firstW : firstW.n) || singer;
+    period = normDate(latestSotd.d) || period;
+    decl = fd(period);
+  } else if (sotmCur && sotmCur.winner) {
+    type = 'sotm';
+    singer = canonSinger(sotmCur.winner);
+    period = sotmCur.monthLabel || fm(tdy().slice(0, 7)).toUpperCase();
+    judge = (sotmCur.judge && sotmCur.judge !== 'Not Appointed') ? sotmCur.judge : '';
+    decl = sotmCur.declaredDate || period;
+  }
+  CERT_CUSTOMIZER_OPEN = true;
+  CERT_CUSTOMIZER_TAB = 'bg';
+  CERT_DRAFT_CONFIG = { ...getCertConfig() };
+  await openCertificateModal(type, singer, period, judge, decl, false, true);
+};
+
+window.toggleCertCustomizer = async () => {
+  if (!effSuper() || !ACTIVE_CERT_SPEC) return;
+  CERT_CUSTOMIZER_OPEN = !CERT_CUSTOMIZER_OPEN;
+  if (CERT_CUSTOMIZER_OPEN && !CERT_DRAFT_CONFIG) {
+    CERT_DRAFT_CONFIG = { ...getCertConfig() };
+  } else if (!CERT_CUSTOMIZER_OPEN) {
+    CERT_DRAFT_CONFIG = null;
+  }
+  renderCertModalShell();
+  await renderCertificateCanvas(ACTIVE_CERT_SPEC);
+};
+
+window.setCertCustomizerTab = (t) => {
+  CERT_CUSTOMIZER_TAB = t;
+  renderCertCustomizerBody();
+};
+
+window.setCertPreviewMode = async (newType) => {
+  if (!ACTIVE_CERT_SPEC) return;
+  const isSotm = newType === 'sotm';
+  ACTIVE_CERT_SPEC = {
+    ...ACTIVE_CERT_SPEC,
+    type: isSotm ? 'sotm' : 'sotd',
+    title: isSotm ? 'Singer of the Month' : 'Singer of the Day',
+    period: isSotm ? (ACTIVE_CERT_SPEC.type === 'sotm' ? ACTIVE_CERT_SPEC.period : fm(tdy().slice(0, 7)).toUpperCase()) : (ACTIVE_CERT_SPEC.type === 'sotd' ? ACTIVE_CERT_SPEC.period : tdy()),
+    subtitle: isSotm ? `${fm(tdy().slice(0, 7)).toUpperCase()} · G-Clef Memento Award` : fd(tdy())
+  };
+  await renderCertificateCanvas(ACTIVE_CERT_SPEC);
+};
+
+window.updateCertDraft = (field, val, redrawPanel = false) => {
+  if (!effSuper()) return;
+  if (!CERT_DRAFT_CONFIG) CERT_DRAFT_CONFIG = { ...getCertConfig() };
+  CERT_DRAFT_CONFIG[field] = val;
+  if (redrawPanel) renderCertCustomizerBody();
+  if (ACTIVE_CERT_SPEC) renderCertificateCanvas(ACTIVE_CERT_SPEC);
+};
+
+window.applyCertBgPreset = (presetId) => {
+  const p = CERT_BG_PRESETS.find(x => x.id === presetId);
+  if (!p) return;
+  if (!CERT_DRAFT_CONFIG) CERT_DRAFT_CONFIG = { ...getCertConfig() };
+  CERT_DRAFT_CONFIG.bgPreset = p.id;
+  CERT_DRAFT_CONFIG.bgOuterColor = p.outer;
+  CERT_DRAFT_CONFIG.bgPaperColor = p.paper;
+  CERT_DRAFT_CONFIG.bgAccentColor = p.accent;
+  renderCertCustomizerBody();
+  if (ACTIVE_CERT_SPEC) renderCertificateCanvas(ACTIVE_CERT_SPEC);
+};
+
+window.onCertBgImageUpload = (fileInput) => {
+  const file = fileInput && fileInput.files && fileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const im = new Image();
+    im.onload = () => {
+      const maxW = 1200, maxH = 850;
+      const ratio = Math.min(1, maxW / im.naturalWidth, maxH / im.naturalHeight);
+      const cw = Math.max(1, Math.round(im.naturalWidth * ratio));
+      const ch = Math.max(1, Math.round(im.naturalHeight * ratio));
+      const c = document.createElement('canvas');
+      c.width = cw;
+      c.height = ch;
+      c.getContext('2d').drawImage(im, 0, 0, cw, ch);
+      const dataUrl = c.toDataURL('image/jpeg', 0.78);
+      if (!CERT_DRAFT_CONFIG) CERT_DRAFT_CONFIG = { ...getCertConfig() };
+      CERT_DRAFT_CONFIG.bgImageData = dataUrl;
+      CERT_DRAFT_CONFIG.bgPreset = 'custom_image';
+      renderCertCustomizerBody();
+      if (ACTIVE_CERT_SPEC) renderCertificateCanvas(ACTIVE_CERT_SPEC);
+    };
+    im.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+window.removeCertBgImage = () => {
+  if (!CERT_DRAFT_CONFIG) CERT_DRAFT_CONFIG = { ...getCertConfig() };
+  CERT_DRAFT_CONFIG.bgImageData = '';
+  renderCertCustomizerBody();
+  if (ACTIVE_CERT_SPEC) renderCertificateCanvas(ACTIVE_CERT_SPEC);
+};
+
+window.onCertSigImageUpload = (fileInput) => {
+  const file = fileInput && fileInput.files && fileInput.files[0];
+  if (!file) return;
+  const stripWhiteEl = document.getElementById('cert_sig_strip_white');
+  const stripWhite = stripWhiteEl ? stripWhiteEl.checked : true;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const im = new Image();
+    im.onload = () => {
+      const maxW = 540, maxH = 190;
+      const ratio = Math.min(1, maxW / im.naturalWidth, maxH / im.naturalHeight);
+      const cw = Math.max(1, Math.round(im.naturalWidth * ratio));
+      const ch = Math.max(1, Math.round(im.naturalHeight * ratio));
+      const c = document.createElement('canvas');
+      c.width = cw;
+      c.height = ch;
+      const g = c.getContext('2d');
+      g.drawImage(im, 0, 0, cw, ch);
+      if (stripWhite) {
+        try {
+          const imgD = g.getImageData(0, 0, cw, ch);
+          const d = imgD.data;
+          for (let i = 0; i < d.length; i += 4) {
+            const r = d[i], gr = d[i + 1], b = d[i + 2];
+            if (r > 228 && gr > 228 && b > 228) {
+              d[i + 3] = 0;
+            }
+          }
+          g.putImageData(imgD, 0, 0);
+        } catch (_e) {}
+      }
+      if (!CERT_DRAFT_CONFIG) CERT_DRAFT_CONFIG = { ...getCertConfig() };
+      CERT_DRAFT_CONFIG.sigMode = 'upload';
+      CERT_DRAFT_CONFIG.sigImageData = c.toDataURL('image/png');
+      renderCertCustomizerBody();
+      if (ACTIVE_CERT_SPEC) renderCertificateCanvas(ACTIVE_CERT_SPEC);
+    };
+    im.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+function initCertSignaturePad() {
+  const pad = document.getElementById('cert_sig_pad');
+  if (!pad) return;
+  pad.width = 560;
+  pad.height = 170;
+  const g = pad.getContext('2d');
+  g.clearRect(0, 0, pad.width, pad.height);
+  const cfg = getActiveCertConfig();
+  if (cfg.sigMode === 'drawn' && cfg.sigImageData) {
+    loadCertAsset(cfg.sigImageData).then(im => {
+      if (im && document.getElementById('cert_sig_pad') === pad) {
+        g.drawImage(im, 0, 0, pad.width, pad.height);
+      }
+    });
+  }
+  let drawing = false;
+  let lastX = 0, lastY = 0;
+  const getPt = (ev) => {
+    const rect = pad.getBoundingClientRect();
+    const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
+    const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+    return {
+      x: (clientX - rect.left) * (pad.width / rect.width),
+      y: (clientY - rect.top) * (pad.height / rect.height)
+    };
+  };
+  const start = (ev) => {
+    ev.preventDefault();
+    try { pad.setPointerCapture(ev.pointerId); } catch (_e) {}
+    drawing = true;
+    const pt = getPt(ev);
+    lastX = pt.x; lastY = pt.y;
+  };
+  const move = (ev) => {
+    if (!drawing) return;
+    ev.preventDefault();
+    const pt = getPt(ev);
+    const curCfg = getActiveCertConfig();
+    g.strokeStyle = curCfg.sigColor || '#0f3460';
+    g.lineWidth = 4.2;
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    g.beginPath();
+    g.moveTo(lastX, lastY);
+    g.lineTo(pt.x, pt.y);
+    g.stroke();
+    lastX = pt.x; lastY = pt.y;
+  };
+  const end = () => {
+    if (!drawing) return;
+    drawing = false;
+    if (!CERT_DRAFT_CONFIG) CERT_DRAFT_CONFIG = { ...getCertConfig() };
+    CERT_DRAFT_CONFIG.sigMode = 'drawn';
+    CERT_DRAFT_CONFIG.sigImageData = pad.toDataURL('image/png');
+    if (ACTIVE_CERT_SPEC) renderCertificateCanvas(ACTIVE_CERT_SPEC);
+  };
+  pad.addEventListener('pointerdown', start);
+  pad.addEventListener('pointermove', move);
+  pad.addEventListener('pointerup', end);
+  pad.addEventListener('pointercancel', end);
+}
+
+window.clearCertSigPad = () => {
+  const pad = document.getElementById('cert_sig_pad');
+  if (pad) pad.getContext('2d').clearRect(0, 0, pad.width, pad.height);
+  if (!CERT_DRAFT_CONFIG) CERT_DRAFT_CONFIG = { ...getCertConfig() };
+  CERT_DRAFT_CONFIG.sigImageData = '';
+  if (ACTIVE_CERT_SPEC) renderCertificateCanvas(ACTIVE_CERT_SPEC);
+};
+
+window.saveCertCustomConfig = async () => {
+  if (!effSuper()) return;
+  const toSave = { ...getActiveCertConfig() };
+  const payloadSize = JSON.stringify(toSave).length;
+  if (payloadSize > 750000) {
+    showNotice('Uploaded background/signature image is too large to save. Please choose a smaller image.');
+    return;
+  }
+  try {
+    await setDoc(doc(fs, 'config', 'app'), { certConfig: toSave }, { merge: true });
+    CONF = { ...(CONF || {}), certConfig: toSave };
+    CERT_DRAFT_CONFIG = { ...toSave };
+    showNotice('Certificate customization saved! All participants will now see and download certificates with this design.', 'Certificate Design Saved');
+  } catch (err) {
+    showNotice('Could not save certificate design (' + (err.code || err.message || 'error') + ').');
+  }
+};
+
+window.resetCertCustomConfig = () => {
+  if (!effSuper()) return;
+  showConfirm('Reset all certificate background, text, font, and signature settings back to the default Sing From Home template?', async () => {
+    const def = { ...DEFAULT_CERT_CONFIG };
+    try {
+      await setDoc(doc(fs, 'config', 'app'), { certConfig: def }, { merge: true });
+      CONF = { ...(CONF || {}), certConfig: def };
+      CERT_DRAFT_CONFIG = { ...def };
+      renderCertCustomizerBody();
+      if (ACTIVE_CERT_SPEC) await renderCertificateCanvas(ACTIVE_CERT_SPEC);
+      showNotice('Certificate design restored to default.', 'Defaults Restored');
+    } catch (err) {
+      showNotice('Reset failed (' + (err.code || err.message || 'error') + ').');
+    }
+  }, 'Reset Certificate Design');
+};
+
+function renderCertCustomizerBody() {
+  const host = document.getElementById('cert_cust_host');
+  if (!host || !CERT_CUSTOMIZER_OPEN || !effSuper()) return;
+  const cfg = getActiveCertConfig();
+  const isSotmPreview = ACTIVE_CERT_SPEC && ACTIVE_CERT_SPEC.type === 'sotm';
+  const fontOptsHtml = (selKey, onlyScript = false) => CERT_FONT_OPTIONS
+    .filter(f => !onlyScript || f.script)
+    .map(f => `<option value="${e(f.key)}"${selKey === f.key ? ' selected' : ''}>${e(f.label)}</option>`)
+    .join('');
+
+  let tabHtml = '';
+  if (CERT_CUSTOMIZER_TAB === 'bg') {
+    tabHtml = `
+      <div class="m" style="font-size:11.5px;font-weight:700;margin-bottom:5px">Quick Background Themes</div>
+      <div class="cert-preset-row">
+        ${CERT_BG_PRESETS.map(p => `
+          <button class="cert-preset-btn ${cfg.bgPreset === p.id && !cfg.bgImageData ? 'pri' : ''}" onclick="applyCertBgPreset('${p.id}')">
+            <span class="cert-swatch" style="background:${p.paper};border-color:${p.accent}"></span>${e(p.label)}
+          </button>
+        `).join('')}
+      </div>
+      <div class="cert-cust-grid">
+        <label>Outer Mat Color
+          <input type="color" value="${e(cfg.bgOuterColor)}" oninput="updateCertDraft('bgOuterColor', this.value)" style="width:100%;height:34px;padding:2px;border:1px solid var(--bd);border-radius:7px;cursor:pointer">
+        </label>
+        <label>Certificate Sheet Color
+          <input type="color" value="${e(cfg.bgPaperColor)}" oninput="updateCertDraft('bgPaperColor', this.value)" style="width:100%;height:34px;padding:2px;border:1px solid var(--bd);border-radius:7px;cursor:pointer">
+        </label>
+        <label>Border & Title Accent Color
+          <input type="color" value="${e(cfg.bgAccentColor)}" oninput="updateCertDraft('bgAccentColor', this.value)" style="width:100%;height:34px;padding:2px;border:1px solid var(--bd);border-radius:7px;cursor:pointer">
+        </label>
+      </div>
+      <div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--bd)">
+        <div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap">
+          <label style="font-size:12px;font-weight:700;color:var(--fg)">Custom Background Image (Optional):
+            <input type="file" accept="image/*" onchange="onCertBgImageUpload(this)" style="margin-left:6px;font-size:11.5px">
+          </label>
+          ${cfg.bgImageData ? `<button style="padding:3px 9px;font-size:11.5px;color:#dc2626;border-color:#fca5a5" onclick="removeCertBgImage()">Remove Image</button>` : ''}
+        </div>
+        ${cfg.bgImageData ? `
+          <label class="m" style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px">
+            <span>Image Visibility (${Math.round((Number(cfg.bgImageOpacity) || 0.25) * 100)}%):</span>
+            <input type="range" min="0.08" max="0.9" step="0.02" value="${Number(cfg.bgImageOpacity) || 0.25}" oninput="updateCertDraft('bgImageOpacity', parseFloat(this.value))" style="flex:1;max-width:240px">
+          </label>
+        ` : '<div class="m" style="font-size:11px;margin-top:4px">Upload a subtle texture, floral border, or musical backdrop. A clean tint keeps certificate text crisp.</div>'}
+      </div>
+    `;
+  } else if (CERT_CUSTOMIZER_TAB === 'text') {
+    tabHtml = `
+      <div class="row" style="justify-content:space-between;margin-bottom:8px">
+        <span class="m" style="font-size:11.5px">Choose handwriting fonts & edit certificate wording (use <code>{date}</code> / <code>{period}</code>)</span>
+        <div class="row" style="gap:4px">
+          <button class="${!isSotmPreview ? 'pri' : ''}" style="padding:3px 8px;font-size:11px" onclick="setCertPreviewMode('sotd')">Preview SOTD</button>
+          <button class="${isSotmPreview ? 'pri' : ''}" style="padding:3px 8px;font-size:11px" onclick="setCertPreviewMode('sotm')">Preview SOTM</button>
+        </div>
+      </div>
+      <div class="cert-cust-grid">
+        <label>Singer Name Font (Handwriting / Standard)
+          <select onchange="updateCertDraft('nameFont', this.value)">${fontOptsHtml(cfg.nameFont, false)}</select>
+        </label>
+        <label>Appreciation Body Font
+          <select onchange="updateCertDraft('bodyFont', this.value)">${fontOptsHtml(cfg.bodyFont, false)}</select>
+        </label>
+        <label>Top Kicker Text
+          <input type="text" value="${e(cfg.kickerText)}" oninput="updateCertDraft('kickerText', this.value)">
+        </label>
+        <label>SOTD Main Heading
+          <input type="text" value="${e(cfg.titleSotd)}" oninput="updateCertDraft('titleSotd', this.value)">
+        </label>
+        <label>SOTM Main Heading
+          <input type="text" value="${e(cfg.titleSotm)}" oninput="updateCertDraft('titleSotm', this.value)">
+        </label>
+        <label>"Presented To" Line
+          <input type="text" value="${e(cfg.presentedText)}" oninput="updateCertDraft('presentedText', this.value)">
+        </label>
+        <label style="grid-column:1/-1">SOTD Body Line 1
+          <input type="text" value="${e(cfg.bodySotdLine1)}" oninput="updateCertDraft('bodySotdLine1', this.value)">
+        </label>
+        <label style="grid-column:1/-1">SOTD Body Line 2 (supports {date})
+          <input type="text" value="${e(cfg.bodySotdLine2)}" oninput="updateCertDraft('bodySotdLine2', this.value)">
+        </label>
+        <label style="grid-column:1/-1">SOTM Body Line 1
+          <input type="text" value="${e(cfg.bodySotmLine1)}" oninput="updateCertDraft('bodySotmLine1', this.value)">
+        </label>
+        <label style="grid-column:1/-1">SOTM Body Line 2 (supports {period})
+          <input type="text" value="${e(cfg.bodySotmLine2)}" oninput="updateCertDraft('bodySotmLine2', this.value)">
+        </label>
+        <label style="grid-column:1/-1">Bottom-Left Footer Line
+          <input type="text" value="${e(cfg.footerLeftLine3)}" oninput="updateCertDraft('footerLeftLine3', this.value)">
+        </label>
+      </div>
+    `;
+  } else {
+    tabHtml = `
+      <div class="row" style="gap:6px;margin-bottom:8px;flex-wrap:wrap">
+        <button class="${cfg.sigMode === 'typed' ? 'pri' : ''}" style="padding:4px 9px;font-size:11.5px" onclick="updateCertDraft('sigMode','typed',true)">✍️ Handwriting Signature</button>
+        <button class="${cfg.sigMode === 'drawn' ? 'pri' : ''}" style="padding:4px 9px;font-size:11.5px" onclick="updateCertDraft('sigMode','drawn',true)">🖋️ Draw Signature</button>
+        <button class="${cfg.sigMode === 'upload' ? 'pri' : ''}" style="padding:4px 9px;font-size:11.5px" onclick="updateCertDraft('sigMode','upload',true)">📤 Upload Signature</button>
+        <button class="${cfg.sigMode === 'none' ? 'pri' : ''}" style="padding:4px 9px;font-size:11.5px" onclick="updateCertDraft('sigMode','none',true)">Line Only</button>
+      </div>
+      ${cfg.sigMode === 'typed' ? `
+        <div class="cert-cust-grid" style="margin-bottom:8px">
+          <label>Signature Text
+            <input type="text" value="${e(cfg.sigTypedText)}" oninput="updateCertDraft('sigTypedText', this.value)">
+          </label>
+          <label>Signature Handwriting Font
+            <select onchange="updateCertDraft('sigFont', this.value)">${fontOptsHtml(cfg.sigFont, true)}</select>
+          </label>
+          <label>Pen Ink Color
+            <input type="color" value="${e(cfg.sigColor)}" oninput="updateCertDraft('sigColor', this.value)" style="width:100%;height:34px;padding:2px;border:1px solid var(--bd);border-radius:7px;cursor:pointer">
+          </label>
+        </div>
+      ` : ''}
+      ${cfg.sigMode === 'drawn' ? `
+        <div style="margin-bottom:8px">
+          <div class="row" style="justify-content:space-between;max-width:460px">
+            <span class="m" style="font-size:11.5px">Sign inside the white box using finger, stylus, or mouse:</span>
+            <div class="row" style="gap:6px">
+              <input type="color" value="${e(cfg.sigColor)}" oninput="updateCertDraft('sigColor', this.value)" title="Pen Ink Color" style="width:30px;height:26px;padding:1px;border:1px solid var(--bd);border-radius:5px;cursor:pointer">
+              <button style="padding:3px 8px;font-size:11px" onclick="clearCertSigPad()">Clear Pad</button>
+            </div>
+          </div>
+          <div class="cert-sig-pad-wrap"><canvas id="cert_sig_pad"></canvas></div>
+        </div>
+      ` : ''}
+      ${cfg.sigMode === 'upload' ? `
+        <div style="margin-bottom:8px;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--card)">
+          <div class="row" style="gap:8px;flex-wrap:wrap">
+            <input type="file" accept="image/*" onchange="onCertSigImageUpload(this)" style="font-size:12px">
+            <label class="m" style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;cursor:pointer">
+              <input type="checkbox" id="cert_sig_strip_white" checked> Auto-remove white paper background
+            </label>
+            ${cfg.sigImageData ? `<button style="padding:3px 8px;font-size:11px;color:#dc2626;border-color:#fca5a5" onclick="updateCertDraft('sigImageData','',true)">Remove</button>` : ''}
+          </div>
+        </div>
+      ` : ''}
+      <div class="cert-cust-grid" style="margin-top:6px;padding-top:8px;border-top:1px dashed var(--bd)">
+        <label>Signer Name (Below Line)
+          <input type="text" value="${e(cfg.sigName)}" oninput="updateCertDraft('sigName', this.value)">
+        </label>
+        <label>Designation Line 1
+          <input type="text" value="${e(cfg.sigTitle1)}" oninput="updateCertDraft('sigTitle1', this.value)">
+        </label>
+        <label>Designation Line 2
+          <input type="text" value="${e(cfg.sigTitle2)}" oninput="updateCertDraft('sigTitle2', this.value)">
+        </label>
+        <label>Date of Issue (Leave blank = Auto Download Date)
+          <input type="text" value="${e(cfg.issueDateOverride || '')}" placeholder="Auto (${e(fd(tdy()))})" oninput="updateCertDraft('issueDateOverride', this.value)">
+        </label>
+      </div>
+    `;
+  }
+
+  host.innerHTML = `
+    <div class="cert-cust-panel">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px">
+        <b style="color:var(--ac);font-size:13.5px">🎨 Superadmin Certificate Customizer</b>
+        <div class="row" style="gap:6px">
+          <button style="padding:4px 9px;font-size:11.5px" onclick="resetCertCustomConfig()">↺ Reset Defaults</button>
+          <button class="pri" style="padding:4px 11px;font-size:11.5px" onclick="saveCertCustomConfig()">💾 Save for All Participants</button>
+        </div>
+      </div>
+      <div class="cert-cust-tabs">
+        <button class="${CERT_CUSTOMIZER_TAB === 'bg' ? 'pri' : ''}" onclick="setCertCustomizerTab('bg')">🖼️ Background</button>
+        <button class="${CERT_CUSTOMIZER_TAB === 'text' ? 'pri' : ''}" onclick="setCertCustomizerTab('text')">✍️ Text & Handwriting Fonts</button>
+        <button class="${CERT_CUSTOMIZER_TAB === 'sig' ? 'pri' : ''}" onclick="setCertCustomizerTab('sig')">🖋️ Signature</button>
+      </div>
+      ${tabHtml}
+    </div>
+  `;
+  if (CERT_CUSTOMIZER_TAB === 'sig' && cfg.sigMode === 'drawn') {
+    initCertSignaturePad();
+  }
+}
+
+function renderCertModalShell(isCelebrationFlash = false) {
+  const spec = ACTIVE_CERT_SPEC;
+  if (!spec) return;
+  const selIdx = Math.max(0, ACTIVE_CERT_LIST.findIndex(c => c.key === spec.key));
+  $('#cert-modal-body').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+      <div>
+        <h3 style="margin:0;color:var(--ac);font-size:17px">${isCelebrationFlash ? 'Congratulations — Your Official Certificate' : 'Official Certificate'}</h3>
+        <div class="m" style="font-size:12px">${e(spec.singer)} · ${e(spec.title)} (${e(spec.subtitle)})</div>
+      </div>
+      <div class="row" style="gap:6px">
+        ${effSuper() ? `<button class="${CERT_CUSTOMIZER_OPEN ? 'on' : ''}" onclick="toggleCertCustomizer()" style="padding:5px 11px;font-size:12px">${CERT_CUSTOMIZER_OPEN ? '✕ Hide Customizer' : '🎨 Customize Certificate'}</button>` : ''}
+        <button onclick="closeCertModal()" style="padding:5px 11px;font-size:12px">✕ Close</button>
+      </div>
+    </div>
+    ${ACTIVE_CERT_LIST.length > 1 ? `
+      <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="m" style="font-size:12px;font-weight:700">Select Award:</span>
+        <select onchange="switchCertSelection(this.value)" style="flex:1;min-width:200px;padding:6px 8px;font-size:12.5px">
+          ${ACTIVE_CERT_LIST.map((c, i) => `<option value="${i}"${i === selIdx ? ' selected' : ''}>${c.type === 'sotm' ? 'SOTM' : 'SOTD'} — ${e(c.subtitle)}</option>`).join('')}
+        </select>
+      </div>
+    ` : ''}
+    <div id="cert_cust_host"></div>
+    <div class="cert-canvas-wrap">
+      <canvas id="sfh_cert_canvas" width="2400" height="1700"></canvas>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <span class="m" style="font-size:11.5px">Print-ready A4 landscape · QR validated · Date of Issue auto-filled on download</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button style="padding:8px 12px;font-size:12.5px;border-radius:8px" onclick="previewCurrentCertVerification()">🔍 Verify QR</button>
+        <button style="padding:8px 14px;font-size:13px;border-radius:8px" onclick="downloadCertPNG()">⬇ Download Image (PNG)</button>
+        <button class="pri" style="padding:8px 14px;font-size:13px;border-radius:8px" onclick="downloadCertPDF()">⬇ Download PDF (A4)</button>
+      </div>
+    </div>
+  `;
+  if (CERT_CUSTOMIZER_OPEN && effSuper()) {
+    renderCertCustomizerBody();
+  }
+}
+
+window.openCertificateModal = async (type, singerRaw, period, judge = '', declaredDate = '', isCelebrationFlash = false, openCustomizer = false) => {
   const sk = canonSinger(singerRaw);
   if (!sk) return;
   const allForSinger = getParticipantCertificates(sk);
@@ -2765,36 +3609,11 @@ window.openCertificateModal = async (type, singerRaw, period, judge = '', declar
   ACTIVE_CERT_LIST = allForSinger.length ? allForSinger : [spec];
   if (!ACTIVE_CERT_LIST.some(c => c.key === spec.key)) ACTIVE_CERT_LIST.unshift(spec);
   ACTIVE_CERT_SPEC = spec;
+  CERT_CUSTOMIZER_OPEN = Boolean(openCustomizer && effSuper());
+  CERT_DRAFT_CONFIG = CERT_CUSTOMIZER_OPEN ? { ...getCertConfig() } : null;
 
-  const selIdx = Math.max(0, ACTIVE_CERT_LIST.findIndex(c => c.key === spec.key));
   const m = $('#cert-modal');
-  $('#cert-modal-body').innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-      <div>
-        <h3 style="margin:0;color:var(--ac);font-size:17px">${isCelebrationFlash ? 'Congratulations — Your Official Certificate' : 'Official Certificate'}</h3>
-        <div class="m" style="font-size:12px">${e(sk)} · ${e(spec.title)} (${e(spec.subtitle)})</div>
-      </div>
-      <button onclick="closeCertModal()" style="padding:5px 11px;font-size:12px">✕ Close</button>
-    </div>
-    ${ACTIVE_CERT_LIST.length > 1 ? `
-      <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span class="m" style="font-size:12px;font-weight:700">Select Award:</span>
-        <select onchange="switchCertSelection(this.value)" style="flex:1;min-width:200px;padding:6px 8px;font-size:12.5px">
-          ${ACTIVE_CERT_LIST.map((c, i) => `<option value="${i}"${i === selIdx ? ' selected' : ''}>${c.type === 'sotm' ? 'SOTM' : 'SOTD'} — ${e(c.subtitle)}</option>`).join('')}
-        </select>
-      </div>
-    ` : ''}
-    <div class="cert-canvas-wrap">
-      <canvas id="sfh_cert_canvas" width="2400" height="1700"></canvas>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
-      <span class="m" style="font-size:11.5px">Print-ready A4 landscape · Generated on your device</span>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button style="padding:8px 14px;font-size:13px;border-radius:8px" onclick="downloadCertPNG()">⬇ Download Image (PNG)</button>
-        <button class="pri" style="padding:8px 14px;font-size:13px;border-radius:8px" onclick="downloadCertPDF()">⬇ Download PDF (A4)</button>
-      </div>
-    </div>
-  `;
+  renderCertModalShell(isCelebrationFlash);
   m.style.display = 'flex';
   await renderCertificateCanvas(spec);
 };
@@ -2807,18 +3626,25 @@ async function renderCertificateCanvas(spec) {
   canvas.width = W;
   canvas.height = H;
 
-  const violinImg = await loadCertAsset('public/assets/aistudio/violinist_961c3e38.png');
+  const cfg = getActiveCertConfig();
+  await ensureCertFontsLoaded(cfg);
+
+  const [violinImg, bgImg, sigImg] = await Promise.all([
+    loadCertAsset('public/assets/aistudio/violinist_961c3e38.png'),
+    cfg.bgImageData ? loadCertAsset(cfg.bgImageData) : Promise.resolve(null),
+    (cfg.sigMode === 'drawn' || cfg.sigMode === 'upload') && cfg.sigImageData ? loadCertAsset(cfg.sigImageData) : Promise.resolve(null)
+  ]);
 
   const isSotm = spec.type === 'sotm';
-  // Exact App Theme Palette (from index.html :root)
-  const appBg = '#f8fafc';
-  const paper = '#ffffff';
-  const navy = '#0f3460';      // --ac
-  const navyMid = '#1e4a7a';   // --btn-pri-bg secondary
-  const navySoft = '#e8eef7';  // --ac-light
-  const ink = '#0f172a';       // --fg
-  const muted = '#64748b';     // --mut
-  const border = '#cbd5e1';    // --bd
+  const appBg = cfg.bgOuterColor || '#f8fafc';
+  const paper = cfg.bgPaperColor || '#ffffff';
+  const navy = cfg.bgAccentColor || '#0f3460';
+  const brandNavy = '#0f3460';
+  const navyMid = '#1e4a7a';
+  const navySoft = '#e8eef7';
+  const ink = '#0f172a';
+  const muted = '#64748b';
+  const border = '#cbd5e1';
   const bloodRed = '#8b0000';  // Exclusive M brand color
   const APP_FONT = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Devanagari", sans-serif';
 
@@ -2837,14 +3663,28 @@ async function renderCertificateCanvas(spec) {
     }
   };
 
-  // 1. Clean Print Cardstock Surface (App Theme: #f8fafc mat + crisp #ffffff certificate sheet)
+  // 1. Certificate Cardstock Surface + Optional Custom Background Image
   ctx.fillStyle = appBg;
   ctx.fillRect(0, 0, W, H);
 
   ctx.fillStyle = paper;
   ctx.fillRect(46, 46, W - 92, H - 92);
 
-  // Clean Architectural Double-Rule Frame in App Navy (#0f3460) & Slate (#cbd5e1)
+  if (bgImg && bgImg.naturalWidth && bgImg.naturalHeight) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(56, 56, W - 112, H - 112);
+    ctx.clip();
+    const sheetW = W - 112, sheetH = H - 112;
+    const scale = Math.max(sheetW / bgImg.naturalWidth, sheetH / bgImg.naturalHeight);
+    const dw = bgImg.naturalWidth * scale;
+    const dh = bgImg.naturalHeight * scale;
+    ctx.globalAlpha = Math.max(0.05, Math.min(0.95, Number(cfg.bgImageOpacity) || 0.25));
+    ctx.drawImage(bgImg, 56 + (sheetW - dw) / 2, 56 + (sheetH - dh) / 2, dw, dh);
+    ctx.restore();
+  }
+
+  // Clean Architectural Double-Rule Frame
   ctx.strokeStyle = navy;
   ctx.lineWidth = 10;
   ctx.strokeRect(56, 56, W - 112, H - 112);
@@ -2853,7 +3693,7 @@ async function renderCertificateCanvas(spec) {
   ctx.lineWidth = 2;
   ctx.strokeRect(78, 78, W - 156, H - 156);
 
-  // Minimalist structural corner brackets (clean editorial print craft — no AI filigree)
+  // Minimalist structural corner brackets
   const drawTick = (cx, cy, dx, dy) => {
     ctx.strokeStyle = navy;
     ctx.lineWidth = 4;
@@ -2868,7 +3708,7 @@ async function renderCertificateCanvas(spec) {
   drawTick(78, H - 78, 1, -1);
   drawTick(W - 78, H - 78, -1, -1);
 
-  // 2. Top-Left: Father's Authentic Violinist Illustration (Direct clean print integration — no box, no app icon)
+  // 2. Top-Left: Father's Authentic Violinist Illustration (no box, no app icon)
   const ilX = 128, ilY = 114, ilMaxW = 450, ilMaxH = 292;
   let ilBottomY = ilY + ilMaxH;
   if (violinImg && violinImg.naturalWidth && violinImg.naturalHeight) {
@@ -2888,14 +3728,13 @@ async function renderCertificateCanvas(spec) {
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
 
-  // "SING FROM HOME" — Exact app h1 style (800 weight, #0f3460, Blood Red #8b0000 900 weight on both M's, tight tracking)
   const drawHeaderTitle = (xStart, yBase) => {
     const parts = [
-      { t: 'SING FRO', bold: 800, color: navy },
+      { t: 'SING FRO', bold: 800, color: brandNavy },
       { t: 'M', bold: 900, color: bloodRed },
-      { t: ' HO', bold: 800, color: navy },
+      { t: ' HO', bold: 800, color: brandNavy },
       { t: 'M', bold: 900, color: bloodRed },
-      { t: 'E', bold: 800, color: navy }
+      { t: 'E', bold: 800, color: brandNavy }
     ];
     let cx = xStart;
     parts.forEach(p => {
@@ -2903,25 +3742,22 @@ async function renderCertificateCanvas(spec) {
       ctx.fillStyle = p.color;
       for (const ch of p.t) {
         ctx.fillText(ch, cx, yBase);
-        cx += ctx.measureText(ch).width - 1.1; // matches h1 letter-spacing: -0.3px at print scale
+        cx += ctx.measureText(ch).width - 1.1;
       }
     });
   };
   drawHeaderTitle(hdrX, 206);
 
-  // Foundation Name — Exact app .sub-fnd style (black #000000, weight 500, clean sans-serif directly beneath)
   ctx.fillStyle = '#000000';
   ctx.font = `500 35px ${APP_FONT}`;
   ctx.fillText('A project of B. S. Tikariya Cultural Foundation ®', hdrX, 260);
   ctx.font = `500 29px ${APP_FONT}`;
   ctx.fillText('(CIN: U88900MH2025NPL454435)', hdrX, 302);
 
-  // Conducting school & session line in crisp app muted slate
   ctx.fillStyle = muted;
   ctx.font = `600 25px ${APP_FONT}`;
   ctx.fillText("Conducted by Tikariya's School of Music  ·  Online Singing Session on Zoom", hdrX, 354);
 
-  // Subtle horizontal divider rule matching app <header> border-bottom
   const divY = Math.max(456, ilBottomY + 52);
   ctx.strokeStyle = border;
   ctx.lineWidth = 2;
@@ -2940,17 +3776,22 @@ async function renderCertificateCanvas(spec) {
   const cx = W / 2;
   ctx.textAlign = 'center';
 
-  // Spaced uppercase editorial kicker
   ctx.fillStyle = muted;
   ctx.font = `700 25px ${APP_FONT}`;
-  ctx.fillText('C E R T I F I C A T E   O F   A P P R E C I A T I O N', cx, divY + 88);
+  ctx.fillText(cfg.kickerText || DEFAULT_CERT_CONFIG.kickerText, cx, divY + 88);
 
-  // BIG CENTERED "SINGER OF THE MONTH" / "SINGER OF THE DAY"
+  const mainTitle = isSotm
+    ? (cfg.titleSotm || DEFAULT_CERT_CONFIG.titleSotm)
+    : (cfg.titleSotd || DEFAULT_CERT_CONFIG.titleSotd);
   ctx.fillStyle = navy;
-  ctx.font = `900 116px ${APP_FONT}`;
-  ctx.fillText(isSotm ? 'SINGER OF THE MONTH' : 'SINGER OF THE DAY', cx, divY + 224);
+  let titleSz = 116;
+  ctx.font = `900 ${titleSz}px ${APP_FONT}`;
+  while (ctx.measureText(mainTitle).width > 2060 && titleSz > 64) {
+    titleSz -= 4;
+    ctx.font = `900 ${titleSz}px ${APP_FONT}`;
+  }
+  ctx.fillText(mainTitle, cx, divY + 224);
 
-  // Clean app-theme badge strip below main title (no AI ribbon)
   const subText = isSotm
     ? `${spec.period}   ·   G-CLEF MEMENTO AWARD`
     : `${spec.declaredDate || fd(spec.period)}`;
@@ -2966,23 +3807,26 @@ async function renderCertificateCanvas(spec) {
   ctx.fillStyle = navy;
   ctx.fillText(subText, cx, subY + 38);
 
-  // Presentation line
+  // Presentation line (honors bodyFont if handwriting selected)
   ctx.fillStyle = '#475569';
-  ctx.font = `500 34px ${APP_FONT}`;
-  ctx.fillText('Proudly presented to', cx, divY + 394);
+  ctx.font = buildCertFontSpec(cfg.bodyFont, 500, 34);
+  ctx.fillText(cfg.presentedText || DEFAULT_CERT_CONFIG.presentedText, cx, divY + 394);
 
-  // Recipient Singer Name (clean, commanding, centered)
-  let nameSize = 96;
-  ctx.font = `800 ${nameSize}px ${APP_FONT}`;
-  while (ctx.measureText(spec.singer).width > 1860 && nameSize > 52) {
-    nameSize -= 4;
-    ctx.font = `800 ${nameSize}px ${APP_FONT}`;
+  // Recipient Singer Name (supports Handwriting Font!)
+  const nameDef = getCertFontDef(cfg.nameFont);
+  const displayName = nameDef.script
+    ? spec.singer.toLowerCase().replace(/\b\w/g, ch => ch.toUpperCase())
+    : spec.singer;
+  let nameBaseSize = 96;
+  ctx.font = buildCertFontSpec(cfg.nameFont, 800, nameBaseSize);
+  while (ctx.measureText(displayName).width > 1860 && nameBaseSize > 50) {
+    nameBaseSize -= 4;
+    ctx.font = buildCertFontSpec(cfg.nameFont, 800, nameBaseSize);
   }
   ctx.fillStyle = ink;
-  ctx.fillText(spec.singer, cx, divY + 510);
+  ctx.fillText(displayName, cx, divY + 510);
 
-  // Clean architectural underline under singer's name
-  const lineW = Math.min(1320, Math.max(520, ctx.measureText(spec.singer).width + 90));
+  const lineW = Math.min(1320, Math.max(520, ctx.measureText(displayName).width + 90));
   ctx.strokeStyle = navy;
   ctx.lineWidth = 4;
   ctx.beginPath();
@@ -2990,18 +3834,26 @@ async function renderCertificateCanvas(spec) {
   ctx.lineTo(cx + lineW / 2, divY + 538);
   ctx.stroke();
 
-  // Dignified 2-line appreciation text
-  ctx.fillStyle = '#334155';
-  ctx.font = `500 31px ${APP_FONT}`;
-  if (isSotm) {
-    ctx.fillText(`in recognition of an outstanding musical performance and winning the honour of`, cx, divY + 610);
-    ctx.fillText(`Singer of the Month (${spec.period}) at the Sing From Home Online Singing Session.`, cx, divY + 654);
-  } else {
-    ctx.fillText(`in recognition of a melodious performance and being honoured as`, cx, divY + 610);
-    ctx.fillText(`Singer of the Day on ${spec.declaredDate || fd(spec.period)} at the Sing From Home Online Singing Session.`, cx, divY + 654);
-  }
+  // Editable 2-line appreciation text (supports placeholders & Handwriting Font!)
+  const dateDisplay = spec.declaredDate || fd(spec.period);
+  const fillTokens = (str) => String(str || '')
+    .replace(/\{period\}/gi, spec.period || '')
+    .replace(/\{date\}/gi, dateDisplay || '')
+    .replace(/\{singer\}/gi, spec.singer || '');
 
-  // Contextual Details Card (exact app .c card styling: #f8fafc + 1.5px #cbd5e1 border)
+  const line1 = fillTokens(isSotm ? cfg.bodySotmLine1 : cfg.bodySotdLine1);
+  const line2 = fillTokens(isSotm ? cfg.bodySotmLine2 : cfg.bodySotdLine2);
+  ctx.fillStyle = '#334155';
+  let bodyBaseSz = 31;
+  ctx.font = buildCertFontSpec(cfg.bodyFont, 500, bodyBaseSz);
+  while ((ctx.measureText(line1).width > 1980 || ctx.measureText(line2).width > 1980) && bodyBaseSz > 20) {
+    bodyBaseSz -= 1;
+    ctx.font = buildCertFontSpec(cfg.bodyFont, 500, bodyBaseSz);
+  }
+  if (line1) ctx.fillText(line1, cx, divY + 610);
+  if (line2) ctx.fillText(line2, cx, divY + 654);
+
+  // Contextual Details Card
   const detailLines = [];
   if (!isSotm) {
     const dt = normDate(spec.period);
@@ -3024,7 +3876,7 @@ async function renderCertificateCanvas(spec) {
   if (detailLines.length) {
     const boxW = 1660, boxH = detailLines.length > 1 ? 110 : 68;
     const boxX = cx - boxW / 2, boxY = divY + 694;
-    ctx.fillStyle = appBg;
+    ctx.fillStyle = 'rgba(248, 250, 252, 0.88)';
     rRect(boxX, boxY, boxW, boxH, 10);
     ctx.fill();
     ctx.strokeStyle = border;
@@ -3038,8 +3890,8 @@ async function renderCertificateCanvas(spec) {
     });
   }
 
-  // 5. Clean Print Footer (Balanced Left Metadata + Right Director Signature)
-  const footRuleY = 1368;
+  // 5. Clean Print Footer (Left Metadata + Center Validation QR + Right Signature & Date of Issue)
+  const footRuleY = 1350;
   ctx.strokeStyle = '#e2e8f0';
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -3047,42 +3899,78 @@ async function renderCertificateCanvas(spec) {
   ctx.lineTo(W - 120, footRuleY);
   ctx.stroke();
 
+  const certCode = buildCertCode(spec);
+  const issueDateStr = getCertIssueDate(cfg);
+  const verifyUrl = buildCertVerifyUrl(spec, certCode, issueDateStr);
+
   // Bottom-Left: Official Certificate Metadata
-  const certCode = `SFH-${isSotm ? 'SOTM' : 'SOTD'}-${String(spec.period).replace(/[^A-Z0-9]/gi, '').toUpperCase()}`;
   ctx.textAlign = 'left';
   ctx.fillStyle = navy;
-  ctx.font = `700 24px ${APP_FONT}`;
-  ctx.fillText(`Certificate No: ${certCode}`, 136, 1446);
+  ctx.font = `700 23px ${APP_FONT}`;
+  ctx.fillText(`Certificate No: ${certCode}`, 136, 1432);
   ctx.fillStyle = muted;
-  ctx.font = `500 23px ${APP_FONT}`;
-  ctx.fillText(`Date: ${spec.declaredDate || fd(spec.period)}`, 136, 1484);
-  ctx.fillText("Tikariya's School of Music  ·  Core Committee", 136, 1522);
+  ctx.font = `500 22px ${APP_FONT}`;
+  ctx.fillText(`${isSotm ? 'Award Month' : 'Award Date'}: ${dateDisplay}`, 136, 1470);
+  ctx.fillText(cfg.footerLeftLine3 || DEFAULT_CERT_CONFIG.footerLeftLine3, 136, 1508);
 
-  // Bottom-Right: Clean Director Signature Block
+  // Bottom-Center: Scannable Verification QR Code
+  const qrSize = 156;
+  const qrX = Math.round(cx - qrSize / 2);
+  const qrY = 1372;
+  drawQrCodeOnCanvas(ctx, verifyUrl, qrX, qrY, qrSize);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = muted;
+  ctx.font = `600 18px ${APP_FONT}`;
+  ctx.fillText('Scan QR to Verify Authenticity', cx, qrY + qrSize + 26);
+
+  // Bottom-Right: Signature + Director Block + Auto-filled Date of Issue
   const sigRight = W - 136;
   const sigCenter = sigRight - 240;
+
+  if (cfg.sigMode === 'typed' && cfg.sigTypedText) {
+    ctx.textAlign = 'center';
+    ctx.fillStyle = cfg.sigColor || navy;
+    let sigSz = 60;
+    ctx.font = buildCertFontSpec(cfg.sigFont || 'Great Vibes', 400, sigSz);
+    while (ctx.measureText(cfg.sigTypedText).width > 460 && sigSz > 30) {
+      sigSz -= 3;
+      ctx.font = buildCertFontSpec(cfg.sigFont || 'Great Vibes', 400, sigSz);
+    }
+    ctx.fillText(cfg.sigTypedText, sigCenter, 1424);
+  } else if ((cfg.sigMode === 'drawn' || cfg.sigMode === 'upload') && sigImg && sigImg.naturalWidth && sigImg.naturalHeight) {
+    const maxW = 440, maxH = 108;
+    const ratio = Math.min(maxW / sigImg.naturalWidth, maxH / sigImg.naturalHeight);
+    const dw = Math.round(sigImg.naturalWidth * ratio);
+    const dh = Math.round(sigImg.naturalHeight * ratio);
+    ctx.drawImage(sigImg, sigCenter - dw / 2, 1432 - dh, dw, dh);
+  }
+
   ctx.strokeStyle = navy;
   ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.moveTo(sigRight - 480, 1440);
-  ctx.lineTo(sigRight, 1440);
+  ctx.moveTo(sigRight - 480, 1438);
+  ctx.lineTo(sigRight, 1438);
   ctx.stroke();
 
   ctx.textAlign = 'center';
   ctx.fillStyle = ink;
-  ctx.font = `800 28px ${APP_FONT}`;
-  ctx.fillText('MANOJ TIKARIYA', sigCenter, 1478);
+  ctx.font = `800 27px ${APP_FONT}`;
+  ctx.fillText(cfg.sigName || DEFAULT_CERT_CONFIG.sigName, sigCenter, 1473);
   ctx.fillStyle = '#475569';
-  ctx.font = `500 22px ${APP_FONT}`;
-  ctx.fillText("Director, Tikariya's School of Music", sigCenter, 1510);
+  ctx.font = `500 21px ${APP_FONT}`;
+  ctx.fillText(cfg.sigTitle1 || DEFAULT_CERT_CONFIG.sigTitle1, sigCenter, 1502);
   ctx.fillStyle = navy;
-  ctx.font = `600 22px ${APP_FONT}`;
-  ctx.fillText('B. S. Tikariya Cultural Foundation ®', sigCenter, 1540);
+  ctx.font = `600 21px ${APP_FONT}`;
+  ctx.fillText(cfg.sigTitle2 || DEFAULT_CERT_CONFIG.sigTitle2, sigCenter, 1530);
+  ctx.fillStyle = '#334155';
+  ctx.font = `600 21px ${APP_FONT}`;
+  ctx.fillText(`Date of Issue: ${issueDateStr}`, sigCenter, 1564);
 }
 
-window.downloadCertPNG = () => {
+window.downloadCertPNG = async () => {
   const canvas = document.getElementById('sfh_cert_canvas');
   if (!canvas || !ACTIVE_CERT_SPEC) return;
+  await renderCertificateCanvas(ACTIVE_CERT_SPEC);
   const safeName = String(ACTIVE_CERT_SPEC.singer || 'Singer').replace(/[^A-Z0-9]+/gi, '_');
   const safePeriod = String(ACTIVE_CERT_SPEC.period || '').replace(/[^A-Z0-9]+/gi, '_');
   const fname = `SFH_${ACTIVE_CERT_SPEC.type.toUpperCase()}_Certificate_${safeName}_${safePeriod}.png`;
@@ -3094,13 +3982,14 @@ window.downloadCertPNG = () => {
   setTimeout(() => { try { document.body.removeChild(link); } catch (_e) {} }, 250);
 };
 
-window.downloadCertPDF = () => {
+window.downloadCertPDF = async () => {
   const canvas = document.getElementById('sfh_cert_canvas');
   if (!canvas || !ACTIVE_CERT_SPEC) return;
   if (!window.jspdf || !window.jspdf.jsPDF) {
     showNotice('PDF engine is still loading — please try again in a moment, or use Download Image (PNG).');
     return;
   }
+  await renderCertificateCanvas(ACTIVE_CERT_SPEC);
   const { jsPDF } = window.jspdf;
   const docPdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const imgData = canvas.toDataURL('image/jpeg', 0.95);
@@ -3850,6 +4739,16 @@ function vRules() {
     <div class="row" style="margin-top:8px">
       <button class="pri" onclick="saveStarScoringConfig()">Save Scoring Rules</button>
       <button onclick="resetStarScoringDefaults()">Reset Defaults</button>
+    </div>
+  </div>`;
+
+  h += `<div class="c" style="border-left:4px solid #7c3aed">
+    <div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <div>
+        <b>SOTD & SOTM Certificate Customizer</b>
+        <div class="m" style="margin-top:2px">Customize certificate background colors/image, add drawn, uploaded, or handwritten signature, and edit certificate wording with handwriting fonts for all participants.</div>
+      </div>
+      <button class="pri" onclick="openSuperadminCertCustomizer()">🎨 Customize Certificate</button>
     </div>
   </div>`;
 
