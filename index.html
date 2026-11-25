@@ -970,7 +970,7 @@ window.setPreviewSinger=val=>{
   draw();
 };
 
-window.submitLiveBallot = async (kind, targetSinger, score) => {
+window.submitLiveBallot = async (kind, targetSinger, score, round = 1) => {
   if (!U || !P || (P.status !== 'approved' && !ADM)) return;
   const vp = curP();
   const todayStr = (LIVE_SESSION && LIVE_SESSION.date) ? LIVE_SESSION.date : tdy();
@@ -1014,8 +1014,11 @@ window.submitLiveBallot = async (kind, targetSinger, score) => {
       draw();
       showNotice(`Your vote for ${targetClean} has been recorded!`);
     } else {
+      const rnd = Number(round) === 2 ? 2 : (Number(round) === 3 ? 3 : 1);
+      const ballotKey = `${targetClean}__R${rnd}`;
       const ballotObj = {
         target: targetClean,
+        round: rnd,
         score: Number(score),
         voter: voterName,
         uid: U.uid,
@@ -1025,13 +1028,13 @@ window.submitLiveBallot = async (kind, targetSinger, score) => {
         uid: U.uid,
         date: todayStr,
         singer: voterName,
-        sotmBallots: { [targetClean]: ballotObj },
+        sotmBallots: { [ballotKey]: ballotObj },
         upd: Date.now()
       }, { merge: true });
       if (!PLAN) PLAN = { uid: U.uid, date: todayStr, singer: voterName, songs: [] };
-      PLAN.sotmBallots = { ...(PLAN.sotmBallots || {}), [targetClean]: ballotObj };
+      PLAN.sotmBallots = { ...(PLAN.sotmBallots || {}), [ballotKey]: ballotObj };
       draw();
-      showNotice(`Blind vote (${score}/10) recorded for ${targetClean}!`);
+      showNotice(`Round ${rnd} blind vote (${score}/10) recorded for ${targetClean}!`);
     }
   } catch (err) {
     showNotice('Could not submit vote: ' + (err.code || err.message));
@@ -2513,18 +2516,20 @@ function vHome(){
 
   if (allowLiveVoting && LIVE_SESSION && LIVE_SESSION.sotmVote && LIVE_SESSION.sotmVote.active) {
     const mv = LIVE_SESSION.sotmVote;
-    const myBallot = PLAN && PLAN.sotmBallots && PLAN.sotmBallots[mv.singer];
+    const rnd = Number(mv.round) === 2 ? 2 : (Number(mv.round) === 3 ? 3 : 1);
+    const ballotKey = `${canonSinger(mv.singer)}__R${rnd}`;
+    const myBallot = PLAN && PLAN.sotmBallots && (PLAN.sotmBallots[ballotKey] || (rnd === 1 ? PLAN.sotmBallots[canonSinger(mv.singer)] : null));
     const secsLeft = mv.endsAt ? Math.max(1, Math.min(30, Math.ceil((mv.endsAt - Date.now()) / 1000))) : (mv.remaining || 30);
     h += `<div class="c" style="border:2px solid #7c3aed;background:#f5f3ff">
       <div class="row" style="justify-content:space-between">
-        <b style="color:#6d28d9">🏆 LIVE 30s SOTM BLIND VOTE — ${e(mv.singer)}</b>
+        <b style="color:#6d28d9">🏆 LIVE 30s SOTM BLIND VOTE — ${e(mv.singer)} (Round ${rnd})</b>
         <span class="badge-round" style="background:#7c3aed;color:#fff">${secsLeft}s</span>
       </div>
-      <p class="m" style="margin:4px 0 8px">Tap your blind audience score (5 to 10):</p>
+      <p class="m" style="margin:4px 0 8px">Tap your Round ${rnd} blind audience score (5 to 10):</p>
       <div class="row" style="gap:5px;flex-wrap:wrap">
-        ${[5,6,7,8,9,10].map(pt => `<button class="${myBallot && myBallot.score === pt ? 'pri' : ''}" style="min-width:42px;font-weight:800" onclick="submitLiveBallot('sotm','${e(mv.singer).replace(/'/g, "\\'")}',${pt})">${pt}</button>`).join('')}
+        ${[5,6,7,8,9,10].map(pt => `<button class="${myBallot && myBallot.score === pt ? 'pri' : ''}" style="min-width:42px;font-weight:800" onclick="submitLiveBallot('sotm','${e(mv.singer).replace(/'/g, "\\'")}',${pt},${rnd})">${pt}</button>`).join('')}
       </div>
-      ${myBallot ? `<p class="m" style="margin:6px 0 0;color:#15803d;font-weight:700">✓ Your blind vote (${myBallot.score}/10) is locked in.</p>` : ''}
+      ${myBallot ? `<p class="m" style="margin:6px 0 0;color:#15803d;font-weight:700">✓ Your Round ${rnd} blind vote (${myBallot.score}/10) is locked in.</p>` : ''}
     </div>`;
   }
 

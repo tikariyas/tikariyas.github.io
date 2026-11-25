@@ -208,6 +208,29 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
 @media (min-width:960px){
   body.split-preview{padding-right:394px}
 }
+.sfx-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center}
+.sfx-btn{
+  padding:5px 10px;font-size:12px;font-weight:700;border-radius:8px;
+  background:var(--bg);color:var(--fg);border:1px solid var(--bd);gap:5px;
+}
+.sfx-btn.custom-mp3{border-color:var(--ac)}
+.sfx-btn.playing{
+  background:linear-gradient(135deg,#0284c7,#0369a1);color:#fff;border-color:transparent;
+  box-shadow:0 2px 10px rgba(2,132,199,0.35);
+}
+.sfx-stop{
+  padding:5px 9px;font-size:12px;font-weight:700;color:#dc2626;border-color:#fca5a5;background:transparent;
+}
+.sfx-cfg-row{
+  display:flex;flex-direction:column;gap:6px;padding:8px 9px;
+  border:1px solid var(--bd);border-radius:9px;background:var(--bg);
+}
+.sfx-cfg-top{display:flex;gap:6px;align-items:center}
+.sfx-cfg-top input{flex:1;padding:5px 7px;font-size:12.5px;font-weight:700;background:var(--card)}
+.sfx-cfg-meta{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;font-size:11.5px}
+.sotm-rnd-wrap{display:inline-flex;gap:3px;align-items:center;justify-content:center}
+.sotm-rnd-btn{padding:2px 7px;font-size:11px;font-weight:700;min-width:28px}
+.sotm-rnd-btn.active{background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border-color:transparent}
 </style></head><body>
 
 <header>
@@ -440,10 +463,30 @@ function formatScheduleText() {
   return `${dayLabel} ${h12}:${String(mm).padStart(2,'0')} ${ampm} onwards`;
 }
 
+let MANUAL_TIME_OVERRIDE = false;
+
+window.onManualTimeInput = () => {
+  MANUAL_TIME_OVERRIDE = true;
+};
+
+window.syncEntryTimeToNow = () => {
+  MANUAL_TIME_OVERRIDE = false;
+  const ti = $('#in_singer_time');
+  if (ti) {
+    const n = new Date();
+    ti.value = String(n.getHours()).padStart(2, '0') + ':' + String(n.getMinutes()).padStart(2, '0');
+  }
+};
+
 function updateClock(){
   const d = new Date();
   const el = $('#live-clock');
   if(el) el.textContent = d.toLocaleTimeString('en-IN', {hour12:true, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  const timeInp = $('#in_singer_time');
+  if (timeInp && !MANUAL_TIME_OVERRIDE && document.activeElement !== timeInp) {
+    const curHHMM = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    if (timeInp.value !== curHHMM) timeInp.value = curHHMM;
+  }
   const liveNow = isWithinLiveSchedule(d);
   const adminWinNow = isWithinAdminLiveWindow(d);
   if ((lastScheduleMode !== null && lastScheduleMode !== liveNow) || (lastAdminWindowMode !== null && lastAdminWindowMode !== adminWinNow)) {
@@ -661,6 +704,7 @@ async function pushLiveSessionNow() {
     sotmVote: SOTM_PANEL && SOTM_PANEL.activeBlindVote ? {
       active: true,
       singer: SOTM_PANEL.activeBlindVote.singer,
+      round: SOTM_PANEL.activeBlindVote.round || 1,
       remaining: SOTM_PANEL.activeBlindVote.remaining || 30,
       endsAt: SOTM_PANEL.activeBlindVote.endsAt || (Date.now() + 30000)
     } : null,
@@ -852,14 +896,23 @@ function tallyLivePlanBallots(planDocs) {
   }
   if (SOTM_PANEL && Array.isArray(SOTM_PANEL.finalists)) {
     const voterSet = new Set();
-    const sumBySinger = {};
+    const roundVoterSets = { 1: new Set(), 2: new Set(), 3: new Set() };
+    const roundsBySinger = {};
     const judgeAccum = {};
     planDocs.forEach(d => {
       if (d.sotmBallots && typeof d.sotmBallots === 'object') {
-        Object.entries(d.sotmBallots).forEach(([target, b]) => {
+        Object.entries(d.sotmBallots).forEach(([rawKey, b]) => {
           if (b && typeof b.score === 'number') {
-            voterSet.add(b.uid || b.voter || d.uid);
-            sumBySinger[target] = (sumBySinger[target] || 0) + b.score;
+            const mKey = String(rawKey || '').match(/^(.*)__R([123])$/);
+            const target = canonSinger(b.target || (mKey ? mKey[1] : rawKey));
+            const rnd = Number(b.round) || (mKey ? Number(mKey[2]) : 1);
+            const rKey = (rnd === 2 || rnd === 3) ? rnd : 1;
+            const voterId = b.uid || b.voter || d.uid;
+            if (!target) return;
+            voterSet.add(voterId);
+            roundVoterSets[rKey].add(voterId);
+            if (!roundsBySinger[target]) roundsBySinger[target] = { 1: 0, 2: 0, 3: 0 };
+            roundsBySinger[target][rKey] = parseFloat((roundsBySinger[target][rKey] + b.score).toFixed(1));
           }
         });
       }
@@ -879,8 +932,19 @@ function tallyLivePlanBallots(planDocs) {
     let sotmChanged = false;
     if (voterSet.size > 0) {
       SOTM_PANEL.votersCount = voterSet.size;
+      SOTM_PANEL.roundVoters = {
+        1: roundVoterSets[1].size,
+        2: roundVoterSets[2].size,
+        3: roundVoterSets[3].size
+      };
       SOTM_PANEL.finalists.forEach(f => {
-        if (sumBySinger[f.name] !== undefined) f.audience = sumBySinger[f.name];
+        const rb = roundsBySinger[canonSinger(f.name)];
+        if (rb) {
+          f.audR1 = rb[1];
+          f.audR2 = rb[2];
+          f.audR3 = rb[3];
+          f.audience = parseFloat((rb[1] + rb[2] + rb[3]).toFixed(1));
+        }
       });
       sotmChanged = true;
     }
@@ -971,8 +1035,11 @@ async function init(){
       if (CONF_CACHE.starScoring) {
         STAR_SCORING = { ...STAR_SCORING, ...CONF_CACHE.starScoring };
       }
+      loadAudioReactionsFromConfig(CONF_CACHE.audioReactions);
     }
-  } catch (ce) {}
+  } catch (ce) {
+    loadAudioReactionsFromConfig(null);
+  }
 
   lastScheduleMode = isWithinLiveSchedule();
   lastAdminWindowMode = isWithinAdminLiveWindow();
@@ -1264,10 +1331,10 @@ function to24HourInput(joinTimeStr) {
     const n = new Date();
     return String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
   }
-  const m = String(joinTimeStr).trim().match(/^(\d{1,2}):(\d{2})\s*(am|pm)?$/i);
+  const normalized = String(joinTimeStr).replace(/[\u00a0\u202f]/g, ' ').trim();
+  const m = normalized.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)?$/i);
   if (!m) {
-    const n = new Date();
-    return String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+    return '';
   }
   let hh = parseInt(m[1], 10);
   const mm = m[2];
@@ -1297,7 +1364,11 @@ window.addSinger = () => {
   const name = resolveCanonicalSingerName(inp.value);
   if(!name){ showNotice('Please enter or select singer name.'); return; }
 
-  const entryDt = (timeInp && timeInp.value) ? parseManualTime24ToDate(timeInp.value) : new Date();
+  const entryDt = (MANUAL_TIME_OVERRIDE && timeInp && timeInp.value)
+    ? parseManualTime24ToDate(timeInp.value)
+    : new Date();
+  MANUAL_TIME_OVERRIDE = false;
+
   const existing = LIVE.singers.find(s => canonSinger(s.name) === name);
   if (existing) {
     if (existing.reservedFirst && !existing.viaZoomBtn && !existing.manualAdded) {
@@ -1507,59 +1578,229 @@ async function fetchWikiInfobox(pageTitle) {
   }
 }
 
-async function fetchPublicSongMetadata(songTitle) {
+const BOLLYWOOD_COMMON_SINGERS = [
+  'Kishore Kumar', 'Lata Mangeshkar', 'Mohammed Rafi', 'Asha Bhosle', 'Mukesh', 'Manna Dey',
+  'Hemant Kumar', 'Talat Mahmood', 'Geeta Dutt', 'Mahendra Kapoor', 'S. P. Balasubrahmanyam',
+  'K. J. Yesudas', 'Kumar Sanu', 'Udit Narayan', 'Alka Yagnik', 'Kavita Krishnamurthy',
+  'Anuradha Paudwal', 'Sadhana Sargam', 'Sonu Nigam', 'Shreya Ghoshal', 'Arijit Singh',
+  'Sunidhi Chauhan', 'Shaan', 'KK', 'Mohit Chauhan', 'Hariharan', 'Jagjit Singh',
+  'Pankaj Udhas', 'Rahat Fateh Ali Khan', 'Atif Aslam', 'Sukhwinder Singh', 'Shankar Mahadevan',
+  'Abhijeet', 'Vinod Rathod', 'Sudesh Bhosle', 'Suresh Wadkar', 'Bhupinder Singh',
+  'Mohammed Aziz', 'Shabbir Kumar', 'Amit Kumar', 'Nitin Mukesh', 'Roop Kumar Rathod',
+  'K. S. Chithra', 'Suman Kalyanpur', 'Shamshad Begum', 'Suraiya', 'Noor Jehan',
+  'Usha Mangeshkar', 'Usha Uthup', 'Alisha Chinai', 'Poornima', 'Sapna Mukherjee',
+  'Armaan Malik', 'Jubin Nautiyal', 'Vishal Mishra', 'Palak Muchhal', 'Monali Thakur',
+  'Neeti Mohan', 'Jonita Gandhi', 'Shilpa Rao', 'Chinmayi', 'Kailash Kher', 'Mika Singh',
+  'Lucky Ali', 'Adnan Sami', 'Papon', 'B Praak', 'Darshan Raval', 'Asees Kaur'
+];
+
+const BOLLYWOOD_COMMON_COMPOSERS = [
+  'R. D. Burman', 'S. D. Burman', 'Shankar Jaikishan', 'Laxmikant-Pyarelal', 'Kalyanji-Anandji',
+  'Naushad', 'O. P. Nayyar', 'Madan Mohan', 'Salil Chowdhury', 'C. Ramchandra', 'Ravi',
+  'Roshan', 'Khayyam', 'Jaidev', 'Hemant Kumar', 'Chitragupt', 'Vasant Desai', 'S. N. Tripathi',
+  'Usha Khanna', 'Ravindra Jain', 'Bappi Lahiri', 'Rajesh Roshan', 'Nadeem-Shravan',
+  'Jatin-Lalit', 'Anu Malik', 'A. R. Rahman', 'Anand-Milind', 'Shiv-Hari', 'Uttam Singh',
+  'Raamlaxman', 'Viju Shah', 'Ismail Darbar', 'Shankar-Ehsaan-Loy', 'Vishal-Shekhar', 'Pritam',
+  'Amit Trivedi', 'Mithoon', 'Sajid-Wajid', 'Himesh Reshammiya', 'Salim-Sulaiman', 'Ajay-Atul',
+  'Sachin-Jigar', 'Vishal Bhardwaj', 'Sanjay Leela Bhansali', 'M. M. Keeravani',
+  'Sandesh Shandilya', 'Jeet Gannguli', 'Amaal Mallik', 'Tanishk Bagchi', 'Sachet-Parampara',
+  'Rochak Kohli', 'Arko', 'Monty Sharma', 'Ilaiyaraaja', 'Jagjit Singh'
+];
+
+const BOLLYWOOD_COMMON_LYRICISTS = [
+  'Anand Bakshi', 'Majrooh Sultanpuri', 'Sahir Ludhianvi', 'Shailendra', 'Hasrat Jaipuri',
+  'Gulzar', 'Javed Akhtar', 'Sameer', 'Shakeel Badayuni', 'Kaifi Azmi', 'Rajendra Krishan',
+  'Indeevar', 'Raja Mehdi Ali Khan', 'Prem Dhawan', 'Bharat Vyas', 'Pradeep', 'Qamar Jalalabadi',
+  'S. H. Bihari', 'Neeraj', 'Jan Nisar Akhtar', 'Yogesh', 'Gulshan Bawra', 'Verma Malik',
+  'Santosh Anand', 'Anjaan', 'Hasan Kamal', 'Nida Fazli', 'Ravindra Jain', 'Dev Kohli',
+  'Faiz Anwar', 'Ibrahim Ashq', 'Mehboob', 'Prasoon Joshi', 'Irshad Kamil',
+  'Amitabh Bhattacharya', 'Swanand Kirkire', 'Manoj Muntashir', 'Kausar Munir', 'Sayeed Quadri',
+  'Rashmi Virag', 'Kumaar', 'Priya Saraiya', 'Varun Grover', 'Shellee', 'A. M. Turaz',
+  'Jaideep Sahni', 'Neelesh Misra', 'Piyush Mishra'
+];
+
+const BOLLYWOOD_COMMON_ACTORS = [
+  'Rajesh Khanna', 'Amitabh Bachchan', 'Dilip Kumar', 'Dev Anand', 'Raj Kapoor',
+  'Shammi Kapoor', 'Shashi Kapoor', 'Dharmendra', 'Jeetendra', 'Manoj Kumar', 'Sunil Dutt',
+  'Sanjeev Kumar', 'Rishi Kapoor', 'Vinod Khanna', 'Shatrughan Sinha', 'Mithun Chakraborty',
+  'Anil Kapoor', 'Jackie Shroff', 'Sunny Deol', 'Sanjay Dutt', 'Govinda', 'Aamir Khan',
+  'Shah Rukh Khan', 'Salman Khan', 'Akshay Kumar', 'Ajay Devgn', 'Hrithik Roshan',
+  'Saif Ali Khan', 'Ranbir Kapoor', 'Ranveer Singh', 'Shahid Kapoor', 'Vicky Kaushal',
+  'Ayushmann Khurrana', 'Madhubala', 'Nargis', 'Meena Kumari', 'Nutan', 'Waheeda Rehman',
+  'Vyjayanthimala', 'Sadhana', 'Asha Parekh', 'Sharmila Tagore', 'Mumtaz', 'Hema Malini',
+  'Rekha', 'Zeenat Aman', 'Parveen Babi', 'Jaya Bachchan', 'Neetu Singh', 'Raakhee',
+  'Sridevi', 'Madhuri Dixit', 'Juhi Chawla', 'Kajol', 'Karisma Kapoor', 'Rani Mukerji',
+  'Preity Zinta', 'Aishwarya Rai', 'Kareena Kapoor', 'Priyanka Chopra', 'Deepika Padukone',
+  'Alia Bhatt', 'Katrina Kaif', 'Vidya Balan', 'Shraddha Kapoor', 'Anushka Sharma'
+];
+
+const BOLLYWOOD_VERIFIED_SONGS = {
+  'LAG JA GALE': { orig: 'Lata Mangeshkar', comp: 'Madan Mohan', lyr: 'Raja Mehdi Ali Khan', mov: 'Woh Kaun Thi?', yr: '1964', act: 'Sadhana, Manoj Kumar' },
+  'CHURA LIYA HAI TUMNE JO DIL KO': { orig: 'Asha Bhosle, Mohammed Rafi', comp: 'R. D. Burman', lyr: 'Majrooh Sultanpuri', mov: 'Yaadon Ki Baaraat', yr: '1973', act: 'Zeenat Aman, Vijay Arora' },
+  'MERE SAPNO KI RANI': { orig: 'Kishore Kumar', comp: 'S. D. Burman', lyr: 'Anand Bakshi', mov: 'Aradhana', yr: '1969', act: 'Rajesh Khanna, Sharmila Tagore' },
+  'ROOP TERA MASTANA': { orig: 'Kishore Kumar', comp: 'S. D. Burman', lyr: 'Anand Bakshi', mov: 'Aradhana', yr: '1969', act: 'Rajesh Khanna, Sharmila Tagore' },
+  'KORA KAGAZ THA YEH MAN MERA': { orig: 'Kishore Kumar, Lata Mangeshkar', comp: 'S. D. Burman', lyr: 'Anand Bakshi', mov: 'Aradhana', yr: '1969', act: 'Rajesh Khanna, Sharmila Tagore' },
+  'PAL PAL DIL KE PAAS': { orig: 'Kishore Kumar', comp: 'Kalyanji-Anandji', lyr: 'Rajendra Krishan', mov: 'Blackmail', yr: '1973', act: 'Dharmendra, Raakhee' },
+  'O MERE DIL KE CHAIN': { orig: 'Kishore Kumar', comp: 'R. D. Burman', lyr: 'Majrooh Sultanpuri', mov: 'Mere Jeevan Saathi', yr: '1972', act: 'Rajesh Khanna, Tanuja' },
+  'YEH SHAAM MASTANI': { orig: 'Kishore Kumar', comp: 'R. D. Burman', lyr: 'Anand Bakshi', mov: 'Kati Patang', yr: '1971', act: 'Rajesh Khanna, Asha Parekh' },
+  'PYAR DIWANA HOTA HAI': { orig: 'Kishore Kumar', comp: 'R. D. Burman', lyr: 'Anand Bakshi', mov: 'Kati Patang', yr: '1971', act: 'Rajesh Khanna, Asha Parekh' },
+  'ZINDAGI EK SAFAR HAI SUHANA': { orig: 'Kishore Kumar', comp: 'Shankar Jaikishan', lyr: 'Hasrat Jaipuri', mov: 'Andaz', yr: '1971', act: 'Rajesh Khanna, Hema Malini' },
+  'GULABI AANKHEN': { orig: 'Mohammed Rafi', comp: 'R. D. Burman', lyr: 'Anand Bakshi', mov: 'The Train', yr: '1970', act: 'Rajesh Khanna, Nanda' },
+  'CHAUDHVIN KA CHAND HO': { orig: 'Mohammed Rafi', comp: 'Ravi', lyr: 'Shakeel Badayuni', mov: 'Chaudhvin Ka Chand', yr: '1960', act: 'Guru Dutt, Waheeda Rehman' },
+  'BAHARON PHOOL BARSAO': { orig: 'Mohammed Rafi', comp: 'Shankar Jaikishan', lyr: 'Hasrat Jaipuri', mov: 'Suraj', yr: '1966', act: 'Rajendra Kumar, Vyjayanthimala' },
+  'LIKHE JO KHAT TUJHE': { orig: 'Mohammed Rafi', comp: 'Shankar Jaikishan', lyr: 'Neeraj', mov: 'Kanyadaan', yr: '1968', act: 'Shashi Kapoor, Asha Parekh' },
+  'KYA HUA TERA WADA': { orig: 'Mohammed Rafi, Sushma Shrestha', comp: 'R. D. Burman', lyr: 'Majrooh Sultanpuri', mov: 'Hum Kisise Kum Naheen', yr: '1977', act: 'Rishi Kapoor, Kajal Kiran' },
+  'EHSAAN TERA HOGA MUJH PAR': { orig: 'Mohammed Rafi', comp: 'Shankar Jaikishan', lyr: 'Hasrat Jaipuri', mov: 'Junglee', yr: '1961', act: 'Shammi Kapoor, Saira Banu' },
+  'KHOYA KHOYA CHAND': { orig: 'Mohammed Rafi', comp: 'S. D. Burman', lyr: 'Shailendra', mov: 'Kala Bazar', yr: '1960', act: 'Dev Anand, Waheeda Rehman' },
+  'PUKARTA CHALA HOON MAIN': { orig: 'Mohammed Rafi', comp: 'O. P. Nayyar', lyr: 'Majrooh Sultanpuri', mov: 'Mere Sanam', yr: '1965', act: 'Biswajit, Asha Parekh' },
+  'ABHI NA JAO CHHOD KAR': { orig: 'Mohammed Rafi, Asha Bhosle', comp: 'Jaidev', lyr: 'Sahir Ludhianvi', mov: 'Hum Dono', yr: '1961', act: 'Dev Anand, Sadhana' },
+  'YEH RAATEN YEH MAUSAM': { orig: 'Kishore Kumar, Asha Bhosle', comp: 'Ravi', lyr: 'Shailendra', mov: 'Dilli Ka Thug', yr: '1958', act: 'Kishore Kumar, Nutan' },
+  'EK PYAR KA NAGMA HAI': { orig: 'Lata Mangeshkar, Mukesh', comp: 'Laxmikant-Pyarelal', lyr: 'Santosh Anand', mov: 'Shor', yr: '1972', act: 'Manoj Kumar, Nanda' },
+  'AJEEB DASTAN HAI YEH': { orig: 'Lata Mangeshkar', comp: 'Shankar Jaikishan', lyr: 'Shailendra', mov: 'Dil Apna Aur Preet Parai', yr: '1960', act: 'Meena Kumari, Raaj Kumar' },
+  'KABHI KABHI MERE DIL MEIN': { orig: 'Mukesh, Lata Mangeshkar', comp: 'Khayyam', lyr: 'Sahir Ludhianvi', mov: 'Kabhie Kabhie', yr: '1976', act: 'Amitabh Bachchan, Raakhee' },
+  'TERE CHEHRE SE NAZAR NAHIN HATATI': { orig: 'Kishore Kumar, Lata Mangeshkar', comp: 'Khayyam', lyr: 'Sahir Ludhianvi', mov: 'Kabhie Kabhie', yr: '1976', act: 'Rishi Kapoor, Neetu Singh' },
+  'KAHIN DOOR JAB DIN DHAL JAYE': { orig: 'Mukesh', comp: 'Salil Chowdhury', lyr: 'Yogesh', mov: 'Anand', yr: '1971', act: 'Rajesh Khanna, Amitabh Bachchan' },
+  'ZINDAGI KAISI HAI PAHELI': { orig: 'Manna Dey', comp: 'Salil Chowdhury', lyr: 'Yogesh', mov: 'Anand', yr: '1971', act: 'Rajesh Khanna' },
+  'CHANDAN SA BADAN': { orig: 'Mukesh', comp: 'Kalyanji-Anandji', lyr: 'Indeevar', mov: 'Saraswatichandra', yr: '1968', act: 'Manish, Nutan' },
+  'AE MERI ZOHRA JABEEN': { orig: 'Manna Dey', comp: 'Ravi', lyr: 'Sahir Ludhianvi', mov: 'Waqt', yr: '1965', act: 'Balraj Sahni, Achala Sachdev' },
+  'MERE NAINA SAWAN BHADON': { orig: 'Kishore Kumar', comp: 'R. D. Burman', lyr: 'Anand Bakshi', mov: 'Mehbooba', yr: '1976', act: 'Rajesh Khanna, Hema Malini' },
+  'TERE SANG PYAR MAIN NAHIN TODNA': { orig: 'Lata Mangeshkar', comp: 'Laxmikant-Pyarelal', lyr: 'Verma Malik', mov: 'Nagin', yr: '1976', act: 'Reena Roy, Jeetendra' },
+  'AAYE HO MERI ZINDAGI MEIN': { orig: 'Udit Narayan', comp: 'Nadeem-Shravan', lyr: 'Sameer', mov: 'Raja Hindustani', yr: '1996', act: 'Aamir Khan, Karisma Kapoor' },
+  'DIL DIYA HAI JAAN BHI DENGE': { orig: 'Mohammed Aziz, Kavita Krishnamurthy', comp: 'Laxmikant-Pyarelal', lyr: 'Anand Bakshi', mov: 'Karma', yr: '1986', act: 'Dilip Kumar, Nutan' },
+  'JAADU HAI NASHA HAI': { orig: 'Shreya Ghoshal', comp: 'M. M. Keeravani', lyr: 'Neelesh Misra', mov: 'Jism', yr: '2003', act: 'Bipasha Basu, John Abraham' },
+  'O MEHBOOBA': { orig: 'Mukesh', comp: 'Shankar Jaikishan', lyr: 'Hasrat Jaipuri', mov: 'Sangam', yr: '1964', act: 'Raj Kapoor, Vyjayanthimala' },
+  'NEELE NEELE AMBAR PAR': { orig: 'Kishore Kumar', comp: 'Kalyanji-Anandji', lyr: 'Indeevar', mov: 'Kalaakaar', yr: '1983', act: 'Kunal Goswami, Sridevi' },
+  'TUJHSE NARAZ NAHIN ZINDAGI': { orig: 'Anup Ghoshal, Lata Mangeshkar', comp: 'R. D. Burman', lyr: 'Gulzar', mov: 'Masoom', yr: '1983', act: 'Naseeruddin Shah, Shabana Azmi' },
+  'TERE BINA ZINDAGI SE': { orig: 'Lata Mangeshkar, Kishore Kumar', comp: 'R. D. Burman', lyr: 'Gulzar', mov: 'Aandhi', yr: '1975', act: 'Sanjeev Kumar, Suchitra Sen' },
+  'CHOOKAR MERE MAN KO': { orig: 'Kishore Kumar', comp: 'Rajesh Roshan', lyr: 'Anjaan', mov: 'Yaarana', yr: '1981', act: 'Amitabh Bachchan, Neetu Singh' },
+  'MERE MEHBOOB QAYAMAT HOGI': { orig: 'Kishore Kumar', comp: 'Laxmikant-Pyarelal', lyr: 'Anand Bakshi', mov: 'Mr. X in Bombay', yr: '1964', act: 'Kishore Kumar, Kumkum' },
+  'RIMJHIM GIRE SAWAN': { orig: 'Kishore Kumar, Lata Mangeshkar', comp: 'R. D. Burman', lyr: 'Yogesh', mov: 'Manzil', yr: '1979', act: 'Amitabh Bachchan, Moushumi Chatterjee' },
+  'YEH DOSTI HUM NAHIN TODENGE': { orig: 'Kishore Kumar, Manna Dey', comp: 'R. D. Burman', lyr: 'Anand Bakshi', mov: 'Sholay', yr: '1975', act: 'Amitabh Bachchan, Dharmendra' },
+  'KUCH TOH LOG KAHENGE': { orig: 'Kishore Kumar', comp: 'R. D. Burman', lyr: 'Anand Bakshi', mov: 'Amar Prem', yr: '1972', act: 'Rajesh Khanna, Sharmila Tagore' },
+  'CHINGARI KOI BHADKE': { orig: 'Kishore Kumar', comp: 'R. D. Burman', lyr: 'Anand Bakshi', mov: 'Amar Prem', yr: '1972', act: 'Rajesh Khanna, Sharmila Tagore' },
+  'HOTHON SE CHHU LO TUM': { orig: 'Jagjit Singh', comp: 'Jagjit Singh', lyr: 'Indeevar', mov: 'Prem Geet', yr: '1981', act: 'Raj Babbar, Anita Raj' },
+  'TUM ITNA JO MUSKURA RAHE HO': { orig: 'Jagjit Singh', comp: 'Jagjit Singh', lyr: 'Kaifi Azmi', mov: 'Arth', yr: '1982', act: 'Kulbhushan Kharbanda, Shabana Azmi' },
+  'AAP KI NAZRON NE SAMJHA': { orig: 'Lata Mangeshkar', comp: 'Madan Mohan', lyr: 'Raja Mehdi Ali Khan', mov: 'Anpadh', yr: '1962', act: 'Mala Sinha, Dharmendra' },
+  'AAJ PHIR JEENE KI TAMANNA HAI': { orig: 'Lata Mangeshkar', comp: 'S. D. Burman', lyr: 'Shailendra', mov: 'Guide', yr: '1965', act: 'Waheeda Rehman, Dev Anand' },
+  'GAATA RAHE MERA DIL': { orig: 'Kishore Kumar, Lata Mangeshkar', comp: 'S. D. Burman', lyr: 'Shailendra', mov: 'Guide', yr: '1965', act: 'Dev Anand, Waheeda Rehman' },
+  'TERE MERE MILAN KI YEH RAINA': { orig: 'Kishore Kumar, Lata Mangeshkar', comp: 'S. D. Burman', lyr: 'Majrooh Sultanpuri', mov: 'Abhimaan', yr: '1973', act: 'Amitabh Bachchan, Jaya Bachchan' },
+  'EK LADKI BHEEGI BHAAGI SI': { orig: 'Kishore Kumar', comp: 'S. D. Burman', lyr: 'Majrooh Sultanpuri', mov: 'Chalti Ka Naam Gaadi', yr: '1958', act: 'Kishore Kumar, Madhubala' },
+  'HAAL KAISA HAI JANAB KA': { orig: 'Kishore Kumar, Asha Bhosle', comp: 'S. D. Burman', lyr: 'Majrooh Sultanpuri', mov: 'Chalti Ka Naam Gaadi', yr: '1958', act: 'Kishore Kumar, Madhubala' },
+  'CHHOD DO AANCHAL': { orig: 'Kishore Kumar, Asha Bhosle', comp: 'S. D. Burman', lyr: 'Majrooh Sultanpuri', mov: 'Paying Guest', yr: '1957', act: 'Dev Anand, Nutan' },
+  'EK AJNABEE HASEENA SE': { orig: 'Kishore Kumar', comp: 'R. D. Burman', lyr: 'Anand Bakshi', mov: 'Ajnabee', yr: '1974', act: 'Rajesh Khanna, Zeenat Aman' },
+  'DEKHA EK KHWAB': { orig: 'Kishore Kumar, Lata Mangeshkar', comp: 'Shiv-Hari', lyr: 'Javed Akhtar', mov: 'Silsila', yr: '1981', act: 'Amitabh Bachchan, Rekha' },
+  'HAMEIN TUMSE PYAR KITNA': { orig: 'Kishore Kumar', comp: 'R. D. Burman', lyr: 'Majrooh Sultanpuri', mov: 'Kudrat', yr: '1981', act: 'Rajesh Khanna, Hema Malini' },
+  'SAGAR KINARE': { orig: 'Kishore Kumar, Lata Mangeshkar', comp: 'R. D. Burman', lyr: 'Javed Akhtar', mov: 'Saagar', yr: '1985', act: 'Rishi Kapoor, Dimple Kapadia' },
+  'AANE WALA PAL': { orig: 'Kishore Kumar', comp: 'R. D. Burman', lyr: 'Gulzar', mov: 'Gol Maal', yr: '1979', act: 'Amol Palekar, Bindiya Goswami' },
+  'MUSAFIR HOON YAARON': { orig: 'Kishore Kumar', comp: 'R. D. Burman', lyr: 'Gulzar', mov: 'Parichay', yr: '1972', act: 'Jeetendra, Jaya Bhaduri' },
+  'PEHLA NASHA': { orig: 'Udit Narayan, Sadhana Sargam', comp: 'Jatin-Lalit', lyr: 'Majrooh Sultanpuri', mov: 'Jo Jeeta Wohi Sikandar', yr: '1992', act: 'Aamir Khan, Ayesha Jhulka' },
+  'TUJHE DEKHA TOH': { orig: 'Kumar Sanu, Lata Mangeshkar', comp: 'Jatin-Lalit', lyr: 'Anand Bakshi', mov: 'Dilwale Dulhania Le Jayenge', yr: '1995', act: 'Shah Rukh Khan, Kajol' },
+  'KAL HO NAA HO': { orig: 'Sonu Nigam', comp: 'Shankar-Ehsaan-Loy', lyr: 'Javed Akhtar', mov: 'Kal Ho Naa Ho', yr: '2003', act: 'Shah Rukh Khan, Preity Zinta, Saif Ali Khan' },
+  'TUM HI HO': { orig: 'Arijit Singh', comp: 'Mithoon', lyr: 'Mithoon', mov: 'Aashiqui 2', yr: '2013', act: 'Aditya Roy Kapur, Shraddha Kapoor' },
+  'CHANNA MEREYA': { orig: 'Arijit Singh', comp: 'Pritam', lyr: 'Amitabh Bhattacharya', mov: 'Ae Dil Hai Mushkil', yr: '2016', act: 'Ranbir Kapoor, Anushka Sharma' },
+  'AGAR TUM SAATH HO': { orig: 'Alka Yagnik, Arijit Singh', comp: 'A. R. Rahman', lyr: 'Irshad Kamil', mov: 'Tamasha', yr: '2015', act: 'Ranbir Kapoor, Deepika Padukone' },
+  'KESARIYA': { orig: 'Arijit Singh', comp: 'Pritam', lyr: 'Amitabh Bhattacharya', mov: 'Brahmāstra', yr: '2022', act: 'Ranbir Kapoor, Alia Bhatt' },
+  'TUJH MEIN RAB DIKHTA HAI': { orig: 'Roop Kumar Rathod', comp: 'Salim-Sulaiman', lyr: 'Jaideep Sahni', mov: 'Rab Ne Bana Di Jodi', yr: '2008', act: 'Shah Rukh Khan, Anushka Sharma' }
+};
+
+function normBollywoodKey(str) {
+  return String(str || '').toUpperCase().replace(/[^A-Z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function lookupVerifiedBollywoodSong(songTitle, movieHint = '') {
+  const key = normBollywoodKey(songTitle);
+  if (!key) return null;
+  const mh = normBollywoodKey(movieHint);
+  if (BOLLYWOOD_VERIFIED_SONGS[key]) {
+    const hit = BOLLYWOOD_VERIFIED_SONGS[key];
+    if (!mh || normBollywoodKey(hit.mov).includes(mh)) return { ...hit };
+  }
+  const compact = key.replace(/\s+/g, '');
+  for (const [k, v] of Object.entries(BOLLYWOOD_VERIFIED_SONGS)) {
+    const kc = k.replace(/\s+/g, '');
+    if (kc === compact || (compact.length >= 10 && (kc.startsWith(compact) || compact.startsWith(kc)))) {
+      if (!mh || normBollywoodKey(v.mov).includes(mh)) return { ...v };
+    }
+  }
+  return null;
+}
+
+function buildBollywoodDatalistOptions(baseList, archiveField) {
+  const set = new Set(baseList);
+  Object.values(SONG_META_ARCHIVE || {}).forEach(m => {
+    if (!m || !m[archiveField]) return;
+    String(m[archiveField]).split(',').forEach(part => {
+      const clean = part.trim();
+      if (clean && clean.length >= 2) set.add(clean);
+    });
+  });
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
+async function fetchPublicSongMetadata(songTitle, movieHint = '') {
   const title = String(songTitle || '').trim();
-  const meta = { orig: '', comp: '', lyr: '', mov: '', yr: '', act: '' };
+  const meta = { orig: '', comp: '', lyr: '', mov: String(movieHint || '').trim(), yr: '', act: '' };
   if (!title) return meta;
+
+  const verified = lookupVerifiedBollywoodSong(title, movieHint);
+  if (verified) return cleanMetaObj(verified);
+
   const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const titleNorm = norm(title);
+  const badAlbumRe = /\b(best of|legends|evergreen|hits|gold|anthology|retro|classic|collection|greatest|essential|remix|drill|lofi|lo-fi|cover|karaoke|instrumental|mashup|unplugged|revisited|tribute|vol\.?\s*\d|top\s*\d+)\b/i;
 
+  const wpQuery = `${title} ${movieHint ? movieHint + ' ' : ''}Hindi film song Bollywood`;
   const [itRes, wpRes] = await Promise.all([
-    fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(title) + '&entity=song&country=IN&limit=8').then(r => r.ok ? r.json() : null).catch(() => null),
-    fetch('https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=' + encodeURIComponent(title + ' song') + '&srlimit=5&format=json&origin=*').then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(title + (movieHint ? ' ' + movieHint : '') + ' Bollywood') + '&entity=song&country=IN&limit=10').then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch('https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=' + encodeURIComponent(wpQuery) + '&srlimit=6&format=json&origin=*').then(r => r.ok ? r.json() : null).catch(() => null),
   ]);
 
-  const hits = (wpRes?.query?.search || []).filter(h => !/\((?:tv series|television|serial)\)/i.test(h.title));
+  const hits = (wpRes?.query?.search || []).filter(h =>
+    !/\((?:tv series|television|serial)\)/i.test(h.title) &&
+    /\b(hindi|bollywood|indian|film|soundtrack|singh|kumar|mangeshkar|rafi|bhosle|burman|bakshi|gulzar|kapoor|khanna|bachchan|khan)\b/i.test((h.title || '') + ' ' + (h.snippet || ''))
+  );
   for (const hit of hits.slice(0, 3)) {
     const box = await fetchWikiInfobox(hit.title);
     if (!box) continue;
     const hdr = box._headers || '';
     const isSongBox = Boolean(
-      box['artist'] || box['composer(s)'] || box['composer'] || box['lyricist(s)'] || box['lyricist'] ||
-      box['songwriter(s)'] || box['album'] || /\b(?:song|single)\s+by\b/i.test(hdr)
+      box['artist'] || box['singer(s)'] || box['singer'] || box['composer(s)'] || box['composer'] ||
+      box['lyricist(s)'] || box['lyricist'] || box['songwriter(s)'] || /\b(?:song|single)\s+by\b/i.test(hdr)
     );
     if (!isSongBox) continue;
     const byMatch = hdr.match(/\b(?:song|single)\s+by\s+([^|]+?)(?:\s+from\s+the\s+(?:album|film)\s+([^|]+))?(?:\||$)/i);
-    meta.orig = box['artist'] || box['singer(s)'] || box['singer'] || (byMatch && byMatch[1] ? byMatch[1].trim() : '') || meta.orig;
+    meta.orig = box['singer(s)'] || box['singer'] || box['artist'] || (byMatch && byMatch[1] ? byMatch[1].trim() : '') || meta.orig;
     meta.comp = box['composer(s)'] || box['composer'] || box['music'] || meta.comp;
     meta.lyr = box['lyricist(s)'] || box['lyricist'] || box['songwriter(s)'] || meta.lyr;
-    meta.mov = box['film'] || box['album'] || (byMatch && byMatch[2] ? byMatch[2].trim() : '') || meta.mov;
+    if (!meta.mov) meta.mov = box['film'] || box['album'] || (byMatch && byMatch[2] ? byMatch[2].trim() : '') || '';
     const yrM = String(box['released'] || box['recorded'] || '').match(/\b(19\d{2}|20\d{2})\b/);
     if (yrM) meta.yr = yrM[1];
     break;
   }
 
-  const itAll = (itRes?.results || []).filter(x => !/\b(remix|drill|lofi|lo-fi|cover|karaoke|instrumental|mashup)\b/i.test((x.trackName || '') + ' ' + (x.collectionName || '')));
-  const bestIt = itAll.find(x => norm(x.trackName).includes(titleNorm) || titleNorm.includes(norm(x.trackName).slice(0, 8))) || itAll[0];
+  const itAll = (itRes?.results || []).filter(x => !badAlbumRe.test((x.trackName || '') + ' ' + (x.collectionName || '')));
+  const bestIt = itAll.find(x => norm(x.trackName).includes(titleNorm) || (titleNorm.length >= 8 && titleNorm.includes(norm(x.trackName).slice(0, 8)))) || null;
   if (bestIt) {
     if (!meta.orig && bestIt.artistName) meta.orig = String(bestIt.artistName).trim();
     if (!meta.mov) {
       const fromMatch = String(bestIt.trackName || '').match(/\(From\s+["'\u201c]([^"'\u201d]+)["'\u201d]\)/i);
-      const albClean = String(bestIt.collectionName || '').replace(/\s*\([^)]*(?:Soundtrack|Motion Picture|EP|Single)[^)]*\)/gi, '').trim();
-      meta.mov = (fromMatch && fromMatch[1]) ? fromMatch[1].trim() : albClean;
+      const albClean = String(bestIt.collectionName || '').replace(/\s*\([^)]*(?:Original Motion Picture Soundtrack|Soundtrack|Motion Picture|EP|Single)[^)]*\)/gi, '').trim();
+      if (fromMatch && fromMatch[1]) meta.mov = fromMatch[1].trim();
+      else if (albClean && !badAlbumRe.test(albClean)) meta.mov = albClean;
     }
-    if (!meta.yr && bestIt.releaseDate) {
+    if (!meta.yr && bestIt.releaseDate && /\(Original Motion Picture Soundtrack\)/i.test(bestIt.collectionName || '')) {
       const y = String(bestIt.releaseDate).slice(0, 4);
       if (/^(19|20)\d{2}$/.test(y)) meta.yr = y;
     }
   }
 
   if (meta.mov && (!meta.act || !meta.comp || !meta.yr)) {
-    const mvSrch = await fetch('https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=' + encodeURIComponent(meta.mov + ' film ' + (meta.yr || '')) + '&srlimit=4&format=json&origin=*').then(r => r.ok ? r.json() : null).catch(() => null);
+    const mvSrch = await fetch('https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=' + encodeURIComponent(meta.mov + ' Hindi film ' + (meta.yr || '')) + '&srlimit=4&format=json&origin=*').then(r => r.ok ? r.json() : null).catch(() => null);
     const mvHits = (mvSrch?.query?.search || []).filter(h => !/\((?:tv series|television|serial|soundtrack)\)/i.test(h.title));
     for (const mh of mvHits.slice(0, 2)) {
       const mbox = await fetchWikiInfobox(mh.title);
       if (!mbox || (!mbox['directed by'] && !mbox['starring'])) continue;
+      if (mbox['language'] && !/hindi|urdu|hindustani/i.test(mbox['language'])) continue;
       if (!meta.act && mbox['starring']) {
         meta.act = mbox['starring'].split(',').map(x => x.trim()).filter(Boolean).slice(0, 3).join(', ');
       }
@@ -1574,13 +1815,17 @@ async function fetchPublicSongMetadata(songTitle) {
   return cleanMetaObj(meta);
 }
 
-async function fetchSongMetadataSmart(songTitle, force = false) {
+async function fetchSongMetadataSmart(songTitle, force = false, movieHint = '') {
+  const verified = lookupVerifiedBollywoodSong(songTitle, movieHint);
+  if (verified) {
+    return { meta: cleanMetaObj(verified), source: 'bollywood-verified' };
+  }
   if (!STATIC_HOST_NO_API) {
     try {
       const resp = await fetch('/api/song-metadata', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ songTitle, force }),
+        body: JSON.stringify({ songTitle, movieHint, force }),
       });
       const ct = resp.headers.get('content-type') || '';
       if (resp.status === 405 || resp.status === 404 || (!ct.includes('application/json') && !resp.ok)) {
@@ -1588,26 +1833,26 @@ async function fetchSongMetadataSmart(songTitle, force = false) {
       } else {
         const data = await resp.json().catch(() => ({}));
         if (resp.ok && data && data.meta) {
-          return { meta: cleanMetaObj(data.meta), source: 'ai' };
+          return { meta: cleanMetaObj(data.meta), source: data.source || 'ai' };
         }
         if (resp.status === 429) {
           const waitSec = Math.max(15, Number(data.retryAfterSec) || 45);
           AI_COOLDOWN_UNTIL = Date.now() + waitSec * 1000;
+          throw new Error(data.error || `AI rate limit reached. Try again in ${waitSec}s.`);
         }
       }
-    } catch (_) {}
+    } catch (err) {
+      if (err && /rate limit/i.test(err.message || '')) throw err;
+    }
   }
-  const fallbackMeta = await fetchPublicSongMetadata(songTitle);
-  return { meta: fallbackMeta, source: 'public' };
+  const fallbackMeta = await fetchPublicSongMetadata(songTitle, movieHint);
+  return { meta: fallbackMeta, source: 'bollywood-wiki' };
 }
 
-async function runAutoMetaAI(singerName, round) {
-  const sKey = round + '_' + singerName.replace(/[^a-zA-Z0-9]/g, '_');
+function tryFillLocalVerifiedMeta(singerName, round) {
   const p = getOrCreatePerf(singerName, round);
   const songTitle = String(p.song || '').trim().toUpperCase();
   if (!songTitle || songTitle.length < 3) return;
-
-  // Instant fill from permanent archive if already known
   if (hasMetaFields(SONG_META_ARCHIVE[songTitle])) {
     p.meta = cleanMetaObj(SONG_META_ARCHIVE[songTitle]);
     p._metaSong = songTitle;
@@ -1615,77 +1860,12 @@ async function runAutoMetaAI(singerName, round) {
     updateRowAiButton(singerName, round, 'filled');
     return;
   }
-
-  if (p._metaSong === songTitle && hasMetaFields(p.meta)) {
-    updateRowAiButton(singerName, round, 'filled');
-    return;
-  }
-  // AI metadata collection starts only during session time (Online)
-  if (!isOnlineSessionTime()) return;
-  if (AUTO_META_INFLIGHT[sKey] === songTitle) return;
-
-  AUTO_META_INFLIGHT[sKey] = songTitle;
-  updateRowAiButton(singerName, round, 'loading');
-
-  try {
-    const { meta: aiMeta } = await fetchSongMetadataSmart(songTitle, false);
-
-    // Ensure the user has not changed the song title while waiting
-    if (String(p.song || '').trim().toUpperCase() !== songTitle) return;
-
-    if (hasMetaFields(aiMeta)) {
-      p.meta = aiMeta;
-      p._metaSong = songTitle;
-      saveLocal();
-      persistSongMetaEntry(songTitle, aiMeta);
-      updateRowAiButton(singerName, round, 'filled');
-
-      if (OPEN_META_CTX && OPEN_META_CTX.singerName === singerName && OPEN_META_CTX.round === round) {
-        ['orig', 'comp', 'lyr', 'mov', 'yr', 'act'].forEach(k => {
-          const inp = $('#meta_' + k);
-          if (inp && !inp.value.trim() && aiMeta[k]) inp.value = aiMeta[k];
-        });
-        const statusEl = $('#meta_ai_status');
-        if (statusEl) {
-          statusEl.style.color = '#15803d';
-          statusEl.textContent = '✓ Automatically filled and archived song metadata.';
-        }
-      }
-    } else {
-      p._metaSong = songTitle;
-      updateRowAiButton(singerName, round, 'idle');
-    }
-  } catch (err) {
-    console.warn('Auto AI metadata lookup warning:', err?.message || err);
-    updateRowAiButton(singerName, round, hasMetaFields(p.meta) ? 'filled' : 'idle');
-  } finally {
-    if (AUTO_META_INFLIGHT[sKey] === songTitle) {
-      delete AUTO_META_INFLIGHT[sKey];
-    }
-  }
-}
-
-function scheduleAutoMetaAI(singerName, round, immediate = false) {
-  const sKey = round + '_' + singerName.replace(/[^a-zA-Z0-9]/g, '_');
-  if (AUTO_META_TIMERS[sKey]) {
-    clearTimeout(AUTO_META_TIMERS[sKey]);
-    delete AUTO_META_TIMERS[sKey];
-  }
-  const p = getOrCreatePerf(singerName, round);
-  const songTitle = String(p.song || '').trim().toUpperCase();
-  if (!songTitle || songTitle.length < 3) return;
-
-  if (hasMetaFields(SONG_META_ARCHIVE[songTitle])) {
-    p.meta = { ...SONG_META_ARCHIVE[songTitle] };
+  const verified = lookupVerifiedBollywoodSong(songTitle);
+  if (verified) {
+    p.meta = cleanMetaObj(verified);
     p._metaSong = songTitle;
     saveLocal();
     updateRowAiButton(singerName, round, 'filled');
-    return;
-  }
-
-  if (!isOnlineSessionTime()) return;
-  if (immediate) {
-    runAutoMetaAI(singerName, round);
   }
 }
 
@@ -1695,15 +1875,12 @@ window.pickSongSuggestion = (singerName, round, title) => {
   if (songInp) songInp.value = title;
   window.closeAllSongDropdowns();
   window.onSongInput(singerName, round, false);
-  scheduleAutoMetaAI(singerName, round, true);
+  tryFillLocalVerifiedMeta(singerName, round);
 };
 
 window.onSongBlur = (singerName, round) => {
-  const p = getOrCreatePerf(singerName, round);
-  const songTitle = String(p.song || '').trim().toUpperCase();
-  if (songTitle && songTitle.length >= 3 && p._metaSong !== songTitle) {
-    scheduleAutoMetaAI(singerName, round, true);
-  }
+  // No automatic AI calls: only fill instantly if already verified in local archive or Bollywood list
+  tryFillLocalVerifiedMeta(singerName, round);
 };
 
 // No Song ID locking: song titles can be freely edited or cleared anytime!
@@ -1770,10 +1947,17 @@ window.onSongInput = (singerName, round, showDrop = true) => {
       p.meta = { ...SONG_META_ARCHIVE[song] };
       p._metaSong = song;
       updateRowAiButton(singerName, round, 'filled');
-    } else if (p._metaSong && p._metaSong !== song) {
-      p.meta = {};
-      p._metaSong = '';
-      updateRowAiButton(singerName, round, 'idle');
+    } else {
+      const verified = lookupVerifiedBollywoodSong(song);
+      if (verified) {
+        p.meta = cleanMetaObj(verified);
+        p._metaSong = song;
+        updateRowAiButton(singerName, round, 'filled');
+      } else if (p._metaSong && p._metaSong !== song) {
+        p.meta = {};
+        p._metaSong = '';
+        updateRowAiButton(singerName, round, 'idle');
+      }
     }
   }
 
@@ -1788,37 +1972,30 @@ window.onSongInput = (singerName, round, showDrop = true) => {
 window.fetchSongMetaAI = async (singerName, round, overwriteAll = true) => {
   const p = getOrCreatePerf(singerName, round);
   const songTitle = (p.song || '').trim().toUpperCase();
+  const movieHint = ($('#meta_mov')?.value || '').trim();
   const statusEl = $('#meta_ai_status');
   const btnEl = $('#btn_meta_ai');
 
   if (!songTitle) {
     if (statusEl) {
       statusEl.style.color = '#d97706';
-      statusEl.textContent = 'Enter a song title first so AI can look up its details.';
-    }
-    return;
-  }
-
-  if (!isOnlineSessionTime()) {
-    if (statusEl) {
-      statusEl.style.color = '#d97706';
-      statusEl.textContent = 'Offline mode (out of session time): AI metadata collection starts during session time only.';
+      statusEl.textContent = 'Enter a song title first so AI can look up its Bollywood credits.';
     }
     return;
   }
 
   if (btnEl) {
     btnEl.disabled = true;
-    btnEl.textContent = 'AI Loading…';
+    btnEl.textContent = 'AI Searching…';
   }
   if (statusEl) {
     statusEl.style.color = 'var(--ac)';
-    statusEl.textContent = `Fetching metadata for "${songTitle}" with AI…`;
+    statusEl.textContent = `Searching Bollywood credits for "${songTitle}"${movieHint ? ` (${movieHint})` : ''}…`;
   }
   updateRowAiButton(singerName, round, 'loading');
 
   try {
-    const { meta: aiMeta } = await fetchSongMetadataSmart(songTitle, overwriteAll);
+    const { meta: aiMeta, source } = await fetchSongMetadataSmart(songTitle, overwriteAll, movieHint);
     const fields = ['orig', 'comp', 'lyr', 'mov', 'yr', 'act'];
     let filledCount = 0;
     fields.forEach(k => {
@@ -1841,16 +2018,16 @@ window.fetchSongMetaAI = async (singerName, round, overwriteAll = true) => {
       });
       p._metaSong = songTitle;
       saveLocal();
-      persistSongMetaEntry(songTitle, p.meta);
       updateRowAiButton(singerName, round, 'filled');
     } else {
       updateRowAiButton(singerName, round, hasMetaFields(p.meta) ? 'filled' : 'idle');
     }
     if (statusEl) {
       statusEl.style.color = filledCount > 0 ? '#15803d' : '#d97706';
+      const srcTag = source === 'bollywood-verified' ? 'Verified Bollywood Database' : 'Bollywood AI Lookup';
       statusEl.textContent = filledCount > 0
-        ? `✓ AI filled & saved ${filledCount} field${filledCount === 1 ? '' : 's'} to archives.`
-        : 'AI could not find verified details for this title. You can enter them manually.';
+        ? `✓ ${srcTag} filled ${filledCount} field${filledCount === 1 ? '' : 's'}. Review & tap Save Details.`
+        : 'No verified Bollywood film credits found. Select from dropdowns or enter manually.';
     }
   } catch (err) {
     updateRowAiButton(singerName, round, hasMetaFields(p.meta) ? 'filled' : 'idle');
@@ -1861,7 +2038,7 @@ window.fetchSongMetaAI = async (singerName, round, overwriteAll = true) => {
   } finally {
     if (btnEl) {
       btnEl.disabled = false;
-      btnEl.textContent = '✨ Refresh AI';
+      btnEl.textContent = '✨ Fetch AI';
     }
   }
 };
@@ -1870,41 +2047,53 @@ window.openMeta = (singerName, round) => {
   const p = getOrCreatePerf(singerName, round);
   const songTitle = p.song ? p.song : 'New Song';
   const sk = String(p.song || '').trim().toUpperCase();
-  if (sk && !hasMetaFields(p.meta) && hasMetaFields(SONG_META_ARCHIVE[sk])) {
-    p.meta = { ...SONG_META_ARCHIVE[sk] };
-    p._metaSong = sk;
+  if (sk && !hasMetaFields(p.meta)) {
+    if (hasMetaFields(SONG_META_ARCHIVE[sk])) {
+      p.meta = { ...SONG_META_ARCHIVE[sk] };
+      p._metaSong = sk;
+    } else {
+      const verified = lookupVerifiedBollywoodSong(sk);
+      if (verified) {
+        p.meta = cleanMetaObj(verified);
+        p._metaSong = sk;
+      }
+    }
   }
   const meta = p.meta || {};
   const safeSinger = e(singerName).replace(/'/g, "\\'");
   const hasAnyMeta = hasMetaFields(meta);
-  const onlineNow = isOnlineSessionTime();
   OPEN_META_CTX = { singerName, round, song: sk };
+
+  const singerOpts = buildBollywoodDatalistOptions(BOLLYWOOD_COMMON_SINGERS, 'orig');
+  const compOpts = buildBollywoodDatalistOptions(BOLLYWOOD_COMMON_COMPOSERS, 'comp');
+  const lyrOpts = buildBollywoodDatalistOptions(BOLLYWOOD_COMMON_LYRICISTS, 'lyr');
+  const actOpts = buildBollywoodDatalistOptions(BOLLYWOOD_COMMON_ACTORS, 'act');
 
   const m = $('#custom-modal');
   $('#custom-modal-body').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
       <h3 style="margin:0">Song Details: ${e(songTitle)}</h3>
-      <button id="btn_meta_ai" class="pri" style="padding:4px 9px;font-size:11.5px;white-space:nowrap${onlineNow ? '' : ';opacity:0.55'}" onclick="fetchSongMetaAI('${safeSinger}', ${round}, true)">✨ Refresh AI</button>
+      <button id="btn_meta_ai" class="pri" style="padding:4px 10px;font-size:11.5px;white-space:nowrap" onclick="fetchSongMetaAI('${safeSinger}', ${round}, true)">✨ Fetch AI</button>
     </div>
-    <div id="meta_ai_status" class="m" style="font-size:11.5px;min-height:16px;margin-bottom:4px">${hasAnyMeta ? '<span style="color:#15803d">✓ Metadata synced with Song Archives</span>' : (!onlineNow ? '<span style="color:#d97706">Offline mode (out of session time): AI collection activates during session time only.</span>' : '')}</div>
+    <div id="meta_ai_status" class="m" style="font-size:11.5px;min-height:16px;margin-bottom:4px">${hasAnyMeta ? '<span style="color:#15803d">✓ Loaded from verified Bollywood archive (edit or tap ✨ Fetch AI anytime)</span>' : '<span>Manual mode: enter Movie Name (optional) & tap <b>✨ Fetch AI</b>, or pick from Bollywood lists below.</span>'}</div>
     <div class="meta-field-group">
-      <label>Original Singer<input id="meta_orig" value="${e(meta.orig||'')}" placeholder="e.g. Kishore Kumar, Lata Mangeshkar"></label>
-      <label>Music Composer<input id="meta_comp" value="${e(meta.comp||'')}" placeholder="e.g. R. D. Burman, Shankar Jaikishan"></label>
-      <label>Lyricist<input id="meta_lyr" value="${e(meta.lyr||'')}" placeholder="e.g. Anand Bakshi, Majrooh Sultanpuri"></label>
-      <label>Movie / Album Name<input id="meta_mov" value="${e(meta.mov||'')}" placeholder="e.g. Anari, Sholay"></label>
+      <label>Bollywood Movie Name<input id="meta_mov" value="${e(meta.mov||'')}" placeholder="e.g. Aradhana, Sholay, Kabhie Kabhie"></label>
+      <label>Original Singer<input id="meta_orig" list="dl_bw_orig" value="${e(meta.orig||'')}" placeholder="Select or type (e.g. Kishore Kumar, Lata Mangeshkar)"></label>
+      <label>Music Composer<input id="meta_comp" list="dl_bw_comp" value="${e(meta.comp||'')}" placeholder="Select or type (e.g. R. D. Burman, Shankar Jaikishan)"></label>
+      <label>Lyricist<input id="meta_lyr" list="dl_bw_lyr" value="${e(meta.lyr||'')}" placeholder="Select or type (e.g. Anand Bakshi, Majrooh Sultanpuri)"></label>
       <label>Releasing Year<input id="meta_yr" type="number" placeholder="YYYY" value="${e(meta.yr||'')}"></label>
-      <label>Lead Actor / Star<input id="meta_act" value="${e(meta.act||'')}" placeholder="e.g. Raj Kapoor, Amitabh Bachchan"></label>
+      <label>Lead Actor / Star<input id="meta_act" list="dl_bw_act" value="${e(meta.act||'')}" placeholder="Select or type (e.g. Rajesh Khanna, Amitabh Bachchan)"></label>
     </div>
+    <datalist id="dl_bw_orig">${singerOpts.map(v => `<option value="${e(v)}">`).join('')}</datalist>
+    <datalist id="dl_bw_comp">${compOpts.map(v => `<option value="${e(v)}">`).join('')}</datalist>
+    <datalist id="dl_bw_lyr">${lyrOpts.map(v => `<option value="${e(v)}">`).join('')}</datalist>
+    <datalist id="dl_bw_act">${actOpts.map(v => `<option value="${e(v)}">`).join('')}</datalist>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
       <button onclick="closeModal()">Close</button>
       <button class="pri" onclick="saveMeta('${safeSinger}', ${round})">Save Details</button>
     </div>
   `;
   m.style.display = 'flex';
-
-  if (onlineNow && p.song && !hasAnyMeta) {
-    window.fetchSongMetaAI(singerName, round, false);
-  }
 };
 
 window.saveMeta = async (singerName, round) => {
@@ -2364,7 +2553,6 @@ function renderSOTDHTML() {
 
   return `
     <b>Declare Singer(s) of the Day (SOTD)${canRunVoteMeter ? ' & Live Vote Meter' : ''}</b>
-    <span class="m" style="font-size:11.5px;margin-left:6px">(Multiple SOTDs allowed · No repeat on next day)</span>
     ${prevSotdInQueue.length ? `<div class="m" style="margin:5px 0 4px;padding:5px 8px;background:#fffbeb;border:1px solid #fcd34d;border-radius:7px;font-size:11.5px;color:#92400e">No-Repeat Rule (${e(fd(prevSotd.date))} SOTD): <b>${e(prevSotdInQueue.join(', '))}</b> ${prevSotdInQueue.length === 1 ? 'is' : 'are'} excluded from repeating SOTD today.</div>` : ''}
 
     ${IS_SUPER ? `
@@ -2375,9 +2563,6 @@ function renderSOTDHTML() {
             Pts / Vote:
             <input type="number" step="0.5" min="0" value="${voteWeight}" onchange="setSotdVoteWeight(this.value)" style="width:58px;padding:2px 5px;font-size:12px;text-align:center">
           </label>
-        </div>
-        <div class="m" style="font-size:11.5px;margin-bottom:6px">
-          <b>Final SOTD</b> = <b>Avg 5-Star Marks</b> + <b>My Opinion</b> + <b>Quiz Answers</b> + <b>Live Votes (Vote Meter)</b>
         </div>
         ${ranked.length ? `
           <div class="tbl" style="margin-top:4px;background:var(--card)"><table>
@@ -2417,11 +2602,11 @@ function renderSOTDHTML() {
                   </div>
                 </td>
                 <td class="n"><b id="sotd_final_${sKey}" style="color:#15803d;font-size:13px">${r.finalScore} pts</b></td>
-                <td class="n"><button class="${isDeclared ? 'on' : 'pri'}" style="padding:2px 7px;font-size:11px" onclick="toggleSOTDWinner('${safeName}', 'Score')" title="Click to add/remove as Singer of the Day (multiple allowed)">${isDeclared ? '✓ SOTD' : '+ SOTD'}</button></td>
+                <td class="n"><button class="${isDeclared ? 'on' : 'pri'}" style="padding:2px 7px;font-size:11px" onclick="toggleSOTDWinner('${safeName}', 'Score')" title="Click to add/remove as Singer of the Day">${isDeclared ? '✓ SOTD' : '+ SOTD'}</button></td>
               </tr>`;
             }).join('')}
           </table></div>
-        ` : '<p class="m" style="margin:4px 0 0">Give stars (5-star system) to eligible singers above to include them in the Final SOTD Scoreboard.</p>'}
+        ` : ''}
       </div>
     ` : ''}
 
@@ -2468,7 +2653,7 @@ function renderSOTDHTML() {
             </div>`;
           }).join('')}
         </div>
-      ` : `<p class="m" style="margin:6px 0 0">${requireStars ? 'Give stars (5-star system) to eligible singers above — only starred singers appear here and on the 1-Min Vote Card.' : 'Add active singers to the queue to open the 1-minute SOTD Vote Meter.'}</p>`) + (excludedSingers.length ? `
+      ` : (requireStars ? '' : '<p class="m" style="margin:6px 0 0">Add active singers to the queue to open the 1-minute SOTD Vote Meter.</p>')) + (excludedSingers.length ? `
         <div class="row" style="margin-top:8px;padding-top:6px;border-top:1px dashed var(--bd);gap:5px">
           <span class="m" style="font-size:11px;font-weight:700">Removed from vote list:</span>
           ${excludedSingers.map(s => `<button style="padding:2px 7px;font-size:11px" onclick="restoreToSotdVoteList('${e(s.name).replace(/'/g, "\\'")}')" title="Restore to SOTD vote list">+ ${e(s.name)}</button>`).join('')}
@@ -2547,9 +2732,10 @@ async function saveSOTMPanelState() {
   } catch (e) {}
 }
 
-window.triggerSOTM30sVote = async (singerName) => {
+window.triggerSOTM30sVote = async (singerName, round = 1) => {
+  const rnd = Number(round) === 2 ? 2 : (Number(round) === 3 ? 3 : 1);
   if (sotmBlindInterval) clearInterval(sotmBlindInterval);
-  SOTM_PANEL.activeBlindVote = { singer: singerName, remaining: 30, endsAt: Date.now() + 30000 };
+  SOTM_PANEL.activeBlindVote = { singer: singerName, round: rnd, remaining: 30, endsAt: Date.now() + 30000 };
   drawSOTMPanel();
   await pushLiveSessionNow();
   sotmBlindInterval = setInterval(async () => {
@@ -2563,6 +2749,16 @@ window.triggerSOTM30sVote = async (singerName) => {
     }
     drawSOTMPanel();
   }, 1000);
+};
+
+window.stopSOTM30sVote = async () => {
+  if (sotmBlindInterval) {
+    clearInterval(sotmBlindInterval);
+    sotmBlindInterval = null;
+  }
+  SOTM_PANEL.activeBlindVote = null;
+  drawSOTMPanel();
+  await pushLiveSessionNow();
 };
 
 window.openSetupFinalistsModal = () => {
@@ -2595,7 +2791,7 @@ window.saveSetupFinalists = async () => {
   if (names.length) {
     SOTM_PANEL.finalists = names.map(nm => {
       const existing = SOTM_PANEL.finalists.find(x => x.name === nm);
-      return existing || { name: nm, sur: 0, taal: 0, sel: 0, perf: 0, audience: 0 };
+      return existing || { name: nm, sur: 0, taal: 0, sel: 0, perf: 0, audR1: 0, audR2: 0, audR3: 0, audience: 0 };
     });
   }
   await saveSOTMPanelState();
@@ -2635,7 +2831,11 @@ window.openManualJudgeScoreModal = () => {
       <label>TAAL (out of 10)<input id="mj_taal" type="number" step="0.5" min="0" max="10" value="0"></label>
       <label>SELECTIONS (out of 10)<input id="mj_sel" type="number" step="0.5" min="0" max="10" value="0"></label>
       <label>PERFORMANCE (out of 10)<input id="mj_perf" type="number" step="0.5" min="0" max="10" value="0"></label>
-      <label>Audience Vote Meter Total<input id="mj_aud" type="number" step="0.5" min="0" value="0"></label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+        <label>Audience R1<input id="mj_aud_r1" type="number" step="0.5" min="0" value="0"></label>
+        <label>Audience R2<input id="mj_aud_r2" type="number" step="0.5" min="0" value="0"></label>
+        <label>Audience R3<input id="mj_aud_r3" type="number" step="0.5" min="0" value="0"></label>
+      </div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
       <button onclick="closeModal()">Cancel</button>
@@ -2646,11 +2846,14 @@ window.openManualJudgeScoreModal = () => {
   const fillCur = () => {
     const f = SOTM_PANEL.finalists.find(x => x.name === sel.value);
     if (f) {
-      $('#mj_sur').value = f.sur;
-      $('#mj_taal').value = f.taal;
-      $('#mj_sel').value = f.sel;
-      $('#mj_perf').value = f.perf;
-      $('#mj_aud').value = f.audience;
+      $('#mj_sur').value = f.sur || 0;
+      $('#mj_taal').value = f.taal || 0;
+      $('#mj_sel').value = f.sel || 0;
+      $('#mj_perf').value = f.perf || 0;
+      const r1 = f.audR1 != null ? f.audR1 : (f.audience || 0);
+      $('#mj_aud_r1').value = r1;
+      $('#mj_aud_r2').value = f.audR2 || 0;
+      $('#mj_aud_r3').value = f.audR3 || 0;
     }
   };
   sel.onchange = fillCur;
@@ -2666,7 +2869,10 @@ window.applyManualJudgeScore = async () => {
     f.taal = parseFloat($('#mj_taal').value || '0') || 0;
     f.sel = parseFloat($('#mj_sel').value || '0') || 0;
     f.perf = parseFloat($('#mj_perf').value || '0') || 0;
-    f.audience = parseFloat($('#mj_aud').value || '0') || 0;
+    f.audR1 = parseFloat($('#mj_aud_r1').value || '0') || 0;
+    f.audR2 = parseFloat($('#mj_aud_r2').value || '0') || 0;
+    f.audR3 = parseFloat($('#mj_aud_r3').value || '0') || 0;
+    f.audience = parseFloat((f.audR1 + f.audR2 + f.audR3).toFixed(1));
   }
   await saveSOTMPanelState();
   closeModal();
@@ -2674,8 +2880,9 @@ window.applyManualJudgeScore = async () => {
 };
 
 window.resetSOTMPanelToZero = () => {
-  showConfirm("Reset all SOTM Judge & Audience scores in this panel to zero?", async () => {
-    SOTM_PANEL.finalists.forEach(f => { f.sur = 0; f.taal = 0; f.sel = 0; f.perf = 0; f.audience = 0; });
+  showConfirm("Reset all SOTM Judge & Audience scores (Round 1, 2, 3) in this panel to zero?", async () => {
+    SOTM_PANEL.finalists.forEach(f => { f.sur = 0; f.taal = 0; f.sel = 0; f.perf = 0; f.audR1 = 0; f.audR2 = 0; f.audR3 = 0; f.audience = 0; });
+    SOTM_PANEL.roundVoters = { 1: 0, 2: 0, 3: 0 };
     await saveSOTMPanelState();
     drawSOTMPanel();
   }, "Reset SOTM Scores");
@@ -2683,8 +2890,14 @@ window.resetSOTMPanelToZero = () => {
 
 window.inspectAudienceBallots = () => {
   const standings = getSOTMComputedStandings();
-  const lines = standings.map((s, i) => `${i+1}. ${s.name}: Audience = ${s.audience} pts (Avg ${(s.audience / Math.max(1, SOTM_PANEL.votersCount)).toFixed(1)}/voter)`).join('\n');
-  showNotice(`Participating Audience Voters: ${SOTM_PANEL.votersCount}\n\n${lines}`, "Audience Ballots Breakdown");
+  const rv = SOTM_PANEL.roundVoters || { 1: 0, 2: 0, 3: 0 };
+  const lines = standings.map((s, i) => {
+    const r1 = parseFloat(s.audR1 || 0);
+    const r2 = parseFloat(s.audR2 || 0);
+    const r3 = parseFloat(s.audR3 || 0);
+    return `${i+1}. ${s.name}: R1=${r1} | R2=${r2} | R3=${r3} → Total = ${s.audience} pts`;
+  }).join('\n');
+  showNotice(`Unique Audience Voters: ${SOTM_PANEL.votersCount} (R1: ${rv[1] || 0}, R2: ${rv[2] || 0}, R3: ${rv[3] || 0})\n\n${lines}`, "SOTM Round-Wise Audience Ballots");
 };
 
 window.declareAndPublishSOTM = () => {
@@ -2703,6 +2916,9 @@ window.declareAndPublishSOTM = () => {
         selections: String(s.sel),
         performance: String(s.perf),
         judgeTotal: String(s.judgeTotal),
+        audR1: String(s.audR1 || 0),
+        audR2: String(s.audR2 || 0),
+        audR3: String(s.audR3 || 0),
         votes: String(parseFloat((s.audience / Math.max(1, SOTM_PANEL.votersCount)).toFixed(1))),
         grandTotal: String(s.grandTotal),
         remarks: idx === 0 ? 'Winner - G-Clef Memento Award' : (idx === 1 ? '1st Runner-Up' : (idx === 2 ? '2nd Runner-Up' : 'Finalist'))
@@ -2757,7 +2973,7 @@ window.downloadOfficialSOTMPDF = () => {
   docPdf.setFontSize(9.5);
   docPdf.text(`Appointed Judge: ${asc(judgeName)}   |   Participating Audience Voters: ${SOTM_PANEL.votersCount}   |   Date: ${fd(LIVE.date)}`, 148.5, 40, { align: 'center' });
 
-  const head = [['#', 'FINALIST', 'SUR (10)', 'TAAL (10)', 'SEL (10)', 'PERF (10)', 'JUDGE TOTAL', 'AUDIENCE', 'GRAND TOTAL']];
+  const head = [['#', 'FINALIST', 'SUR', 'TAAL', 'SEL', 'PERF', 'JUDGE', 'R1', 'R2', 'R3', 'AUD TOT', 'GRAND TOTAL']];
   const body = standings.map((s, idx) => [
     String(idx + 1),
     asc(s.name),
@@ -2766,6 +2982,9 @@ window.downloadOfficialSOTMPDF = () => {
     String(s.sel),
     String(s.perf),
     String(s.judgeTotal),
+    String(s.audR1 || 0),
+    String(s.audR2 || 0),
+    String(s.audR3 || 0),
     String(s.audience),
     String(s.grandTotal)
   ]);
@@ -2775,18 +2994,21 @@ window.downloadOfficialSOTMPDF = () => {
     head,
     body,
     theme: 'grid',
-    styles: { font: 'helvetica', fontSize: 9.5, cellPadding: 2.8, textColor: [15, 23, 42], lineColor: [203, 213, 225], lineWidth: 0.2 },
+    styles: { font: 'helvetica', fontSize: 9, cellPadding: 2.4, textColor: [15, 23, 42], lineColor: [203, 213, 225], lineWidth: 0.2 },
     headStyles: { fillColor: [15, 52, 96], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
     columnStyles: {
-      0: { halign: 'center', fontStyle: 'bold', cellWidth: 14 },
-      1: { fontStyle: 'bold', cellWidth: 65 },
+      0: { halign: 'center', fontStyle: 'bold', cellWidth: 12 },
+      1: { fontStyle: 'bold', cellWidth: 55 },
       2: { halign: 'center' },
       3: { halign: 'center' },
       4: { halign: 'center' },
       5: { halign: 'center' },
       6: { halign: 'center', fontStyle: 'bold' },
-      7: { halign: 'center', textColor: [3, 105, 161], fontStyle: 'bold' },
-      8: { halign: 'center', textColor: [21, 128, 61], fontStyle: 'bold' }
+      7: { halign: 'center' },
+      8: { halign: 'center' },
+      9: { halign: 'center' },
+      10: { halign: 'center', textColor: [3, 105, 161], fontStyle: 'bold' },
+      11: { halign: 'center', textColor: [21, 128, 61], fontStyle: 'bold' }
     },
     didParseCell: (data) => {
       if (data.section === 'body' && data.row.index === 0) {
@@ -2822,12 +3044,13 @@ function renderSOTMPanelHTML() {
     `;
   }
 
+  const activeV = SOTM_PANEL.activeBlindVote;
+
   return `
     <div style="border-left:4px solid #f59e0b;padding-left:10px">
-      <div class="row" style="justify-content:space-between">
+      <div class="row" style="justify-content:space-between;margin-bottom:6px">
         <div>
           <b style="font-size:15px">Singer of the Month (SOTM) - Judge Panel & 30s Blind Voting</b>
-          <p class="m" style="margin:1px 0 6px">Synced with current 4+ Star Qualifiers. Trigger a 30s blind audience vote per finalist.</p>
         </div>
         <button onclick="toggleSOTMPanelExpanded()">Collapse Panel</button>
       </div>
@@ -2846,13 +3069,16 @@ function renderSOTMPanelHTML() {
         ${IS_SUPER && judgeList.length ? `<button onclick="clearAppointedJudges()" style="padding:2px 7px;font-size:11px;color:#dc2626;border-color:#fca5a5;background:transparent" title="Clear appointed judges">✕ Clear</button>` : ''}
       </div>
 
-      ${SOTM_PANEL.activeBlindVote ? `
+      ${activeV ? `
         <div class="blind-vote-bar">
           <div>
-            <b>🎙️ 30s BLIND AUDIENCE VOTE ACTIVE</b>
-            <div style="font-size:12px;opacity:0.95">Finalist: <b>${e(SOTM_PANEL.activeBlindVote.singer)}</b></div>
+            <b>🎙️ 30s BLIND AUDIENCE VOTE ACTIVE · ROUND ${activeV.round || 1}</b>
+            <div style="font-size:12px;opacity:0.95">Finalist: <b>${e(activeV.singer)}</b></div>
           </div>
-          <span style="font-size:18px;font-weight:900">${SOTM_PANEL.activeBlindVote.remaining}s</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:18px;font-weight:900">${activeV.remaining}s</span>
+            <button style="background:#fff;color:#b91c1c;border:0;padding:3px 8px;font-size:11.5px;font-weight:800" onclick="stopSOTM30sVote()">Stop</button>
+          </div>
         </div>
       ` : ''}
 
@@ -2874,11 +3100,17 @@ function renderSOTMPanelHTML() {
             <th class="n" title="Selection (Out of 10)">Choice</th>
             <th class="n" title="Performance (Out of 10)">Perf</th>
             <th class="n" title="Judge Total">Judge</th>
-            <th class="n" title="Audience Votes">Votes</th>
+            <th class="n" title="Round 1 Audience Votes">R1</th>
+            <th class="n" title="Round 2 Audience Votes">R2</th>
+            <th class="n" title="Round 3 Audience Votes">R3</th>
+            <th class="n" title="Total Audience Votes">Votes</th>
             <th class="n" title="Grand Total">Total</th>
-            <th style="text-align:center" title="30s Blind Vote">Vote</th>
+            <th style="text-align:center" title="Trigger 30s Blind Audience Vote for Round 1, 2, or 3">Vote (30s)</th>
           </tr>
-          ${standings.map((s, idx) => `
+          ${standings.map((s, idx) => {
+            const safeN = e(s.name).replace(/'/g, "\\'");
+            const isAct = r => activeV && activeV.singer === s.name && (activeV.round || 1) === r;
+            return `
             <tr style="${idx===0 && s.grandTotal>0 ? 'background:rgba(22,163,74,0.08)' : ''}">
               <td class="n"><b>${idx+1}</b></td>
               <td><b>${e(s.name)}</b></td>
@@ -2887,11 +3119,20 @@ function renderSOTMPanelHTML() {
               <td class="n" style="color:#b45309;font-weight:700">${s.sel}</td>
               <td class="n" style="color:#b45309;font-weight:700">${s.perf}</td>
               <td class="n"><b>${s.judgeTotal}</b></td>
+              <td class="n" style="color:#0369a1">${s.audR1 || 0}</td>
+              <td class="n" style="color:#0369a1">${s.audR2 || 0}</td>
+              <td class="n" style="color:#0369a1">${s.audR3 || 0}</td>
               <td class="n" style="color:#0369a1;font-weight:700">${s.audience}</td>
               <td class="n" style="color:#15803d;font-weight:900">${s.grandTotal}</td>
-              <td style="text-align:center"><button style="padding:3px 8px;font-size:11.5px" onclick="triggerSOTM30sVote('${e(s.name)}')">Vote (30s)</button></td>
-            </tr>
-          `).join('')}
+              <td style="text-align:center">
+                <div class="sotm-rnd-wrap">
+                  <button class="sotm-rnd-btn ${isAct(1) ? 'active' : ''}" onclick="triggerSOTM30sVote('${safeN}', 1)" title="Start 30s Blind Vote for Round 1">R1</button>
+                  <button class="sotm-rnd-btn ${isAct(2) ? 'active' : ''}" onclick="triggerSOTM30sVote('${safeN}', 2)" title="Start 30s Blind Vote for Round 2">R2</button>
+                  <button class="sotm-rnd-btn ${isAct(3) ? 'active' : ''}" onclick="triggerSOTM30sVote('${safeN}', 3)" title="Start 30s Blind Vote for Round 3">R3</button>
+                </div>
+              </td>
+            </tr>`;
+          }).join('')}
         </table></div>
       ` : ''}
     </div>
@@ -3482,19 +3723,23 @@ window.previewCastSOTDVote = (singerName) => {
   drawSOTDSection();
 };
 
-window.previewCastSOTMBallot = async (targetSinger, score) => {
+window.previewCastSOTMBallot = async (targetSinger, score, round = 1) => {
   if (!SOTM_PANEL || !SOTM_PANEL.activeBlindVote) return;
-  const prev = PREVIEW_SOTM_SCORES[targetSinger];
+  const rnd = Number(round) === 2 ? 2 : (Number(round) === 3 ? 3 : 1);
+  const key = `${targetSinger}__R${rnd}`;
+  const prev = PREVIEW_SOTM_SCORES[key];
   const f = (SOTM_PANEL.finalists || []).find(x => x.name === targetSinger);
   if (f) {
+    const rField = rnd === 1 ? 'audR1' : (rnd === 2 ? 'audR2' : 'audR3');
     if (typeof prev === 'number') {
-      f.audience = Math.max(0, parseFloat(((parseFloat(f.audience) || 0) - prev + score).toFixed(1)));
+      f[rField] = Math.max(0, parseFloat(((parseFloat(f[rField]) || 0) - prev + score).toFixed(1)));
     } else {
-      f.audience = parseFloat(((parseFloat(f.audience) || 0) + score).toFixed(1));
+      f[rField] = parseFloat(((parseFloat(f[rField]) || 0) + score).toFixed(1));
       SOTM_PANEL.votersCount = (SOTM_PANEL.votersCount || 0) + 1;
     }
+    f.audience = parseFloat(((parseFloat(f.audR1) || 0) + (parseFloat(f.audR2) || 0) + (parseFloat(f.audR3) || 0)).toFixed(1));
   }
-  PREVIEW_SOTM_SCORES[targetSinger] = score;
+  PREVIEW_SOTM_SCORES[key] = score;
   drawSOTMPanel();
 };
 
@@ -3583,18 +3828,19 @@ window.renderLiveParticipantPreview = () => {
 
   if (SOTM_PANEL && SOTM_PANEL.activeBlindVote) {
     const mv = SOTM_PANEL.activeBlindVote;
-    const myScore = PREVIEW_SOTM_SCORES[mv.singer];
+    const rnd = mv.round || 1;
+    const myScore = PREVIEW_SOTM_SCORES[`${mv.singer}__R${rnd}`];
     html += `
       <div class="c" style="border:2px solid #7c3aed;background:#f5f3ff">
         <div class="row" style="justify-content:space-between">
-          <b style="color:#6d28d9;font-size:12.5px">🏆 LIVE 30s SOTM VOTE — ${e(mv.singer)}</b>
+          <b style="color:#6d28d9;font-size:12.5px">🏆 LIVE 30s SOTM VOTE — ${e(mv.singer)} (Round ${rnd})</b>
           <span class="badge-round" style="background:#7c3aed;color:#fff">${Math.max(0, mv.remaining || 0)}s</span>
         </div>
-        <p class="m" style="margin:4px 0 6px;font-size:11.5px">Tap your blind score (5 to 10):</p>
+        <p class="m" style="margin:4px 0 6px;font-size:11.5px">Tap your Round ${rnd} blind score (5 to 10):</p>
         <div class="row" style="gap:4px">
-          ${[5,6,7,8,9,10].map(pt => `<button class="${myScore === pt ? 'pri' : ''}" style="min-width:38px;font-weight:800" onclick="previewCastSOTMBallot('${e(mv.singer).replace(/'/g, "\\'")}',${pt})">${pt}</button>`).join('')}
+          ${[5,6,7,8,9,10].map(pt => `<button class="${myScore === pt ? 'pri' : ''}" style="min-width:38px;font-weight:800" onclick="previewCastSOTMBallot('${e(mv.singer).replace(/'/g, "\\'")}',${pt},${rnd})">${pt}</button>`).join('')}
         </div>
-        ${typeof myScore === 'number' ? `<p class="m" style="margin:6px 0 0;color:#15803d;font-weight:700;font-size:11.5px">✓ Test blind score (${myScore}/10) recorded</p>` : ''}
+        ${typeof myScore === 'number' ? `<p class="m" style="margin:6px 0 0;color:#15803d;font-weight:700;font-size:11.5px">✓ Round ${rnd} test blind score (${myScore}/10) recorded</p>` : ''}
       </div>
     `;
   }
@@ -3703,6 +3949,628 @@ window.applyHostFirstPosition = () => {
   }
 };
 
+// ==============================================================================
+// ADMIN / SUPERADMIN CUSTOMIZABLE AUDIO REACTIONS SOUNDBOARD (Built-in + Custom MP3)
+// ==============================================================================
+const DEFAULT_AUDIO_REACTIONS = [
+  { id: 'applause_high', label: '👏 Applause High', builtin: 'applause_high', fileName: '', hasCustomAudio: false, cloudDocId: '' },
+  { id: 'applause_low', label: '👏 Applause Low', builtin: 'applause_low', fileName: '', hasCustomAudio: false, cloudDocId: '' },
+  { id: 'single_clap', label: '👏 Single Clap', builtin: 'single_clap', fileName: '', hasCustomAudio: false, cloudDocId: '' },
+  { id: 'double_clap', label: '👏👏 Double Clap', builtin: 'double_clap', fileName: '', hasCustomAudio: false, cloudDocId: '' },
+  { id: 'drum_roll', label: '🥁 Drum Roll', builtin: 'drum_roll', fileName: '', hasCustomAudio: false, cloudDocId: '' },
+  { id: 'fanfare', label: '🎺 Fanfare', builtin: 'fanfare', fileName: '', hasCustomAudio: false, cloudDocId: '' }
+];
+
+let AUDIO_REACTIONS = DEFAULT_AUDIO_REACTIONS.map(x => ({ ...x }));
+const SFX_AUDIO_CACHE = {}; // id -> dataUrl (in-memory for synchronous zero-latency playback)
+let SFX_CTX = null;
+let SFX_VOLUME = 0.85;
+let SFX_MASTER_GAIN = null;
+let SFX_ACTIVE_AUDIO = null;
+let SFX_ACTIVE_NODES = [];
+let SFX_ACTIVE_TIMERS = [];
+let SFX_CURRENT_ID = '';
+
+function openSfxIDB() {
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.open('sfh_settings_db', 1);
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains('kv')) req.result.createObjectStore('kv');
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    } catch (_) {
+      resolve(null);
+    }
+  });
+}
+
+async function idbGetSfxAudio(id) {
+  const db = await openSfxIDB();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction('kv', 'readonly');
+      const g = tx.objectStore('kv').get('sfx_audio_' + id);
+      g.onsuccess = () => resolve(g.result || null);
+      g.onerror = () => resolve(null);
+    } catch (_) { resolve(null); }
+  });
+}
+
+async function idbSetSfxAudio(id, dataUrl) {
+  const db = await openSfxIDB();
+  if (!db) return false;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction('kv', 'readwrite');
+      const p = tx.objectStore('kv').put(dataUrl, 'sfx_audio_' + id);
+      p.onsuccess = () => resolve(true);
+      p.onerror = () => resolve(false);
+    } catch (_) { resolve(false); }
+  });
+}
+
+async function idbDelSfxAudio(id) {
+  const db = await openSfxIDB();
+  if (!db) return;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction('kv', 'readwrite');
+      const p = tx.objectStore('kv').delete('sfx_audio_' + id);
+      p.onsuccess = () => resolve();
+      p.onerror = () => resolve();
+    } catch (_) { resolve(); }
+  });
+}
+
+function normalizeAudioReactionList(rawList) {
+  if (!Array.isArray(rawList) || !rawList.length) {
+    return DEFAULT_AUDIO_REACTIONS.map(x => ({ ...x }));
+  }
+  return rawList
+    .filter(x => x && x.id && x.label)
+    .map(x => ({
+      id: String(x.id).replace(/[^a-zA-Z0-9_-]/g, ''),
+      label: String(x.label).trim().slice(0, 40),
+      builtin: String(x.builtin || ''),
+      fileName: String(x.fileName || ''),
+      hasCustomAudio: Boolean(x.hasCustomAudio),
+      cloudDocId: String(x.cloudDocId || ''),
+      updatedAt: Number(x.updatedAt || 0)
+    }))
+    .filter(x => x.id && x.label);
+}
+
+async function preloadCustomSfxAudio() {
+  for (const item of AUDIO_REACTIONS) {
+    if (!item.hasCustomAudio) continue;
+    try {
+      let localData = await idbGetSfxAudio(item.id);
+      if (localData && typeof localData === 'object' && localData.dataUrl) {
+        if (!item.updatedAt || (localData.updatedAt || 0) >= item.updatedAt) {
+          SFX_AUDIO_CACHE[item.id] = localData.dataUrl;
+          continue;
+        }
+      } else if (typeof localData === 'string' && localData.startsWith('data:audio')) {
+        SFX_AUDIO_CACHE[item.id] = localData;
+        if (!item.cloudDocId) continue;
+      }
+      if (item.cloudDocId) {
+        const snap = await getDoc(doc(fs, 'pub', item.cloudDocId)).catch(() => null);
+        if (snap && snap.exists() && snap.data().dataUrl) {
+          const dUrl = snap.data().dataUrl;
+          SFX_AUDIO_CACHE[item.id] = dUrl;
+          await idbSetSfxAudio(item.id, { dataUrl: dUrl, updatedAt: item.updatedAt || Date.now() });
+        }
+      }
+    } catch (_) {}
+  }
+}
+
+function loadAudioReactionsFromConfig(cloudList) {
+  let chosen = null;
+  if (Array.isArray(cloudList) && cloudList.length) {
+    chosen = normalizeAudioReactionList(cloudList);
+    try { localStorage.setItem('sfh_audio_reactions_v1', JSON.stringify(chosen)); } catch (_) {}
+  } else {
+    try {
+      const saved = JSON.parse(localStorage.getItem('sfh_audio_reactions_v1') || 'null');
+      if (Array.isArray(saved) && saved.length) chosen = normalizeAudioReactionList(saved);
+    } catch (_) {}
+  }
+  AUDIO_REACTIONS = chosen || DEFAULT_AUDIO_REACTIONS.map(x => ({ ...x }));
+  preloadCustomSfxAudio();
+}
+
+async function persistAudioReactionsConfig() {
+  try { localStorage.setItem('sfh_audio_reactions_v1', JSON.stringify(AUDIO_REACTIONS)); } catch (_) {}
+  if (IS_SUPER) {
+    try {
+      await setDoc(doc(fs, 'config', 'app'), { audioReactions: AUDIO_REACTIONS }, { merge: true });
+      if (CONF_CACHE) CONF_CACHE.audioReactions = AUDIO_REACTIONS.map(x => ({ ...x }));
+    } catch (err) {
+      console.warn('Could not sync audio reactions config to cloud:', err);
+    }
+  }
+}
+
+function getSfxCtx() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  if (!SFX_CTX) SFX_CTX = new AC();
+  if (SFX_CTX.state === 'suspended') SFX_CTX.resume().catch(() => {});
+  return SFX_CTX;
+}
+
+function updateSfxButtonStates(activeId) {
+  SFX_CURRENT_ID = activeId || '';
+  document.querySelectorAll('.sfx-btn').forEach(btn => {
+    btn.classList.toggle('playing', btn.dataset.sfx === SFX_CURRENT_ID);
+  });
+}
+
+window.stopAudioReaction = () => {
+  SFX_ACTIVE_TIMERS.forEach(t => clearTimeout(t));
+  SFX_ACTIVE_TIMERS = [];
+  if (SFX_ACTIVE_AUDIO) {
+    try {
+      SFX_ACTIVE_AUDIO.pause();
+      SFX_ACTIVE_AUDIO.currentTime = 0;
+    } catch (_) {}
+    SFX_ACTIVE_AUDIO = null;
+  }
+  SFX_ACTIVE_NODES.forEach(n => {
+    try { if (typeof n.stop === 'function') n.stop(); } catch (_) {}
+    try { if (typeof n.disconnect === 'function') n.disconnect(); } catch (_) {}
+  });
+  SFX_ACTIVE_NODES = [];
+  SFX_MASTER_GAIN = null;
+  updateSfxButtonStates('');
+};
+
+window.setReactionVolume = (val) => {
+  const v = Math.max(0, Math.min(1, parseFloat(val) || 0.85));
+  SFX_VOLUME = v;
+  if (SFX_ACTIVE_AUDIO) {
+    try { SFX_ACTIVE_AUDIO.volume = v; } catch (_) {}
+  }
+  if (SFX_MASTER_GAIN && SFX_CTX) {
+    try { SFX_MASTER_GAIN.gain.setValueAtTime(v, SFX_CTX.currentTime); } catch (_) {}
+  }
+  const lbl = $('#sfx_vol_lbl');
+  if (lbl) lbl.textContent = Math.round(v * 100) + '%';
+};
+
+function createNoiseBuffer(ctx, durationSec) {
+  const len = Math.floor(ctx.sampleRate * durationSec);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  return buf;
+}
+
+function scheduleSingleClap(ctx, master, startTime, gainLevel, freq = 1350, q = 1.6, decay = 0.11) {
+  const src = ctx.createBufferSource();
+  src.buffer = createNoiseBuffer(ctx, decay + 0.05);
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.setValueAtTime(freq, startTime);
+  bp.Q.setValueAtTime(q, startTime);
+
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, startTime);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.001, gainLevel), startTime + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, startTime + decay);
+
+  src.connect(bp);
+  bp.connect(g);
+  g.connect(master);
+  src.start(startTime);
+  src.stop(startTime + decay + 0.03);
+  SFX_ACTIVE_NODES.push(src, bp, g);
+}
+
+function playBuiltInSynth(builtinKind, activeId) {
+  const ctx = getSfxCtx();
+  if (!ctx) return;
+
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(SFX_VOLUME, ctx.currentTime);
+  master.connect(ctx.destination);
+  SFX_MASTER_GAIN = master;
+  SFX_ACTIVE_NODES.push(master);
+  updateSfxButtonStates(activeId);
+
+  const now = ctx.currentTime + 0.02;
+  let totalDurMs = 600;
+
+  if (builtinKind === 'single_clap') {
+    scheduleSingleClap(ctx, master, now, 0.95, 1300, 1.5, 0.13);
+    scheduleSingleClap(ctx, master, now + 0.012, 0.45, 2200, 2.0, 0.08);
+    totalDurMs = 300;
+  } else if (builtinKind === 'double_clap') {
+    [0, 0.22].forEach(off => {
+      scheduleSingleClap(ctx, master, now + off, 0.9, 1320, 1.5, 0.12);
+      scheduleSingleClap(ctx, master, now + off + 0.012, 0.4, 2150, 2.0, 0.08);
+    });
+    totalDurMs = 550;
+  } else if (builtinKind === 'applause_low' || builtinKind === 'applause_high') {
+    const isHigh = builtinKind === 'applause_high';
+    const dur = isHigh ? 3.8 : 2.5;
+    const clapCount = isHigh ? 135 : 58;
+    const peakGain = isHigh ? 0.34 : 0.18;
+
+    const bed = ctx.createBufferSource();
+    bed.buffer = createNoiseBuffer(ctx, dur + 0.1);
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.setValueAtTime(isHigh ? 1450 : 1150, now);
+    bp.Q.setValueAtTime(0.85, now);
+    const bedG = ctx.createGain();
+    bedG.gain.setValueAtTime(0.0001, now);
+    bedG.gain.linearRampToValueAtTime(isHigh ? 0.32 : 0.13, now + 0.35);
+    bedG.gain.setValueAtTime(isHigh ? 0.30 : 0.12, now + dur * 0.65);
+    bedG.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    bed.connect(bp);
+    bp.connect(bedG);
+    bedG.connect(master);
+    bed.start(now);
+    bed.stop(now + dur + 0.05);
+    SFX_ACTIVE_NODES.push(bed, bp, bedG);
+
+    for (let i = 0; i < clapCount; i++) {
+      const u = Math.random();
+      const t = now + u * (dur - 0.18);
+      const env = u < 0.14 ? (u / 0.14) : (u > 0.72 ? Math.max(0.08, (1 - u) / 0.28) : 1);
+      const freq = 950 + Math.random() * 1450;
+      const lvl = peakGain * env * (0.45 + Math.random() * 0.65);
+      scheduleSingleClap(ctx, master, t, lvl, freq, 1.3 + Math.random() * 1.1, 0.075 + Math.random() * 0.055);
+    }
+    totalDurMs = Math.ceil(dur * 1000) + 120;
+  } else if (builtinKind === 'drum_roll') {
+    const dur = 2.6;
+    const hits = 44;
+    for (let i = 0; i < hits; i++) {
+      const progress = i / (hits - 1);
+      const t = now + progress * (dur - 0.35);
+      const vol = 0.12 + progress * 0.62;
+      scheduleSingleClap(ctx, master, t, vol, 260 + progress * 240, 1.2, 0.065);
+      scheduleSingleClap(ctx, master, t, vol * 0.45, 2200, 1.8, 0.05);
+    }
+    const crashT = now + dur - 0.32;
+    const crash = ctx.createBufferSource();
+    crash.buffer = createNoiseBuffer(ctx, 1.1);
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.setValueAtTime(3200, crashT);
+    const cg = ctx.createGain();
+    cg.gain.setValueAtTime(0.55, crashT);
+    cg.gain.exponentialRampToValueAtTime(0.0001, crashT + 1.0);
+    crash.connect(hp);
+    hp.connect(cg);
+    cg.connect(master);
+    crash.start(crashT);
+    crash.stop(crashT + 1.05);
+    SFX_ACTIVE_NODES.push(crash, hp, cg);
+    totalDurMs = Math.ceil((dur + 0.8) * 1000);
+  } else if (builtinKind === 'fanfare') {
+    const notes = [
+      { f: 523.25, t: 0.00, d: 0.16 },
+      { f: 659.25, t: 0.14, d: 0.16 },
+      { f: 783.99, t: 0.28, d: 0.18 },
+      { f: 1046.5, t: 0.44, d: 1.15 },
+      { f: 783.99, t: 0.44, d: 1.15 },
+      { f: 659.25, t: 0.44, d: 1.15 },
+    ];
+    notes.forEach(n => {
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(n.f, now + n.t);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, now + n.t);
+      g.gain.linearRampToValueAtTime(0.24, now + n.t + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + n.t + n.d);
+      osc.connect(g);
+      g.connect(master);
+      osc.start(now + n.t);
+      osc.stop(now + n.t + n.d + 0.04);
+      SFX_ACTIVE_NODES.push(osc, g);
+    });
+    totalDurMs = 1700;
+  }
+
+  const endTimer = setTimeout(() => {
+    if (SFX_CURRENT_ID === activeId) updateSfxButtonStates('');
+  }, totalDurMs);
+  SFX_ACTIVE_TIMERS.push(endTimer);
+}
+
+function playDataUrlAudio(dataUrl, reactionId, fallbackBuiltin) {
+  try {
+    const audio = new Audio(dataUrl);
+    audio.volume = SFX_VOLUME;
+    SFX_ACTIVE_AUDIO = audio;
+    updateSfxButtonStates(reactionId);
+    audio.onended = () => {
+      if (SFX_ACTIVE_AUDIO === audio) SFX_ACTIVE_AUDIO = null;
+      if (SFX_CURRENT_ID === reactionId) updateSfxButtonStates('');
+    };
+    audio.onerror = () => {
+      if (SFX_ACTIVE_AUDIO === audio) SFX_ACTIVE_AUDIO = null;
+      if (fallbackBuiltin) playBuiltInSynth(fallbackBuiltin, reactionId);
+      else updateSfxButtonStates('');
+    };
+    const p = audio.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch(() => {
+        if (SFX_ACTIVE_AUDIO === audio) SFX_ACTIVE_AUDIO = null;
+        if (fallbackBuiltin) playBuiltInSynth(fallbackBuiltin, reactionId);
+        else updateSfxButtonStates('');
+      });
+    }
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+window.playAudioReaction = async (id) => {
+  if (!IS_ADMIN && !IS_SUPER) return;
+  const item = AUDIO_REACTIONS.find(x => x.id === id);
+  if (!item) return;
+  window.stopAudioReaction();
+
+  if (item.hasCustomAudio) {
+    let dataUrl = SFX_AUDIO_CACHE[item.id];
+    if (!dataUrl) {
+      const localData = await idbGetSfxAudio(item.id);
+      if (localData && typeof localData === 'object' && localData.dataUrl) dataUrl = localData.dataUrl;
+      else if (typeof localData === 'string') dataUrl = localData;
+    }
+    if (!dataUrl && item.cloudDocId) {
+      try {
+        const snap = await getDoc(doc(fs, 'pub', item.cloudDocId));
+        if (snap.exists() && snap.data().dataUrl) {
+          dataUrl = snap.data().dataUrl;
+          await idbSetSfxAudio(item.id, { dataUrl, updatedAt: item.updatedAt || Date.now() });
+        }
+      } catch (_) {}
+    }
+    if (dataUrl) {
+      SFX_AUDIO_CACHE[item.id] = dataUrl;
+      if (playDataUrlAudio(dataUrl, item.id, item.builtin)) return;
+    }
+  }
+
+  if (item.builtin) {
+    playBuiltInSynth(item.builtin, item.id);
+  } else {
+    showNotice(`No MP3 sound uploaded yet for "${item.label}". Open Customize to upload an MP3 file.`);
+  }
+};
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Failed to read MP3 file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+window.sfxUpdateLabel = async (id, val) => {
+  if (!IS_SUPER) return;
+  const item = AUDIO_REACTIONS.find(x => x.id === id);
+  if (!item) return;
+  const clean = String(val || '').trim().slice(0, 40);
+  if (!clean) return;
+  item.label = clean;
+  await persistAudioReactionsConfig();
+  draw();
+};
+
+window.sfxTriggerMp3Picker = (id) => {
+  if (!IS_SUPER) return;
+  const inp = document.getElementById('sfx_file_' + id);
+  if (inp) {
+    inp.value = '';
+    inp.click();
+  }
+};
+
+window.sfxUploadMp3 = async (id, fileInput) => {
+  if (!IS_SUPER) return;
+  const file = fileInput && fileInput.files && fileInput.files[0];
+  if (!file) return;
+  const item = AUDIO_REACTIONS.find(x => x.id === id);
+  if (!item) return;
+
+  if (file.size > 5 * 1024 * 1024) {
+    showNotice('MP3 file is too large (max 5 MB). Please choose a shorter audio clip.');
+    return;
+  }
+
+  const statusEl = $('#sfx_cfg_status');
+  if (statusEl) {
+    statusEl.style.color = 'var(--ac)';
+    statusEl.textContent = `Uploading "${file.name}"…`;
+  }
+
+  try {
+    const dataUrl = await readFileAsDataUrl(file);
+    const nowTs = Date.now();
+    SFX_AUDIO_CACHE[id] = dataUrl;
+    await idbSetSfxAudio(id, { dataUrl, updatedAt: nowTs });
+
+    let syncedToCloud = false;
+    const cloudDocId = 'sfx_' + id;
+    if (dataUrl.length <= 920000) {
+      try {
+        await setDoc(doc(fs, 'pub', cloudDocId), {
+          id,
+          fileName: file.name,
+          dataUrl,
+          updatedAt: nowTs
+        });
+        syncedToCloud = true;
+      } catch (cloudErr) {
+        console.warn('Cloud MP3 sync warning:', cloudErr);
+      }
+    }
+
+    item.hasCustomAudio = true;
+    item.fileName = file.name;
+    item.cloudDocId = syncedToCloud ? cloudDocId : '';
+    item.updatedAt = nowTs;
+    await persistAudioReactionsConfig();
+    draw();
+    window.openAudioReactionsCustomizer(
+      syncedToCloud
+        ? `✓ Uploaded "${file.name}" and synced to all Admin devices.`
+        : `✓ Uploaded "${file.name}" on this device (keep MP3 under ~650 KB to sync to other devices).`
+    );
+  } catch (err) {
+    if (statusEl) {
+      statusEl.style.color = '#dc2626';
+      statusEl.textContent = err?.message || 'Could not upload MP3 file.';
+    }
+  }
+};
+
+window.sfxRevertDefault = async (id) => {
+  if (!IS_SUPER) return;
+  const item = AUDIO_REACTIONS.find(x => x.id === id);
+  if (!item) return;
+  delete SFX_AUDIO_CACHE[id];
+  await idbDelSfxAudio(id);
+  if (item.cloudDocId) {
+    try {
+      await setDoc(doc(fs, 'pub', item.cloudDocId), { id, dataUrl: '', fileName: '', updatedAt: Date.now() });
+    } catch (_) {}
+  }
+  item.hasCustomAudio = false;
+  item.fileName = '';
+  item.cloudDocId = '';
+  item.updatedAt = Date.now();
+  await persistAudioReactionsConfig();
+  draw();
+  window.openAudioReactionsCustomizer(`✓ Reverted "${item.label}" to default built-in sound.`);
+};
+
+window.sfxRemoveButton = async (id) => {
+  if (!IS_SUPER) return;
+  if (AUDIO_REACTIONS.length <= 1) {
+    showNotice('Keep at least one audio reaction button.');
+    return;
+  }
+  const idx = AUDIO_REACTIONS.findIndex(x => x.id === id);
+  if (idx === -1) return;
+  const removed = AUDIO_REACTIONS[idx];
+  AUDIO_REACTIONS.splice(idx, 1);
+  delete SFX_AUDIO_CACHE[id];
+  await idbDelSfxAudio(id);
+  await persistAudioReactionsConfig();
+  draw();
+  window.openAudioReactionsCustomizer(`Removed "${removed.label}".`);
+};
+
+window.sfxAddCustomButton = async () => {
+  if (!IS_SUPER) return;
+  const lblInp = $('#sfx_new_label');
+  const fileInp = $('#sfx_new_file');
+  const label = (lblInp ? lblInp.value : '').trim().slice(0, 40);
+  const file = fileInp && fileInp.files && fileInp.files[0];
+  if (!label) {
+    const st = $('#sfx_cfg_status');
+    if (st) { st.style.color = '#d97706'; st.textContent = 'Enter a button label first (e.g. 🎶 Wah Wah!).'; }
+    return;
+  }
+  if (!file) {
+    const st = $('#sfx_cfg_status');
+    if (st) { st.style.color = '#d97706'; st.textContent = 'Please select an MP3 sound file for the new button.'; }
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    const st = $('#sfx_cfg_status');
+    if (st) { st.style.color = '#dc2626'; st.textContent = 'MP3 file is too large (max 5 MB).'; }
+    return;
+  }
+  const id = 'custom_' + Date.now();
+  const newItem = { id, label, builtin: '', fileName: '', hasCustomAudio: false, cloudDocId: '', updatedAt: Date.now() };
+  AUDIO_REACTIONS.push(newItem);
+  await window.sfxUploadMp3(id, fileInp);
+};
+
+window.sfxResetAllDefaults = () => {
+  if (!IS_SUPER) return;
+  showConfirm('Reset all Audio Reaction buttons back to the 6 default built-in sounds?', async () => {
+    for (const item of AUDIO_REACTIONS) {
+      delete SFX_AUDIO_CACHE[item.id];
+      await idbDelSfxAudio(item.id);
+    }
+    AUDIO_REACTIONS = DEFAULT_AUDIO_REACTIONS.map(x => ({ ...x }));
+    await persistAudioReactionsConfig();
+    draw();
+    window.openAudioReactionsCustomizer('✓ All Audio Reactions restored to default sounds.');
+  }, 'Reset Audio Reactions');
+};
+
+window.openAudioReactionsCustomizer = (statusMsg = '') => {
+  if (!IS_SUPER) return;
+  const m = $('#custom-modal');
+  $('#custom-modal-body').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+      <h3 style="margin:0">🔊 Customize Audio Reactions</h3>
+      <button style="padding:3px 8px;font-size:11px;color:#dc2626;border-color:#fca5a5;background:transparent" onclick="sfxResetAllDefaults()">Reset All</button>
+    </div>
+    <div id="sfx_cfg_status" class="m" style="font-size:11.5px;min-height:16px;margin-bottom:8px;color:${statusMsg ? '#15803d' : 'var(--mut)'}">
+      ${statusMsg ? e(statusMsg) : 'Upload an MP3 sound file to replace any default sound, rename buttons, or add new buttons.'}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${AUDIO_REACTIONS.map(item => `
+        <div class="sfx-cfg-row">
+          <div class="sfx-cfg-top">
+            <input value="${e(item.label)}" onchange="sfxUpdateLabel('${item.id}', this.value)" placeholder="Button Label">
+            <button style="padding:4px 8px;font-size:11.5px" onclick="playAudioReaction('${item.id}')" title="Test Sound">▶</button>
+            <button style="padding:4px 8px;font-size:11.5px;color:#dc2626;border-color:#fca5a5;background:transparent" onclick="sfxRemoveButton('${item.id}')" title="Remove button">✕</button>
+          </div>
+          <div class="sfx-cfg-meta">
+            <span class="m" style="font-size:11px">
+              ${item.hasCustomAudio
+                ? `<b style="color:#15803d">🎵 ${e(item.fileName || 'Custom MP3')}</b> ${item.cloudDocId ? '· Cloud' : '· Device'}`
+                : `Default built-in sound`}
+            </span>
+            <div style="display:flex;gap:5px;align-items:center">
+              <input id="sfx_file_${item.id}" type="file" accept=".mp3,audio/mpeg,audio/*" style="display:none" onchange="sfxUploadMp3('${item.id}', this)">
+              <button class="pri" style="padding:3px 8px;font-size:11px" onclick="sfxTriggerMp3Picker('${item.id}')">${item.hasCustomAudio ? 'Change MP3' : 'Upload MP3'}</button>
+              ${item.hasCustomAudio && item.builtin ? `<button style="padding:3px 7px;font-size:11px" onclick="sfxRevertDefault('${item.id}')" title="Restore default sound">↺ Default</button>` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div style="margin-top:12px;padding:9px;border:1px dashed var(--ac);border-radius:9px;background:var(--ac-light)">
+      <b style="font-size:12px;color:var(--ac)">+ Add Custom Audio Reaction Button</b>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+        <input id="sfx_new_label" placeholder="Button Label (e.g. 🎶 Wah Wah!, 🔔 Bell)" style="background:var(--card);font-size:12.5px">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <input id="sfx_new_file" type="file" accept=".mp3,audio/mpeg,audio/*" style="flex:1;font-size:11.5px;background:var(--card);padding:4px">
+          <button class="pri" style="padding:5px 10px;font-size:12px" onclick="sfxAddCustomButton()">+ Add</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+      <button onclick="stopAudioReaction()">⏹ Stop Sound</button>
+      <button class="pri" onclick="closeModal()">Done</button>
+    </div>
+  `;
+  m.style.display = 'flex';
+};
+
 function draw(){
   const liveNow = isWithinLiveSchedule();
   const adminWinNow = isWithinAdminLiveWindow();
@@ -3746,7 +4614,7 @@ function draw(){
     h += `<div class="practice-banner">
       <div>
         <b>🟠 OFFLINE MODE · OUT OF SESSION TIME</b>
-        <div style="font-size:11.5px;opacity:0.95">Scheduled Session: <b>${e(formatScheduleText())}</b>. Data stays strictly offline & AI metadata collection activates during session time only.</div>
+        <div style="font-size:11.5px;opacity:0.95">Scheduled Session: <b>${e(formatScheduleText())}</b>.</div>
       </div>
       <button style="background:#fff;color:#0369a1;border:0;font-weight:800;white-space:nowrap" onclick="resetAndClearLiveBanner()">Reset & Clear Live</button>
     </div>`;
@@ -3780,13 +4648,34 @@ function draw(){
     </div>
     <div class="f" style="margin-top:8px">
       <input id="in_singer" list="dl_known" placeholder="Enter Singer Name" style="text-transform:uppercase;flex:2">
-      <input id="in_singer_time" type="time" value="${to24HourInput('')}" title="Manual Entry Time" style="max-width:125px">
+      <input id="in_singer_time" type="time" value="${to24HourInput('')}" oninput="onManualTimeInput()" onchange="onManualTimeInput()" title="Synced to live system clock (edit to set custom time)" style="max-width:125px">
       <datalist id="dl_known">
         ${KNOWN_SINGERS.map(s => `<option value="${e(s)}">`).join('')}
       </datalist>
       <button class="pri" onclick="addSinger()">Add</button>
     </div>
   </div>`;
+
+  if (IS_ADMIN || IS_SUPER) {
+    h += `<div class="c">
+      <div class="row" style="justify-content:space-between">
+        <b style="font-size:13.5px">🔊 Audio Reactions</b>
+        <div class="row" style="gap:8px">
+          <label style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--mut);font-weight:700">
+            Vol <input type="range" min="0.1" max="1" step="0.05" value="${SFX_VOLUME}" oninput="setReactionVolume(this.value)" style="width:72px;padding:0;accent-color:var(--ac)">
+            <span id="sfx_vol_lbl" style="min-width:30px;text-align:right">${Math.round(SFX_VOLUME * 100)}%</span>
+          </label>
+          ${IS_SUPER ? `<button style="padding:3px 8px;font-size:11.5px" onclick="openAudioReactionsCustomizer()" title="Customize reaction buttons & upload MP3 sounds">⚙️ Customize</button>` : ''}
+        </div>
+      </div>
+      <div class="sfx-grid">
+        ${AUDIO_REACTIONS.map(item => `
+          <button class="sfx-btn ${item.hasCustomAudio ? 'custom-mp3' : ''} ${SFX_CURRENT_ID === item.id ? 'playing' : ''}" data-sfx="${e(item.id)}" onclick="playAudioReaction('${e(item.id)}')" title="${item.hasCustomAudio ? 'Custom MP3: ' + e(item.fileName || 'Uploaded') : 'Default sound'}">${e(item.label)}${item.hasCustomAudio ? ' <span style="font-size:10px;opacity:0.75">🎵</span>' : ''}</button>
+        `).join('')}
+        <button class="sfx-stop" onclick="stopAudioReaction()">⏹ Stop</button>
+      </div>
+    </div>`;
+  }
 
   const reservedFirst = getReservedFirstSinger();
   const prevSotdMeta = getPreviousSessionSotdInfo();
@@ -3855,7 +4744,7 @@ function draw(){
           </tr>`;
         }).join('')}
       </table></div>
-    ` : `<p class="m">Waiting for singers to tap Start Zoom in the app, or add singers manually above. Position #1 is automatically reserved for <b>${e(reservedFirst)}</b>.</p>`}
+    ` : `<p class="m">Waiting for singers to tap Start Zoom in the app, or add singers manually above.</p>`}
     
     
   </div>`;
@@ -3873,8 +4762,7 @@ function draw(){
       <div class="m" style="margin-top:4px;line-height:1.6">
         • <b>★1 Ready on Turn:</b> ${STAR_SCORING.s1} pt &nbsp;|&nbsp; <b>★2 Start ≤ 30 sec:</b> ${STAR_SCORING.s2} pt &nbsp;|&nbsp; <b>★3 Cleanliness (No Noise):</b> ${STAR_SCORING.s3} pt<br>
         • <b>Group A Combos:</b> <b>★1+★2 = ${STAR_SCORING.s1+STAR_SCORING.s2+STAR_SCORING.b12} pts</b> (+${STAR_SCORING.b12}) &nbsp;|&nbsp; <b>★2+★3 = ${STAR_SCORING.s2+STAR_SCORING.s3+STAR_SCORING.b23} pts</b> (+${STAR_SCORING.b23}) &nbsp;|&nbsp; <b>★1+★3 = ${STAR_SCORING.s1+STAR_SCORING.s3+STAR_SCORING.b13} pts</b> (+${STAR_SCORING.b13}) &nbsp;|&nbsp; <b>★1+★2+★3 = ${STAR_SCORING.s1+STAR_SCORING.s2+STAR_SCORING.s3+STAR_SCORING.b123} pts</b> (+${STAR_SCORING.b123})<br>
-        • <b>★4 Good Singing:</b> ${STAR_SCORING.s4} pt &nbsp;|&nbsp; <b>★5 Better Singing:</b> ${STAR_SCORING.s5} pts &nbsp;→&nbsp; <b>★4+★5 = ${STAR_SCORING.s4+STAR_SCORING.s5+STAR_SCORING.b45} pts</b> (+${STAR_SCORING.b45})<br>
-        • <b>Auto-Queue via Zoom Button:</b> Singers tapping <b>Start Zoom</b> in the app are automatically added to the queue with their exact entry timestamp.
+        • <b>★4 Good Singing:</b> ${STAR_SCORING.s4} pt &nbsp;|&nbsp; <b>★5 Better Singing:</b> ${STAR_SCORING.s5} pts &nbsp;→&nbsp; <b>★4+★5 = ${STAR_SCORING.s4+STAR_SCORING.s5+STAR_SCORING.b45} pts</b> (+${STAR_SCORING.b45})
       </div>
     </div>`;
   }
