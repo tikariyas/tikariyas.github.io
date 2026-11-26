@@ -1151,6 +1151,10 @@ window.go=async t=>{
     window.location.href = 'live.html';
     return;
   }
+  if(t=='stage'){
+    if(IS_SUPER) window.location.href = 'stage_prototype.html';
+    return;
+  }
   tab=t;
   if(t=='adm'||t=='rules')await loadAdm();
   if(t=='judge'){
@@ -1246,6 +1250,7 @@ const tabs = () => {
       ['about', 'About'],
       ['adm', 'Admin'],
       ['live', 'Live Session'],
+      ['stage', 'Stage'],
       ...(!IS_EMBED_PREVIEW ? [['preview', 'Participant View']] : [])
     ];
   } else if (effAdmin()) {
