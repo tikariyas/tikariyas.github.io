@@ -252,7 +252,7 @@ input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(15,52,
 
 <aside id="participant-preview-pane" aria-label="Participant Live Preview">
   <div class="pp-bar">
-    <span>👁 Participant Live Preview</span>
+    <span>Participant Live Preview</span>
     <div style="display:flex;gap:5px">
       <button onclick="renderLiveParticipantPreview()" title="Refresh participant preview">↻ Refresh</button>
       <button onclick="toggleLiveParticipantPreview()" title="Close participant preview">✕ Close</button>
@@ -2038,7 +2038,7 @@ window.fetchSongMetaAI = async (singerName, round, overwriteAll = true) => {
   } finally {
     if (btnEl) {
       btnEl.disabled = false;
-      btnEl.textContent = '✨ Fetch AI';
+      btnEl.textContent = 'Fetch AI';
     }
   }
 };
@@ -2073,9 +2073,9 @@ window.openMeta = (singerName, round) => {
   $('#custom-modal-body').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
       <h3 style="margin:0">Song Details: ${e(songTitle)}</h3>
-      <button id="btn_meta_ai" class="pri" style="padding:4px 10px;font-size:11.5px;white-space:nowrap" onclick="fetchSongMetaAI('${safeSinger}', ${round}, true)">✨ Fetch AI</button>
+      <button id="btn_meta_ai" class="pri" style="padding:4px 10px;font-size:11.5px;white-space:nowrap" onclick="fetchSongMetaAI('${safeSinger}', ${round}, true)">Fetch AI</button>
     </div>
-    <div id="meta_ai_status" class="m" style="font-size:11.5px;min-height:16px;margin-bottom:4px">${hasAnyMeta ? '<span style="color:#15803d">✓ Loaded from verified Bollywood archive (edit or tap ✨ Fetch AI anytime)</span>' : '<span>Manual mode: enter Movie Name (optional) & tap <b>✨ Fetch AI</b>, or pick from Bollywood lists below.</span>'}</div>
+    <div id="meta_ai_status" class="m" style="font-size:11.5px;min-height:16px;margin-bottom:4px">${hasAnyMeta ? '<span style="color:#15803d">✓ Loaded from verified Bollywood archive (edit or tap Fetch AI anytime)</span>' : '<span>Manual mode: enter Movie Name (optional) & tap <b>Fetch AI</b>, or pick from Bollywood lists below.</span>'}</div>
     <div class="meta-field-group">
       <label>Bollywood Movie Name<input id="meta_mov" value="${e(meta.mov||'')}" placeholder="e.g. Aradhana, Sholay, Kabhie Kabhie"></label>
       <label>Original Singer<input id="meta_orig" list="dl_bw_orig" value="${e(meta.orig||'')}" placeholder="Select or type (e.g. Kishore Kumar, Lata Mangeshkar)"></label>
@@ -2379,7 +2379,7 @@ window.startSOTD30sVote = async () => {
     const activeEl = document.activeElement;
     if (SOTD_30S_VOTE.active && card && activeEl && card.contains(activeEl) && activeEl.tagName === 'INPUT') {
       const badge = document.getElementById('sotd_timer_badge');
-      if (badge) badge.textContent = `⏳ ${SOTD_30S_VOTE.remaining}s left`;
+      if (badge) badge.textContent = `${SOTD_30S_VOTE.remaining}s left`;
     } else {
       drawSOTDSection();
     }
@@ -2496,7 +2496,7 @@ window.inspectSotdAudienceBallots = () => {
 
   const m = $('#custom-modal');
   $('#custom-modal-body').innerHTML = `
-    <h3>🔍 SOTD Audience Ballots Breakdown</h3>
+    <h3>SOTD Audience Ballots Breakdown</h3>
     <p class="m" style="margin:2px 0 8px">
       Session: <b>${e(fd(LIVE.date))}</b> · Counted Audience Ballots: <b>${counted.length}</b> / ${log.length} received
     </p>
@@ -2558,7 +2558,7 @@ function renderSOTDHTML() {
     ${IS_SUPER ? `
       <div style="margin:6px 0 8px;padding:8px 10px;background:var(--ac-light);border:1px solid var(--ac);border-radius:8px">
         <div class="row" style="justify-content:space-between;margin-bottom:4px">
-          <span style="font-size:12px;font-weight:800;color:var(--ac)">🧮 Final SOTD Scoreboard (Superadmin Only)</span>
+          <span style="font-size:12px;font-weight:800;color:var(--ac)">Final SOTD Scoreboard (Superadmin Only)</span>
           <label style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:var(--fg)">
             Pts / Vote:
             <input type="number" step="0.5" min="0" value="${voteWeight}" onchange="setSotdVoteWeight(this.value)" style="width:58px;padding:2px 5px;font-size:12px;text-align:center">
@@ -2612,11 +2612,11 @@ function renderSOTDHTML() {
 
     ${canRunVoteMeter ? `<div style="margin:6px 0 8px;padding:8px 10px;background:var(--bg);border:1px solid var(--bd);border-radius:8px">
       <div class="row" style="justify-content:space-between;gap:6px">
-        <span style="font-size:12px;font-weight:700;color:var(--ac)">⏱️ 1 Min SOTD Live Vote Meter (${voteCands.length} ${shouldEnforceStarEligibility() ? 'Star-Eligible' : 'Active'} Singer${voteCands.length === 1 ? '' : 's'} · ${totalMeterVotes} vote${totalMeterVotes === 1 ? '' : 's'})</span>
+        <span style="font-size:12px;font-weight:700;color:var(--ac)">1 Min SOTD Live Vote Meter (${voteCands.length} ${shouldEnforceStarEligibility() ? 'Star-Eligible' : 'Active'} Singer${voteCands.length === 1 ? '' : 's'} · ${totalMeterVotes} vote${totalMeterVotes === 1 ? '' : 's'})</span>
         <div class="row" style="gap:6px">
           <button onclick="inspectSotdAudienceBallots()" style="padding:3px 8px;font-size:11.5px">Inspect Audience Ballots</button>
           ${SOTD_30S_VOTE.active ? `
-            <span id="sotd_timer_badge" class="badge-late" style="font-size:12px">⏳ ${SOTD_30S_VOTE.remaining}s left</span>
+            <span id="sotd_timer_badge" class="badge-late" style="font-size:12px">${SOTD_30S_VOTE.remaining}s left</span>
             <button onclick="stopSOTD30sVote()" style="padding:2px 7px;font-size:11px">Stop Vote</button>
           ` : `
             <button class="pri" style="padding:4px 10px;font-size:11.5px" onclick="startSOTD30sVote()">${totalMeterVotes > 0 ? 'Reopen 1 Min SOTD Vote' : 'Start 1 Min SOTD Vote'}</button>
@@ -2680,10 +2680,10 @@ function renderSOTDHTML() {
 
     ${SOTD_LIST.length ? `
       <div style="margin-top:8px">
-        <div class="m" style="font-size:11.5px;font-weight:700;margin-bottom:4px">🏆 Declared Singer${SOTD_LIST.length > 1 ? 's' : ''} of the Day (${SOTD_LIST.length}):</div>
+        <div class="m" style="font-size:11.5px;font-weight:700;margin-bottom:4px">Declared Singer${SOTD_LIST.length > 1 ? 's' : ''} of the Day (${SOTD_LIST.length}):</div>
         ${SOTD_LIST.map((w, i) => `
           <div class="row" style="justify-content:space-between;padding:5px 8px;background:var(--ac-light);border-radius:8px;margin-bottom:4px">
-            <span>🏆 <b>${e(w.n)}</b> <span class="badge-ok">${e(w.h)}</span> ${w.reason ? `<span class="m">(${e(w.reason)})</span>` : ''}</span>
+            <span><b>${e(w.n)}</b> <span class="badge-ok">${e(w.h)}</span> ${w.reason ? `<span class="m">(${e(w.reason)})</span>` : ''}</span>
             <button style="padding:2px 8px;font-size:11px" onclick="removeSOTD(${i})" title="Remove">R</button>
           </div>
         `).join('')}
@@ -3072,7 +3072,7 @@ function renderSOTMPanelHTML() {
       ${activeV ? `
         <div class="blind-vote-bar">
           <div>
-            <b>🎙️ 30s BLIND AUDIENCE VOTE ACTIVE · ROUND ${activeV.round || 1}</b>
+            <b>30s BLIND AUDIENCE VOTE ACTIVE · ROUND ${activeV.round || 1}</b>
             <div style="font-size:12px;opacity:0.95">Finalist: <b>${e(activeV.singer)}</b></div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
@@ -3298,7 +3298,7 @@ window.downloadLivePDF = () => {
   docPdf.text(`Sorted by Song ID  |  Total Songs: ${rows.length}  |  Exported: ${curTime()}`, 14, 36.5);
 
   const thTxt = asc((LIVE.theme || '').trim() || '-');
-  const hoTxt = asc((LIVE.host || '').trim().toUpperCase() || '-');
+  const hoTxt = asc((LIVE.host || '').trim().toUpperCase() || DEFAULT_RESERVED_FIRST);
   docPdf.setFont('helvetica', 'bold');
   docPdf.setFontSize(9);
   docPdf.setTextColor(15, 52, 96);
@@ -3487,7 +3487,7 @@ async function commitSessionDataToFirestore() {
   pData.songMeta = mergeAllSongMeta(pData.songMeta || {});
   const sMeta = { ...(pData.sessionMeta || {}) };
   const themeVal = (LIVE.theme || '').trim();
-  const hostVal = (LIVE.host || '').trim().toUpperCase();
+  const hostVal = (LIVE.host || '').trim().toUpperCase() || DEFAULT_RESERVED_FIRST;
   if (themeVal || hostVal) sMeta[LIVE.date] = { theme: themeVal, host: hostVal };
   else delete sMeta[LIVE.date];
   pData.sessionMeta = sMeta;
@@ -3583,7 +3583,7 @@ window.endSession = async () => {
       SESSION_ENDED = false;
       const m = $('#custom-modal');
       $('#custom-modal-body').innerHTML = `
-        <h3>✅ Offline Practice Ended</h3>
+        <h3>Offline Practice Ended</h3>
         <p class="m" style="margin:8px 0 12px">Practice entries stayed strictly offline and were not published online.<br>Local file downloaded: <b>${e(backupFileName)}</b></p>
         <div style="display:flex;justify-content:flex-end;gap:8px">
           <button onclick="closeModal();draw()">Continue Offline</button>
@@ -3662,15 +3662,15 @@ window.endSession = async () => {
 
     const finalists = Object.entries(pData.stars || {}).filter(([n, o]) => (o.t || 0) >= 4).map(([n]) => n);
     const waMetaLine = [
-      waTheme ? `🎭 *Theme:* ${waTheme}` : '',
-      waHost ? `🎙️ *Host:* ${waHost}` : ''
+      waTheme ? `*Theme:* ${waTheme}` : '',
+      waHost ? `*Host:* ${waHost}` : ''
     ].filter(Boolean).join('\n');
     const waText =
-      `🎶 *SING FROM HOME — ${fd(LIVE.date)}* 🎶\n` +
+      `*SING FROM HOME — ${fd(LIVE.date)}*\n` +
       `_A project of B. S. Tikariya Cultural Foundation ®_\n` +
       (waMetaLine ? `${waMetaLine}\n\n` : '\n') +
-      (sotdSnapshot.length ? `🏆 *Singer(s) of the Day:* ${sotdSnapshot.map(w => `*${w.n}*${w.h !== 'Score' ? ' ('+w.h+')' : ''}`).join(', ')}\n\n` : '') +
-      `🎤 *Songs Performed (${performed.length}):*\n` +
+      (sotdSnapshot.length ? `*Singer(s) of the Day:* ${sotdSnapshot.map(w => `*${w.n}*${w.h !== 'Score' ? ' ('+w.h+')' : ''}`).join(', ')}\n\n` : '') +
+      `*Songs Performed (${performed.length}):*\n` +
       performed.map((p, i) => `${i+1}. *${p.singer}* — ${p.song} (${p.songId})`).join('\n') +
       (finalists.length ? `\n\n⭐ *4-Star SOTM Finalists:* ${finalists.join(', ')}` : '') +
       `\n\n_Conducted by Tikariya's School of Music_`;
@@ -3683,13 +3683,13 @@ window.endSession = async () => {
 
     const m = $('#custom-modal');
     $('#custom-modal-body').innerHTML = `
-      <h3>${publishErrMsg ? '⚠️ Session Ended (Publish Warning)' : '✅ Session Ended & Backup Saved'}</h3>
+      <h3>${publishErrMsg ? 'Session Ended (Publish Warning)' : 'Session Ended & Backup Saved'}</h3>
       ${publishErrMsg ? `<div style="margin:6px 0;padding:8px 10px;border-radius:8px;background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;font-size:12px"><b>Cloud sync warning:</b> ${e(publishErrMsg)}. You can update SOTD directly from Home using the Edit SOTD button.</div>` : ''}
       <p class="m" style="margin:6px 0">Live session closed on Home. Backup downloaded:<br><b>${e(backupFileName)}</b>${sotdSnapshot.length ? `<br>SOTD Published: <b>${e(sotdSnapshot.map(w => w.n).join(', '))}</b>` : ''}</p>
       <div style="margin:6px 0 8px;padding:7px 9px;border-radius:8px;font-size:12px;background:${emailRes.emailed ? '#f0fdf4' : 'var(--ac-light)'};border:1px solid ${emailRes.emailed ? '#86efac' : 'var(--bd)'};color:${emailRes.emailed ? '#15803d' : 'var(--fg)'}">
         ${emailRes.emailed
-          ? `📧 <b>Backup automatically emailed</b> to <b>${e(emailRes.recipient)}</b>.`
-          : `📧 Backup saved & Superadmin notified (${e(emailRes.recipient)}). <a href="${mailtoHref}" style="font-weight:700;color:var(--ac);text-decoration:underline;margin-left:4px">Send via Email App</a>`}
+          ? `<b>Backup automatically emailed</b> to <b>${e(emailRes.recipient)}</b>.`
+          : `Backup saved & Superadmin notified (${e(emailRes.recipient)}). <a href="${mailtoHref}" style="font-weight:700;color:var(--ac);text-decoration:underline;margin-left:4px">Send via Email App</a>`}
       </div>
       <label style="display:block;font-size:12px;font-weight:700;margin-top:8px">WhatsApp Group Summary (Ready to Share):</label>
       <textarea id="wa_summary_box" rows="6" style="width:100%;margin-top:4px;font-size:12.5px">${e(waText)}</textarea>
@@ -3810,7 +3810,7 @@ window.renderLiveParticipantPreview = () => {
     html += `
       <div class="c" style="border:2px solid #d97706;background:#fffbeb">
         <div class="row" style="justify-content:space-between">
-          <b style="color:#b45309;font-size:12.5px">⏱️ LIVE 1 MIN SOTD VOTE METER</b>
+          <b style="color:#b45309;font-size:12.5px">LIVE 1 MIN SOTD VOTE METER</b>
           <span class="badge-round" style="background:#d97706;color:#fff">${secsLeft}s</span>
         </div>
         ${myPrevPick
@@ -3833,7 +3833,7 @@ window.renderLiveParticipantPreview = () => {
     html += `
       <div class="c" style="border:2px solid #7c3aed;background:#f5f3ff">
         <div class="row" style="justify-content:space-between">
-          <b style="color:#6d28d9;font-size:12.5px">🏆 LIVE 30s SOTM VOTE — ${e(mv.singer)} (Round ${rnd})</b>
+          <b style="color:#6d28d9;font-size:12.5px">LIVE 30s SOTM VOTE — ${e(mv.singer)} (Round ${rnd})</b>
           <span class="badge-round" style="background:#7c3aed;color:#fff">${Math.max(0, mv.remaining || 0)}s</span>
         </div>
         <p class="m" style="margin:4px 0 6px;font-size:11.5px">Tap your Round ${rnd} blind score (5 to 10):</p>
@@ -3921,7 +3921,7 @@ window.toggleLiveParticipantPreview = () => {
   const btn = $('#btn-live-pp');
   if (btn) {
     btn.className = PARTICIPANT_PREVIEW_OPEN ? 'warn' : '';
-    btn.textContent = PARTICIPANT_PREVIEW_OPEN ? '✕ Participant' : '👁 Participant';
+    btn.textContent = PARTICIPANT_PREVIEW_OPEN ? '✕ Participant' : 'Participant';
   }
 };
 
@@ -3953,12 +3953,12 @@ window.applyHostFirstPosition = () => {
 // ADMIN / SUPERADMIN CUSTOMIZABLE AUDIO REACTIONS SOUNDBOARD (Built-in + Custom MP3)
 // ==============================================================================
 const DEFAULT_AUDIO_REACTIONS = [
-  { id: 'applause_high', label: '👏 Applause High', builtin: 'applause_high', fileName: '', hasCustomAudio: false, cloudDocId: '' },
-  { id: 'applause_low', label: '👏 Applause Low', builtin: 'applause_low', fileName: '', hasCustomAudio: false, cloudDocId: '' },
-  { id: 'single_clap', label: '👏 Single Clap', builtin: 'single_clap', fileName: '', hasCustomAudio: false, cloudDocId: '' },
-  { id: 'double_clap', label: '👏👏 Double Clap', builtin: 'double_clap', fileName: '', hasCustomAudio: false, cloudDocId: '' },
-  { id: 'drum_roll', label: '🥁 Drum Roll', builtin: 'drum_roll', fileName: '', hasCustomAudio: false, cloudDocId: '' },
-  { id: 'fanfare', label: '🎺 Fanfare', builtin: 'fanfare', fileName: '', hasCustomAudio: false, cloudDocId: '' }
+  { id: 'applause_high', label: 'Applause High', builtin: 'applause_high', fileName: '', hasCustomAudio: false, cloudDocId: '' },
+  { id: 'applause_low', label: 'Applause Low', builtin: 'applause_low', fileName: '', hasCustomAudio: false, cloudDocId: '' },
+  { id: 'single_clap', label: 'Single Clap', builtin: 'single_clap', fileName: '', hasCustomAudio: false, cloudDocId: '' },
+  { id: 'double_clap', label: 'Double Clap', builtin: 'double_clap', fileName: '', hasCustomAudio: false, cloudDocId: '' },
+  { id: 'drum_roll', label: 'Drum Roll', builtin: 'drum_roll', fileName: '', hasCustomAudio: false, cloudDocId: '' },
+  { id: 'fanfare', label: 'Fanfare', builtin: 'fanfare', fileName: '', hasCustomAudio: false, cloudDocId: '' }
 ];
 
 let AUDIO_REACTIONS = DEFAULT_AUDIO_REACTIONS.map(x => ({ ...x }));
@@ -4033,7 +4033,7 @@ function normalizeAudioReactionList(rawList) {
     .filter(x => x && x.id && x.label)
     .map(x => ({
       id: String(x.id).replace(/[^a-zA-Z0-9_-]/g, ''),
-      label: String(x.label).trim().slice(0, 40),
+      label: String(x.label).replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{2604}\u{2607}-\u{26FF}\u{2700}-\u{2712}\u{2714}\u{2716}-\u{27BF}\u{23E9}-\u{23FF}\u{2B05}-\u{2B07}\u{2139}\uFE0F]/gu, '').trim().slice(0, 40),
       builtin: String(x.builtin || ''),
       fileName: String(x.fileName || ''),
       hasCustomAudio: Boolean(x.hasCustomAudio),
@@ -4484,7 +4484,7 @@ window.sfxAddCustomButton = async () => {
   const file = fileInp && fileInp.files && fileInp.files[0];
   if (!label) {
     const st = $('#sfx_cfg_status');
-    if (st) { st.style.color = '#d97706'; st.textContent = 'Enter a button label first (e.g. 🎶 Wah Wah!).'; }
+    if (st) { st.style.color = '#d97706'; st.textContent = 'Enter a button label first (e.g. Wah Wah!).'; }
     return;
   }
   if (!file) {
@@ -4522,7 +4522,7 @@ window.openAudioReactionsCustomizer = (statusMsg = '') => {
   const m = $('#custom-modal');
   $('#custom-modal-body').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
-      <h3 style="margin:0">🔊 Customize Audio Reactions</h3>
+      <h3 style="margin:0">Customize Audio Reactions</h3>
       <button style="padding:3px 8px;font-size:11px;color:#dc2626;border-color:#fca5a5;background:transparent" onclick="sfxResetAllDefaults()">Reset All</button>
     </div>
     <div id="sfx_cfg_status" class="m" style="font-size:11.5px;min-height:16px;margin-bottom:8px;color:${statusMsg ? '#15803d' : 'var(--mut)'}">
@@ -4539,7 +4539,7 @@ window.openAudioReactionsCustomizer = (statusMsg = '') => {
           <div class="sfx-cfg-meta">
             <span class="m" style="font-size:11px">
               ${item.hasCustomAudio
-                ? `<b style="color:#15803d">🎵 ${e(item.fileName || 'Custom MP3')}</b> ${item.cloudDocId ? '· Cloud' : '· Device'}`
+                ? `<b style="color:#15803d">${e(item.fileName || 'Custom MP3')}</b> ${item.cloudDocId ? '· Cloud' : '· Device'}`
                 : `Default built-in sound`}
             </span>
             <div style="display:flex;gap:5px;align-items:center">
@@ -4555,7 +4555,7 @@ window.openAudioReactionsCustomizer = (statusMsg = '') => {
     <div style="margin-top:12px;padding:9px;border:1px dashed var(--ac);border-radius:9px;background:var(--ac-light)">
       <b style="font-size:12px;color:var(--ac)">+ Add Custom Audio Reaction Button</b>
       <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
-        <input id="sfx_new_label" placeholder="Button Label (e.g. 🎶 Wah Wah!, 🔔 Bell)" style="background:var(--card);font-size:12.5px">
+        <input id="sfx_new_label" placeholder="Button Label (e.g. Wah Wah!, Bell)" style="background:var(--card);font-size:12.5px">
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
           <input id="sfx_new_file" type="file" accept=".mp3,audio/mpeg,audio/*" style="flex:1;font-size:11.5px;background:var(--card);padding:4px">
           <button class="pri" style="padding:5px 10px;font-size:12px" onclick="sfxAddCustomButton()">+ Add</button>
@@ -4564,7 +4564,7 @@ window.openAudioReactionsCustomizer = (statusMsg = '') => {
     </div>
 
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
-      <button onclick="stopAudioReaction()">⏹ Stop Sound</button>
+      <button onclick="stopAudioReaction()">Stop Sound</button>
       <button class="pri" onclick="closeModal()">Done</button>
     </div>
   `;
@@ -4603,7 +4603,7 @@ function draw(){
       ${IS_SUPER ? `<button onclick="downloadBackupJSON()">Backup</button>` : ''}
       <button class="btn-pub-green" onclick="manualPublishSession()">Publish</button>
       <button class="btn-end-red" onclick="endSession()">End</button>
-      ${IS_SUPER ? `<button id="btn-live-pp" class="${PARTICIPANT_PREVIEW_OPEN ? 'warn' : ''}" onclick="toggleLiveParticipantPreview()">${PARTICIPANT_PREVIEW_OPEN ? '✕ Participant' : '👁 Participant'}</button>` : ''}
+      ${IS_SUPER ? `<button id="btn-live-pp" class="${PARTICIPANT_PREVIEW_OPEN ? 'warn' : ''}" onclick="toggleLiveParticipantPreview()">${PARTICIPANT_PREVIEW_OPEN ? '✕ Participant' : 'Participant'}</button>` : ''}
       <button class="btn-home-sky" onclick="location.href='index.html'">Home</button>
     `;
   }
@@ -4613,7 +4613,7 @@ function draw(){
   if (IS_SUPER && !onlineNow) {
     h += `<div class="practice-banner">
       <div>
-        <b>🟠 OFFLINE MODE · OUT OF SESSION TIME</b>
+        <b>OFFLINE MODE · OUT OF SESSION TIME</b>
         <div style="font-size:11.5px;opacity:0.95">Scheduled Session: <b>${e(formatScheduleText())}</b>.</div>
       </div>
       <button style="background:#fff;color:#0369a1;border:0;font-weight:800;white-space:nowrap" onclick="resetAndClearLiveBanner()">Reset & Clear Live</button>
@@ -4621,7 +4621,7 @@ function draw(){
   } else if (!liveNow && adminWinNow) {
     h += `<div class="practice-banner" style="background:linear-gradient(135deg,#0f3460,#1e4a7a)">
       <div>
-        <b>🟢 ONLINE · PRE-SESSION SETUP WINDOW</b>
+        <b>ONLINE · PRE-SESSION SETUP WINDOW</b>
         <div style="font-size:11.5px;opacity:0.95">Session starts shortly (${e(formatScheduleText())}). Set today's Theme & prepare the queue now.</div>
       </div>
     </div>`;
@@ -4659,20 +4659,20 @@ function draw(){
   if (IS_ADMIN || IS_SUPER) {
     h += `<div class="c">
       <div class="row" style="justify-content:space-between">
-        <b style="font-size:13.5px">🔊 Audio Reactions</b>
+        <b style="font-size:13.5px">Audio Reactions</b>
         <div class="row" style="gap:8px">
           <label style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--mut);font-weight:700">
             Vol <input type="range" min="0.1" max="1" step="0.05" value="${SFX_VOLUME}" oninput="setReactionVolume(this.value)" style="width:72px;padding:0;accent-color:var(--ac)">
             <span id="sfx_vol_lbl" style="min-width:30px;text-align:right">${Math.round(SFX_VOLUME * 100)}%</span>
           </label>
-          ${IS_SUPER ? `<button style="padding:3px 8px;font-size:11.5px" onclick="openAudioReactionsCustomizer()" title="Customize reaction buttons & upload MP3 sounds">⚙️ Customize</button>` : ''}
+          ${IS_SUPER ? `<button style="padding:3px 8px;font-size:11.5px" onclick="openAudioReactionsCustomizer()" title="Customize reaction buttons & upload MP3 sounds">Customize</button>` : ''}
         </div>
       </div>
       <div class="sfx-grid">
         ${AUDIO_REACTIONS.map(item => `
-          <button class="sfx-btn ${item.hasCustomAudio ? 'custom-mp3' : ''} ${SFX_CURRENT_ID === item.id ? 'playing' : ''}" data-sfx="${e(item.id)}" onclick="playAudioReaction('${e(item.id)}')" title="${item.hasCustomAudio ? 'Custom MP3: ' + e(item.fileName || 'Uploaded') : 'Default sound'}">${e(item.label)}${item.hasCustomAudio ? ' <span style="font-size:10px;opacity:0.75">🎵</span>' : ''}</button>
+          <button class="sfx-btn ${item.hasCustomAudio ? 'custom-mp3' : ''} ${SFX_CURRENT_ID === item.id ? 'playing' : ''}" data-sfx="${e(item.id)}" onclick="playAudioReaction('${e(item.id)}')" title="${item.hasCustomAudio ? 'Custom MP3: ' + e(item.fileName || 'Uploaded') : 'Default sound'}">${e(item.label)}${item.hasCustomAudio ? ' <span style="font-size:10px;opacity:0.75">(MP3)</span>' : ''}</button>
         `).join('')}
-        <button class="sfx-stop" onclick="stopAudioReaction()">⏹ Stop</button>
+        <button class="sfx-stop" onclick="stopAudioReaction()">Stop</button>
       </div>
     </div>`;
   }

@@ -181,7 +181,7 @@ button.soft{background:var(--ac-light);color:var(--ac);border-color:var(--bd)}
 
           <div class="stage-bottom-bar">
             <div class="row" style="gap:8px">
-              <span style="font-size:12px;font-weight:700" id="audio_mode_badge">🎵 Original Sound: ON</span>
+              <span style="font-size:12px;font-weight:700" id="audio_mode_badge">Original Sound: ON</span>
               <div class="vu-wrap" title="Live Microphone Level"><div class="vu-fill" id="vu_fill"></div></div>
             </div>
             <span style="font-size:11.5px;color:#cbd5e1" id="role_hint_lbl">Host view: Full stage &amp; handoff control</span>
@@ -190,14 +190,14 @@ button.soft{background:var(--ac-light);color:var(--ac);border-color:var(--bd)}
 
         <div class="controls-bar">
           <div class="row">
-            <button class="pri" id="btn_media" onclick="toggleLocalMedia()">🎥 Test Real Camera &amp; Musician Mic</button>
-            <button class="on" id="btn_music_mode" onclick="toggleMusicMode()" title="Disables echo cancellation, noise suppression & auto-gain so karaoke + vocals sound natural">🎵 Original Sound: ON</button>
-            <button id="btn_host_mic" onclick="toggleHostMic()">🎙️ Host Mic: Off</button>
+            <button class="pri" id="btn_media" onclick="toggleLocalMedia()">Test Real Camera &amp; Musician Mic</button>
+            <button class="on" id="btn_music_mode" onclick="toggleMusicMode()" title="Disables echo cancellation, noise suppression & auto-gain so karaoke + vocals sound natural">Original Sound: ON</button>
+            <button id="btn_host_mic" onclick="toggleHostMic()">Host Mic: Off</button>
           </div>
           <div class="row">
-            <button class="soft" onclick="sendReaction('👏')">👏 Wah!</button>
-            <button class="soft" onclick="sendReaction('🎵')">🎵 Surila</button>
-            <button class="soft" onclick="sendReaction('❤️')">❤️ Bravo</button>
+            <button class="soft" onclick="sendReaction('Wah!')">Wah!</button>
+            <button class="soft" onclick="sendReaction('Surila')">Surila</button>
+            <button class="soft" onclick="sendReaction('Bravo')">Bravo</button>
           </div>
         </div>
         <div class="m" id="media_status_note" style="margin-top:6px">
@@ -368,9 +368,9 @@ function renderAll(){
   document.getElementById('stage_singer_name').textContent = cur.name;
   document.getElementById('stage_song_title').textContent = `Now Singing: ${cur.song} (Round 1)`;
 
-  document.getElementById('btn_music_mode').textContent = musicModeOn ? '🎵 Original Sound: ON' : '🎙️ Standard Speech Mic';
+  document.getElementById('btn_music_mode').textContent = musicModeOn ? 'Original Sound: ON' : 'Standard Speech Mic';
   document.getElementById('btn_music_mode').className = musicModeOn ? 'on' : '';
-  document.getElementById('audio_mode_badge').textContent = musicModeOn ? '🎵 Original Sound: ON (128 kbps)' : '🎙️ Speech Filter: ON';
+  document.getElementById('audio_mode_badge').textContent = musicModeOn ? 'Original Sound: ON (128 kbps)' : 'Speech Filter: ON';
 
   document.getElementById('btn_host_mic').style.display = currentRole === 'host' ? '' : 'none';
   document.getElementById('btn_next_singer').style.display = currentRole === 'host' ? '' : 'none';
@@ -379,7 +379,7 @@ function renderAll(){
   document.getElementById('btn_music_mode').style.display = currentRole === 'audience' ? 'none' : '';
 
   document.getElementById('host_mic_status').textContent = hostMicOn ? 'Host Mic: LIVE (Speaking)' : 'Host Mic: Standby (Muted)';
-  document.getElementById('btn_host_mic').textContent = hostMicOn ? '🎙️ Host Mic: LIVE' : '🎙️ Host Mic: Off';
+  document.getElementById('btn_host_mic').textContent = hostMicOn ? 'Host Mic: LIVE' : 'Host Mic: Off';
   document.getElementById('btn_host_mic').className = hostMicOn ? 'danger' : '';
 
   const hints = {
@@ -437,13 +437,13 @@ window.setRole = (r) => {
 window.putOnStage = (idx) => {
   activeIdx = idx;
   renderAll();
-  sendReaction('🎤');
+  sendReaction('Live');
 };
 
 window.nextSingerOnStage = () => {
   activeIdx = (activeIdx + 1) % SINGERS.length;
   renderAll();
-  sendReaction('🎤');
+  sendReaction('Live');
 };
 
 window.toggleHostMic = () => {
@@ -497,7 +497,7 @@ function stopLocalMedia(){
   vid.srcObject = null;
   vid.style.display = 'none';
   document.getElementById('stage_placeholder').style.display = '';
-  document.getElementById('btn_media').textContent = '🎥 Test Real Camera & Musician Mic';
+  document.getElementById('btn_media').textContent = 'Test Real Camera & Musician Mic';
   document.getElementById('btn_media').className = 'pri';
   document.getElementById('vu_fill').style.width = '10%';
 }
@@ -524,7 +524,7 @@ window.toggleLocalMedia = async () => {
     vid.srcObject = localStream;
     vid.style.display = 'block';
     document.getElementById('stage_placeholder').style.display = 'none';
-    document.getElementById('btn_media').textContent = '⏹ Stop Camera & Mic Test';
+    document.getElementById('btn_media').textContent = 'Stop Camera & Mic Test';
     document.getElementById('btn_media').className = 'danger';
 
     // Live WebAudio VU Meter

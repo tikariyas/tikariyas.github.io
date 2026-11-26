@@ -1086,7 +1086,7 @@ window.joinZoom = async () => {
           Tap <b>Start Zoom</b> within 5 minutes of session start to join the Zoom room and automatically enter today's singing queue.
         </p>
         <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-          ${needAlertsBtn ? `<button onclick="closeModal();enableSessionNotifications()">🔔 Enable Auto Reminders</button>` : ''}
+          ${needAlertsBtn ? `<button onclick="closeModal();enableSessionNotifications()">Enable Auto Reminders</button>` : ''}
           ${effSuper() ? `<button onclick="openZoomDirect()">Open Zoom Anyway</button>` : ''}
           <button class="pri" onclick="closeModal()">OK</button>
         </div>
@@ -1181,7 +1181,7 @@ function renderPreviewBar(){
   const singerOpts=[...singerSet].sort();
   return `<div class="c" style="border:2px solid #d97706;background:#fffbeb;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1;min-width:180px">
-      <span class="badge-warn" style="font-size:11px;white-space:nowrap">👁 PARTICIPANT PREVIEW</span>
+      <span class="badge-warn" style="font-size:11px;white-space:nowrap">PARTICIPANT PREVIEW</span>
       <select aria-label="Preview as singer" onchange="setPreviewSinger(this.value)" style="padding:4px 8px;font-size:12.5px;min-width:160px;max-width:240px">
         <option value="">My own account${P&&P.singer?' ('+e(P.singer)+')':''}</option>
         ${singerOpts.map(s=>`<option value="${e(s)}" ${PREVIEW_SINGER===s?'selected':''}>${e(s)}</option>`).join('')}
@@ -1231,9 +1231,9 @@ const vLogin=()=>`<div class="c" style="border-left:4px solid var(--ac);backgrou
 <input id="lnm" placeholder="Your name (only for a new account)" style="width:100%;margin-bottom:8px"><input id="lid" placeholder="Phone number (10 digits) or email" inputmode="email" autocapitalize="none" style="width:100%;margin-bottom:8px"><input id="lpw" type="password" placeholder="Password (at least 6 characters)" style="width:100%">
 <p style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><button class="pri" onclick="loginPw()">Sign in</button> <button onclick="signupPw()">Create account</button> <button onclick="forgotPw()">Forgot password</button></p>
 <p class="m">New here? Type your name, phone or email and a password, tick the box and tap Create account. The host must approve you before you get access.</p>
-<p><button onclick="about()">ℹ About us</button></p></div>`;
+<p><button onclick="about()">About us</button></p></div>`;
 const vWait=()=>`<div class="c"><h2>${P.status=='pending'?'Waiting for approval':'Access not active'}</h2>
-<p>${P.status=='pending'?'Your request has been sent to the host. You will get access once the host approves you. Tap Check approval below.':'Your access is not active. Please contact the host.'}</p><p class="m">Signed in as ${e(idOf(U.email))}</p><p><button class="pri" onclick="refresh()">↻ Check approval</button> <button onclick="about()">ℹ About us</button></p></div>`;
+<p>${P.status=='pending'?'Your request has been sent to the host. You will get access once the host approves you. Tap Check approval below.':'Your access is not active. Please contact the host.'}</p><p class="m">Signed in as ${e(idOf(U.email))}</p><p><button class="pri" onclick="refresh()">↻ Check approval</button> <button onclick="about()">About us</button></p></div>`;
 
 const tabs = () => {
   let list = [];
@@ -1329,14 +1329,21 @@ window.stepHD=n=>{const ds=sdates(),cur=HDATE||ds[ds.length-1]||'';const c=n<0?d
 
 function getSessionMetaForDate(d) {
   const target = normDate(d);
-  if (!target) return { theme: '', host: '' };
-  const fromPub = (PUB && PUB.sessionMeta && PUB.sessionMeta[target]) || {};
+  if (!target) return { theme: '', host: 'MANOJ TIKARIYA' };
+  let fromPub = (PUB && PUB.sessionMeta && PUB.sessionMeta[target]) || null;
+  if (!fromPub && PUB && PUB.sessionMeta && typeof PUB.sessionMeta === 'object') {
+    for (const [k, v] of Object.entries(PUB.sessionMeta)) {
+      if (normDate(k) === target && v && typeof v === 'object') { fromPub = v; break; }
+    }
+  }
+  fromPub = fromPub || {};
   const fromLive = (LIVE_SESSION && normDate(LIVE_SESSION.date) === target)
     ? { theme: LIVE_SESSION.theme || '', host: LIVE_SESSION.host || '' }
     : {};
+  const resolvedHost = String(fromLive.host || fromPub.host || '').trim().toUpperCase() || 'MANOJ TIKARIYA';
   return {
     theme: String(fromLive.theme || fromPub.theme || '').trim(),
-    host: String(fromLive.host || fromPub.host || '').trim().toUpperCase()
+    host: resolvedHost
   };
 }
 
@@ -1743,7 +1750,7 @@ window.fetchArchiveMetaAI = async (songTitle) => {
   } catch (err) {
     if (statusEl) { statusEl.style.color = '#dc2626'; statusEl.textContent = err?.message || 'Metadata lookup failed.'; }
   } finally {
-    if (btnEl) { btnEl.disabled = false; btnEl.textContent = '✨ AI Fill'; }
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'AI Fill'; }
   }
 };
 
@@ -1782,7 +1789,7 @@ window.openArchiveSongMeta = (songTitle) => {
     $('#custom-modal-body').innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
         <h3 style="margin:0;font-size:15px">Song Metadata: ${e(key)}</h3>
-        <button id="btn_arch_meta_ai" class="pri" style="padding:4px 9px;font-size:11.5px;white-space:nowrap" onclick="fetchArchiveMetaAI('${safeTitle}')">✨ AI Fill</button>
+        <button id="btn_arch_meta_ai" class="pri" style="padding:4px 9px;font-size:11.5px;white-space:nowrap" onclick="fetchArchiveMetaAI('${safeTitle}')">AI Fill</button>
       </div>
       <div id="arch_meta_status" class="m" style="font-size:11.5px;min-height:16px;margin-bottom:6px"></div>
       <div style="display:flex;flex-direction:column;gap:8px">
@@ -1958,6 +1965,307 @@ window.downloadSongListPDF = () => {
   });
 
   docPdf.save(`SFH_${songListTab.toUpperCase()}_Songs_${t}.pdf`);
+};
+
+function getDayPrintData(dateStr) {
+  const ds = sdates();
+  const d = dateStr || HDATE || ds[ds.length - 1] || tdy();
+  const dayMeta = getSessionMetaForDate(d) || { theme: '', host: 'MANOJ TIKARIYA' };
+  const hostName = String(dayMeta.host || '').trim().toUpperCase() || 'MANOJ TIKARIYA';
+  const themeName = String(dayMeta.theme || '').trim();
+  const sotdWinners = getSOTDForDate(d) || [];
+  let rows = SONGS.filter(r => normDate(r[1]) === normDate(d)).slice().sort(cmpBySongId);
+  if (!rows.length && LIVE_SESSION && normDate(LIVE_SESSION.date) === normDate(d) && Array.isArray(LIVE_SESSION.performances)) {
+    rows = LIVE_SESSION.performances
+      .filter(p => p && p.song)
+      .map(p => [p.songId || '-', d, p.singer || '', p.song || ''])
+      .sort(cmpBySongId);
+  }
+  const sotdLabels = sotdWinners.map(w => {
+    const nm = canonSinger((w && w.n) || w);
+    const tag = (w && w.h === 'Special') ? ' (Special)' : (w && w.h === 'Quiz') ? ' (Quiz)' : '';
+    const rsn = (w && w.reason) ? ` - ${w.reason}` : '';
+    return `${nm}${tag}${rsn}`;
+  }).filter(Boolean);
+  return { d, dayMeta: { theme: themeName, host: hostName }, sotdWinners, sotdLabels, rows };
+}
+
+window.downloadDayPDF = (dateStr) => {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    showNotice('PDF engine loading, please wait a moment.');
+    return;
+  }
+  const { d, dayMeta, sotdLabels, rows } = getDayPrintData(dateStr);
+  if (!rows.length && !sotdLabels.length) {
+    showNotice(`No session data found for ${fd(d)}.`);
+    return;
+  }
+
+  const ROWS_PER_PAGE = 25;
+  const pages = [];
+  if (rows.length) {
+    for (let i = 0; i < rows.length; i += ROWS_PER_PAGE) {
+      pages.push({ startIndex: i, slice: rows.slice(i, i + ROWS_PER_PAGE) });
+    }
+  } else {
+    pages.push({ startIndex: 0, slice: [] });
+  }
+
+  const asc = v => String(v == null ? '' : v).replace(/[^\x20-\xff]/g, '');
+  const songPdf = s => {
+    const title = asc(s);
+    const sub = asc(formatSongMetaSummary(getSongMeta(s)) || '');
+    if (!sub) return title;
+    const clipped = sub.length > 62 ? sub.slice(0, 59) + '...' : sub;
+    return `${title}\n${clipped}`;
+  };
+
+  const { jsPDF } = window.jspdf;
+  const docPdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const totalPages = pages.length;
+  const genTime = `${fd(tdy())} ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+
+  pages.forEach((pg, pageIdx) => {
+    if (pageIdx > 0) docPdf.addPage();
+
+    docPdf.setFillColor(15, 52, 96);
+    docPdf.rect(12, 8, 186, 14, 'F');
+    docPdf.setTextColor(255, 255, 255);
+    docPdf.setFont('helvetica', 'bold');
+    docPdf.setFontSize(14);
+    docPdf.text('SING FROM HOME', 105, 14.5, { align: 'center' });
+    docPdf.setFont('helvetica', 'normal');
+    docPdf.setFontSize(8);
+    docPdf.text('A Project of B. S. Tikariya Cultural Foundation (R) - CIN: U88900MH2025NPL454435', 105, 19.5, { align: 'center' });
+
+    docPdf.setTextColor(15, 23, 42);
+    docPdf.setFont('helvetica', 'bold');
+    docPdf.setFontSize(10.5);
+    docPdf.text(`Daily Session Record - ${fd(d)}`, 12, 27.5);
+    docPdf.setFont('helvetica', 'normal');
+    docPdf.setFontSize(8);
+    docPdf.setTextColor(100, 116, 139);
+    docPdf.text(`Total Songs: ${rows.length}  |  Generated: ${genTime}`, 198, 27.5, { align: 'right' });
+
+    docPdf.setFont('helvetica', 'bold');
+    docPdf.setFontSize(8.8);
+    docPdf.setTextColor(15, 52, 96);
+    docPdf.text(`Theme: ${asc(dayMeta.theme || '-')}   |   Host: ${asc(dayMeta.host || 'MANOJ TIKARIYA')}`, 12, 32.5);
+
+    let startY = 35.5;
+    if (pageIdx === 0 && sotdLabels.length) {
+      const sotdText = 'Singer of the Day (SOTD): ' + sotdLabels.map(asc).join('  |  ');
+      const wrapped = docPdf.splitTextToSize(sotdText, 180);
+      const boxH = wrapped.length * 4 + 4;
+      docPdf.setDrawColor(147, 197, 253);
+      docPdf.setFillColor(232, 238, 247);
+      docPdf.roundedRect(12, startY, 186, boxH, 1.5, 1.5, 'FD');
+      docPdf.setTextColor(15, 52, 96);
+      docPdf.setFont('helvetica', 'bold');
+      docPdf.setFontSize(8.5);
+      docPdf.text(wrapped, 15, startY + 4.3);
+      startY += boxH + 3;
+    }
+
+    if (pg.slice.length) {
+      docPdf.autoTable({
+        startY,
+        margin: { left: 12, right: 12, bottom: 12 },
+        head: [['#', 'Song ID', 'Singer Name', 'Song Title']],
+        body: pg.slice.map((r, i) => [String(pg.startIndex + i + 1), asc(r[0]), asc(r[2]), songPdf(r[3])]),
+        theme: 'striped',
+        styles: {
+          font: 'helvetica',
+          fontSize: 7.6,
+          cellPadding: { top: 1.25, bottom: 1.25, left: 2, right: 2 },
+          textColor: [15, 23, 42],
+          lineColor: [203, 213, 225],
+          lineWidth: 0.15,
+          overflow: 'linebreak'
+        },
+        headStyles: { fillColor: [15, 52, 96], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 10 },
+          1: { fontStyle: 'bold', cellWidth: 23 },
+          2: { fontStyle: 'bold', cellWidth: 46 }
+        }
+      });
+    }
+
+    docPdf.setFont('helvetica', 'normal');
+    docPdf.setFontSize(7.8);
+    docPdf.setTextColor(100, 116, 139);
+    docPdf.text("Conducted by Tikariya's School of Music - Director: Manoj Tikariya", 12, 291);
+    docPdf.text(`Page ${pageIdx + 1} of ${totalPages}`, 198, 291, { align: 'right' });
+  });
+
+  docPdf.save(`SFH_Day_${d}.pdf`);
+};
+
+window.printDaySheet = (dateStr) => {
+  const { d, dayMeta, sotdLabels, rows } = getDayPrintData(dateStr);
+  if (!rows.length && !sotdLabels.length) {
+    showNotice(`No session data found for ${fd(d)}.`);
+    return;
+  }
+
+  const prevFrame = document.getElementById('sfh_print_day_frame');
+  if (prevFrame) prevFrame.remove();
+
+  const iframe = document.createElement('iframe');
+  iframe.id = 'sfh_print_day_frame';
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(iframe);
+
+  const ROWS_PER_PAGE = 25;
+  const pages = [];
+  if (rows.length) {
+    for (let i = 0; i < rows.length; i += ROWS_PER_PAGE) {
+      pages.push({ startIndex: i, slice: rows.slice(i, i + ROWS_PER_PAGE) });
+    }
+  } else {
+    pages.push({ startIndex: 0, slice: [] });
+  }
+  const totalPages = pages.length;
+
+  const pagesHtml = pages.map((pg, pageIdx) => {
+    const tableRowsHtml = pg.slice.map((r, i) => {
+      const sub = formatSongMetaSummary(getSongMeta(r[3]));
+      return `<tr>
+        <td style="text-align:center;font-weight:700">${pg.startIndex + i + 1}</td>
+        <td style="font-weight:700;white-space:nowrap">${e(r[0])}</td>
+        <td style="font-weight:700">${e(r[2])}</td>
+        <td><div class="st">${e(r[3])}</div>${sub ? `<div class="sub">${e(sub)}</div>` : ''}</td>
+      </tr>`;
+    }).join('');
+
+    return `<div class="page-sheet">
+      <div class="hdr">
+        <h1>SING FROM HOME</h1>
+        <p>A Project of B. S. Tikariya Cultural Foundation &reg; - CIN: U88900MH2025NPL454435</p>
+      </div>
+      <div class="meta">
+        <div><b>Daily Session Record:</b> ${e(fd(d))}</div>
+        <div><b>Total Songs:</b> ${rows.length}</div>
+      </div>
+      <div class="meta-line">Theme: ${e(dayMeta.theme || '—')} &nbsp;|&nbsp; Host: ${e(dayMeta.host || 'MANOJ TIKARIYA')}</div>
+      ${pageIdx === 0 && sotdLabels.length ? `<div class="sotd">Singer of the Day (SOTD): ${e(sotdLabels.join('  |  '))}</div>` : ''}
+      ${pg.slice.length ? `<table>
+        <thead>
+          <tr>
+            <th style="width:28px;text-align:center">#</th>
+            <th style="width:72px">Song ID</th>
+            <th style="width:150px">Singer Name</th>
+            <th>Song Title</th>
+          </tr>
+        </thead>
+        <tbody>${tableRowsHtml}</tbody>
+      </table>` : '<p>No songs recorded for this day.</p>'}
+      <div class="ftr">
+        <span>Conducted by Tikariya's School of Music - Director: Manoj Tikariya</span>
+        <span>Page ${pageIdx + 1} of ${totalPages}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  const html = `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>SING FROM HOME - ${e(fd(d))}</title>
+<style>
+  @page { size: A4 portrait; margin: 10mm; }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: #0f172a; margin: 0; font-size: 10.5px; }
+  .page-sheet { page-break-after: always; break-after: page; display: flex; flex-direction: column; min-height: 274mm; }
+  .page-sheet:last-child { page-break-after: auto; break-after: auto; }
+  .hdr { background: #0f3460; color: #fff; text-align: center; padding: 7px 10px; border-radius: 5px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .hdr h1 { margin: 0; font-size: 16px; letter-spacing: 0.5px; }
+  .hdr p { margin: 2px 0 0; font-size: 9px; opacity: 0.92; }
+  .meta { margin: 6px 0 3px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; font-size: 10.5px; }
+  .meta-line { font-weight: 700; color: #0f3460; margin: 0 0 6px; font-size: 11px; }
+  .sotd { background: #e8eef7; border: 1px solid #93c5fd; color: #0f3460; border-radius: 5px; padding: 5px 8px; margin-bottom: 6px; font-weight: 700; font-size: 10.5px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  table { width: 100%; border-collapse: collapse; margin-top: 2px; table-layout: fixed; }
+  th, td { border: 1px solid #cbd5e1; padding: 3px 5px; text-align: left; vertical-align: middle; line-height: 1.2; }
+  th { background: #0f3460; color: #fff; font-size: 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  tr:nth-child(even) td { background: #f8fafc; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .st { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sub { font-size: 8.5px; color: #475569; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ftr { margin-top: auto; padding-top: 8px; display: flex; justify-content: space-between; font-size: 9px; color: #64748b; }
+</style>
+</head>
+<body>${pagesHtml}</body>
+</html>`;
+
+  try {
+    const docObj = iframe.contentWindow.document;
+    docObj.open();
+    docObj.write(html);
+    docObj.close();
+    setTimeout(() => {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } catch (_) {
+        window.downloadDayPDF(d);
+      }
+      setTimeout(() => { try { iframe.remove(); } catch (_) {} }, 2000);
+    }, 180);
+  } catch (_) {
+    try { iframe.remove(); } catch (_) {}
+    window.downloadDayPDF(d);
+  }
+};
+
+window.openHomeSessionMetaEditor = (dateStr) => {
+  if (!IS_SUPER) return;
+  const dt = normDate(dateStr) || tdy();
+  const cur = getSessionMetaForDate(dt);
+  const allSingers = [...new Set([...((PUB && PUB.singers) || []), 'MANOJ TIKARIYA'])].filter(Boolean).sort();
+  const m = $('#custom-modal');
+  $('#custom-modal-body').innerHTML = `
+    <h3 style="margin:0 0 6px">Edit Theme & Host</h3>
+    <p class="m" style="margin:0 0 10px">Session Date: <b>${e(fd(dt))}</b></p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <label style="font-size:12px;font-weight:700;color:var(--mut)">Theme
+        <input id="hm_theme" value="${e(cur.theme || '')}" placeholder="e.g. Golden Retro, Monsoon Hits" style="width:100%;margin-top:3px">
+      </label>
+      <label style="font-size:12px;font-weight:700;color:var(--mut)">Host
+        <input id="hm_host" list="dl_hm_hosts" value="${e(cur.host || 'MANOJ TIKARIYA')}" placeholder="MANOJ TIKARIYA" style="width:100%;margin-top:3px;text-transform:uppercase">
+        <datalist id="dl_hm_hosts">${allSingers.map(s => `<option value="${e(s)}">`).join('')}</datalist>
+      </label>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+      <button onclick="closeModal()">Cancel</button>
+      <button class="pri" onclick="saveHomeSessionMeta('${e(dt)}')">Save</button>
+    </div>
+  `;
+  m.style.display = 'flex';
+};
+
+window.saveHomeSessionMeta = async (dateStr) => {
+  if (!IS_SUPER) return;
+  const dt = normDate(dateStr);
+  if (!dt) return;
+  const themeVal = ($('#hm_theme') ? $('#hm_theme').value : '').trim();
+  const hostVal = ($('#hm_host') ? $('#hm_host').value : '').trim().toUpperCase() || 'MANOJ TIKARIYA';
+  try {
+    const dataRef = doc(fs, 'pub', 'data');
+    const snap = await getDoc(dataRef);
+    const pData = snap.exists() ? snap.data() : {};
+    const sMeta = { ...(pData.sessionMeta || {}) };
+    sMeta[dt] = { theme: themeVal, host: hostVal };
+    await setDoc(dataRef, { sessionMeta: sMeta }, { merge: true });
+    if (PUB) {
+      PUB.sessionMeta = { ...(PUB.sessionMeta || {}), [dt]: { theme: themeVal, host: hostVal } };
+    }
+    closeModal();
+    draw();
+    showNotice(`Saved Theme & Host for ${fd(dt)}.`);
+  } catch (err) {
+    showNotice('Could not save Theme & Host (' + (err?.code || 'error') + ').');
+  }
 };
 
 window.setSongTab = (t) => {
@@ -2464,7 +2772,7 @@ function vHome(){
   const som=Object.entries(PUB.som||{}).sort().reverse();
   let h='';
   if(!effAdm()) h+=renderSessionTimerCard();
-  const un=MSGS.filter(m=>m.ts>seen).length;if(!effAdm()&&un)h+=`<div class="c" style="border-left:4px solid var(--ac)">📩 You have <b>${un}</b> new message${un>1?'s':''} <button style="margin-left:8px" onclick="go('msg')">Read</button></div>`;
+  const un=MSGS.filter(m=>m.ts>seen).length;if(!effAdm()&&un)h+=`<div class="c" style="border-left:4px solid var(--ac)">You have <b>${un}</b> new message${un>1?'s':''} <button style="margin-left:8px" onclick="go('msg')">Read</button></div>`;
   h+=bdCard();
 
   h+=`<div class="c" style="padding:10px 14px">
@@ -2496,7 +2804,7 @@ function vHome(){
     const secsLeft = sv.endsAt ? Math.max(1, Math.min(60, Math.ceil((sv.endsAt - Date.now()) / 1000))) : (sv.remaining || 60);
     h += `<div class="c" style="border:2px solid #d97706;background:#fffbeb">
       <div class="row" style="justify-content:space-between">
-        <b style="color:#b45309">⏱️ LIVE 1 MIN SOTD VOTE METER</b>
+        <b style="color:#b45309">LIVE 1 MIN SOTD VOTE METER</b>
         <span id="sotd-vote-secs" class="badge-round" style="background:#d97706;color:#fff">${secsLeft}s</span>
       </div>
       <p class="m" style="margin:4px 0 8px">${hasVoted ? 'Your vote for this session is locked in.' : "Tap your choice for today's Singer of the Day:"}</p>
@@ -2522,7 +2830,7 @@ function vHome(){
     const secsLeft = mv.endsAt ? Math.max(1, Math.min(30, Math.ceil((mv.endsAt - Date.now()) / 1000))) : (mv.remaining || 30);
     h += `<div class="c" style="border:2px solid #7c3aed;background:#f5f3ff">
       <div class="row" style="justify-content:space-between">
-        <b style="color:#6d28d9">🏆 LIVE 30s SOTM BLIND VOTE — ${e(mv.singer)} (Round ${rnd})</b>
+        <b style="color:#6d28d9">LIVE 30s SOTM BLIND VOTE — ${e(mv.singer)} (Round ${rnd})</b>
         <span class="badge-round" style="background:#7c3aed;color:#fff">${secsLeft}s</span>
       </div>
       <p class="m" style="margin:4px 0 8px">Tap your Round ${rnd} blind audience score (5 to 10):</p>
@@ -2586,7 +2894,7 @@ function vHome(){
   }
 
   const dayMeta = getSessionMetaForDate(d);
-  h+=`<div class="c"><div class="row" style="justify-content:center;flex-wrap:nowrap"><button onclick="stepHD(-1)">◀</button><input type="date" value="${e(d)}" min="${e(ds[0]||'')}" max="${e(ds[ds.length-1]||'')}" onchange="setHD(this.value)"><button onclick="stepHD(1)">▶</button><button onclick="setHD('')">Latest</button></div><p class="m" style="text-align:center;margin:6px 0 4px">${fd(d)}</p><div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;font-size:13px;padding-top:4px;border-top:1px solid var(--bd)"><span><span class="m">Theme:</span> <b>${e(dayMeta.theme || '—')}</b></span><span><span class="m">Host:</span> <b>${e(dayMeta.host || '—')}</b></span></div></div>`;
+  h+=`<div class="c"><div class="row" style="justify-content:center;flex-wrap:nowrap"><button onclick="stepHD(-1)">◀</button><input type="date" value="${e(d)}" min="${e(ds[0]||'')}" max="${e(ds[ds.length-1]||'')}" onchange="setHD(this.value)"><button onclick="stepHD(1)">▶</button><button onclick="setHD('')">Latest</button></div><p class="m" style="text-align:center;margin:6px 0 4px">${fd(d)}</p><div style="display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap;font-size:13px;padding-top:4px;border-top:1px solid var(--bd)"><span><span class="m">Theme:</span> <b>${e(dayMeta.theme || '—')}</b></span><span><span class="m">Host:</span> <b>${e(dayMeta.host || 'MANOJ TIKARIYA')}</b></span>${effSuper() ? `<button style="padding:2px 7px;font-size:11px" onclick="openHomeSessionMetaEditor('${e(d)}')" title="Edit Theme & Host">Edit</button>` : ''}</div></div>`;
   const ls=SONGS.filter(r=>r[1]==d).slice().sort(cmpBySongId),mine=ls.filter(r=>r[2]==sk);
   const sotdWinners = getSOTDForDate(d);
   const fallbackSotd = (!sotdWinners.length && !HDATE) ? getLatestDeclaredSOTD(d) : null;
@@ -2594,7 +2902,7 @@ function vHome(){
   const activeSotdDate = sotdWinners.length ? d : (fallbackSotd ? fallbackSotd.d : d);
   const mySotdMatch = activeSotdList.find(w => canonSinger((w && w.n) || w) === sk);
   const certTargetWinner = mySotdMatch ? canonSinger((mySotdMatch && mySotdMatch.n) || mySotdMatch) : (effSuper() && activeSotdList.length ? canonSinger((activeSotdList[0] && activeSotdList[0].n) || activeSotdList[0]) : '');
-  h+=`<div class="c"><div class="row" style="justify-content:space-between;gap:6px"><b>Singer of the Day</b><div class="row" style="gap:6px">${certTargetWinner ? `<button class="cert-theme-btn" style="padding:3px 9px;font-size:11.5px;border-radius:8px" onclick="openCertificateModal('sotd','${e(certTargetWinner).replace(/'/g,"\\'")}','${e(activeSotdDate)}')">Certificate</button>` : ''}${effSuper() ? `<button style="padding:3px 9px;font-size:11.5px" onclick="openHomeSotdEditor('${e(d)}')">✏️ Edit SOTD</button>` : ''}</div></div><p class="big" style="margin:6px 0">${
+  h+=`<div class="c"><div class="row" style="justify-content:space-between;gap:6px"><b>Singer of the Day</b><div class="row" style="gap:6px">${certTargetWinner ? `<button class="cert-theme-btn" style="padding:3px 9px;font-size:11.5px;border-radius:8px" onclick="openCertificateModal('sotd','${e(certTargetWinner).replace(/'/g,"\\'")}','${e(activeSotdDate)}')">Certificate</button>` : ''}${effSuper() ? `<button style="padding:3px 9px;font-size:11.5px" onclick="openHomeSotdEditor('${e(d)}')">Edit SOTD</button>` : ''}</div></div><p class="big" style="margin:6px 0">${
     sotdWinners.length
       ? nmL(sotdWinners)
       : (fallbackSotd
@@ -2602,7 +2910,7 @@ function vHome(){
           : '<span class="m" style="font-weight:normal;font-size:15px">Not declared</span>')
   }</p></div>`;
   if(!effAdm())h+=`<div class="c"><b>Your songs on this day</b>${mine.length?sTableSelf(mine):'<p class="m">No songs of yours in the published data for this day.</p>'}</div>`;
-  h+=`<div class="c"><b>All songs performed</b><p class="m" style="margin:2px 0 0">${ls.length} songs, in song ID order</p>${ls.length?sTable(ls,sk):'<p class="m">No songs published for this day.</p>'}</div>`;
+  h+=`<div class="c"><b>All songs performed</b><p class="m" style="margin:2px 0 0">${ls.length} songs, in song ID order</p>${ls.length?sTable(ls,sk):'<p class="m">No songs published for this day.</p>'}<div class="row" style="justify-content:center;gap:8px;margin-top:10px;padding-top:8px;border-top:1px solid var(--bd)"><button style="padding:5px 12px;font-size:12.5px" onclick="printDaySheet('${e(d)}')">Print Day</button><button class="pri" style="padding:5px 12px;font-size:12.5px" onclick="downloadDayPDF('${e(d)}')">Day PDF</button></div></div>`;
 
   h+=renderBottomSongListHTML();
 
@@ -2860,21 +3168,21 @@ function renderCertVerifyView() {
   const failedArchive = st.codeValid && st.archiveChecked && !st.archiveMatch;
   const isValid = verifiedFully || verifiedCodeOnly;
 
-  let bannerBg = '#fef2f2', bannerBd = '#dc2626', bannerCol = '#991b1b', bannerTitle = '❌ Certificate Verification Failed', bannerSub = 'The certificate code does not match the recipient or award details. This certificate may have been altered.';
+  let bannerBg = '#fef2f2', bannerBd = '#dc2626', bannerCol = '#991b1b', bannerTitle = 'Certificate Verification Failed', bannerSub = 'The certificate code does not match the recipient or award details. This certificate may have been altered.';
   if (st.loading) {
     bannerBg = 'var(--ac-light)'; bannerBd = 'var(--ac)'; bannerCol = 'var(--ac)';
-    bannerTitle = '⏳ Verifying Official Certificate…';
+    bannerTitle = 'Verifying Official Certificate…';
     bannerSub = 'Checking authenticity against Sing From Home records.';
   } else if (verifiedFully) {
     bannerBg = '#f0fdf4'; bannerBd = '#16a34a'; bannerCol = '#166534';
-    bannerTitle = '✅ Verified Official Certificate';
+    bannerTitle = 'Verified Official Certificate';
     bannerSub = 'Confirmed authentic in the official Sing From Home archive.';
   } else if (verifiedCodeOnly) {
     bannerBg = '#f0fdf4'; bannerBd = '#16a34a'; bannerCol = '#166534';
-    bannerTitle = '✅ Authentic Certificate (QR Code Verified)';
+    bannerTitle = 'Authentic Certificate (QR Code Verified)';
     bannerSub = 'Digital verification code matches Sing From Home issuing records.';
   } else if (failedArchive) {
-    bannerTitle = '❌ Record Not Found in Official Archive';
+    bannerTitle = 'Record Not Found in Official Archive';
     bannerSub = 'This award entry could not be found in the published Sing From Home records.';
   }
 
@@ -3473,9 +3781,9 @@ function renderCertCustomizerBody() {
   } else {
     tabHtml = `
       <div class="row" style="gap:6px;margin-bottom:8px;flex-wrap:wrap">
-        <button class="${cfg.sigMode === 'typed' ? 'pri' : ''}" style="padding:4px 9px;font-size:11.5px" onclick="updateCertDraft('sigMode','typed',true)">✍️ Handwriting Signature</button>
-        <button class="${cfg.sigMode === 'drawn' ? 'pri' : ''}" style="padding:4px 9px;font-size:11.5px" onclick="updateCertDraft('sigMode','drawn',true)">🖋️ Draw Signature</button>
-        <button class="${cfg.sigMode === 'upload' ? 'pri' : ''}" style="padding:4px 9px;font-size:11.5px" onclick="updateCertDraft('sigMode','upload',true)">📤 Upload Signature</button>
+        <button class="${cfg.sigMode === 'typed' ? 'pri' : ''}" style="padding:4px 9px;font-size:11.5px" onclick="updateCertDraft('sigMode','typed',true)">Handwriting Signature</button>
+        <button class="${cfg.sigMode === 'drawn' ? 'pri' : ''}" style="padding:4px 9px;font-size:11.5px" onclick="updateCertDraft('sigMode','drawn',true)">Draw Signature</button>
+        <button class="${cfg.sigMode === 'upload' ? 'pri' : ''}" style="padding:4px 9px;font-size:11.5px" onclick="updateCertDraft('sigMode','upload',true)">Upload Signature</button>
         <button class="${cfg.sigMode === 'none' ? 'pri' : ''}" style="padding:4px 9px;font-size:11.5px" onclick="updateCertDraft('sigMode','none',true)">Line Only</button>
       </div>
       ${cfg.sigMode === 'typed' ? `
@@ -3534,16 +3842,16 @@ function renderCertCustomizerBody() {
   host.innerHTML = `
     <div class="cert-cust-panel">
       <div class="row" style="justify-content:space-between;margin-bottom:8px">
-        <b style="color:var(--ac);font-size:13.5px">🎨 Superadmin Certificate Customizer</b>
+        <b style="color:var(--ac);font-size:13.5px">Superadmin Certificate Customizer</b>
         <div class="row" style="gap:6px">
           <button style="padding:4px 9px;font-size:11.5px" onclick="resetCertCustomConfig()">↺ Reset Defaults</button>
-          <button class="pri" style="padding:4px 11px;font-size:11.5px" onclick="saveCertCustomConfig()">💾 Save for All Participants</button>
+          <button class="pri" style="padding:4px 11px;font-size:11.5px" onclick="saveCertCustomConfig()">Save for All Participants</button>
         </div>
       </div>
       <div class="cert-cust-tabs">
-        <button class="${CERT_CUSTOMIZER_TAB === 'bg' ? 'pri' : ''}" onclick="setCertCustomizerTab('bg')">🖼️ Background</button>
-        <button class="${CERT_CUSTOMIZER_TAB === 'text' ? 'pri' : ''}" onclick="setCertCustomizerTab('text')">✍️ Text & Handwriting Fonts</button>
-        <button class="${CERT_CUSTOMIZER_TAB === 'sig' ? 'pri' : ''}" onclick="setCertCustomizerTab('sig')">🖋️ Signature</button>
+        <button class="${CERT_CUSTOMIZER_TAB === 'bg' ? 'pri' : ''}" onclick="setCertCustomizerTab('bg')">Background</button>
+        <button class="${CERT_CUSTOMIZER_TAB === 'text' ? 'pri' : ''}" onclick="setCertCustomizerTab('text')">Text & Handwriting Fonts</button>
+        <button class="${CERT_CUSTOMIZER_TAB === 'sig' ? 'pri' : ''}" onclick="setCertCustomizerTab('sig')">Signature</button>
       </div>
       ${tabHtml}
     </div>
@@ -3564,7 +3872,7 @@ function renderCertModalShell(isCelebrationFlash = false) {
         <div class="m" style="font-size:12px">${e(spec.singer)} · ${e(spec.title)} (${e(spec.subtitle)})</div>
       </div>
       <div class="row" style="gap:6px">
-        ${effSuper() ? `<button class="${CERT_CUSTOMIZER_OPEN ? 'on' : ''}" onclick="toggleCertCustomizer()" style="padding:5px 11px;font-size:12px">${CERT_CUSTOMIZER_OPEN ? '✕ Hide Customizer' : '🎨 Customize Certificate'}</button>` : ''}
+        ${effSuper() ? `<button class="${CERT_CUSTOMIZER_OPEN ? 'on' : ''}" onclick="toggleCertCustomizer()" style="padding:5px 11px;font-size:12px">${CERT_CUSTOMIZER_OPEN ? '✕ Hide Customizer' : 'Customize Certificate'}</button>` : ''}
         <button onclick="closeCertModal()" style="padding:5px 11px;font-size:12px">✕ Close</button>
       </div>
     </div>
@@ -3583,9 +3891,9 @@ function renderCertModalShell(isCelebrationFlash = false) {
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
       <span class="m" style="font-size:11.5px">Print-ready A4 landscape · QR validated · Date of Issue auto-filled on download</span>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button style="padding:8px 12px;font-size:12.5px;border-radius:8px" onclick="previewCurrentCertVerification()">🔍 Verify QR</button>
-        <button style="padding:8px 14px;font-size:13px;border-radius:8px" onclick="downloadCertPNG()">⬇ Download Image (PNG)</button>
-        <button class="pri" style="padding:8px 14px;font-size:13px;border-radius:8px" onclick="downloadCertPDF()">⬇ Download PDF (A4)</button>
+        <button style="padding:8px 12px;font-size:12.5px;border-radius:8px" onclick="previewCurrentCertVerification()">Verify QR</button>
+        <button style="padding:8px 14px;font-size:13px;border-radius:8px" onclick="downloadCertPNG()">Download Image (PNG)</button>
+        <button class="pri" style="padding:8px 14px;font-size:13px;border-radius:8px" onclick="downloadCertPDF()">Download PDF (A4)</button>
       </div>
     </div>
   `;
@@ -4017,7 +4325,7 @@ function renderHomeSotdEditorModal() {
     <div style="margin:8px 0">
       ${HOME_SOTD_EDIT_LIST.length ? HOME_SOTD_EDIT_LIST.map((w, i) => `
         <div class="row" style="justify-content:space-between;padding:5px 8px;background:var(--ac-light);border-radius:8px;margin-bottom:5px">
-          <span>🏆 <b>${e(w.n)}</b> <span class="badge-ok">${e(w.h || 'Score')}</span></span>
+          <span><b>${e(w.n)}</b> <span class="badge-ok">${e(w.h || 'Score')}</span></span>
           <button style="padding:2px 8px;font-size:11px;color:#dc2626;border-color:#fca5a5" onclick="removeHomeSotdItem(${i})">Remove</button>
         </div>
       `).join('') : '<p class="m" style="margin:4px 0 8px">No SOTD declared for this date yet.</p>'}
@@ -4713,7 +5021,7 @@ function vRules() {
     <b>Offline Master Backup Folder</b>
     <p class="m" style="margin:4px 0 8px">When you press <b>End</b> in Live Session, a full timestamped JSON snapshot (<code>SFH_Master_Backup_YYYY-MM-DD_HH-MM.json</code>) is generated automatically. ${savedBackupFolderName ? `Linked folder: <b>${e(savedBackupFolderName)}</b>` : 'Default: Browser Downloads folder.'}</p>
     <div class="row">
-      <button class="pri" onclick="selectOfflineBackupFolderInRules()">📁 ${savedBackupFolderName ? 'Change Backup Folder' : 'Select Offline Backup Folder'}</button>
+      <button class="pri" onclick="selectOfflineBackupFolderInRules()">${savedBackupFolderName ? 'Change Backup Folder' : 'Select Offline Backup Folder'}</button>
       ${savedBackupFolderName ? `<button onclick="clearOfflineBackupFolderInRules()">Unlink Folder</button>` : ''}
     </div>
   </div>`;
@@ -4753,7 +5061,7 @@ function vRules() {
         <b>SOTD & SOTM Certificate Customizer</b>
         <div class="m" style="margin-top:2px">Customize certificate background colors/image, add drawn, uploaded, or handwritten signature, and edit certificate wording with handwriting fonts for all participants.</div>
       </div>
-      <button class="pri" onclick="openSuperadminCertCustomizer()">🎨 Customize Certificate</button>
+      <button class="pri" onclick="openSuperadminCertCustomizer()">Customize Certificate</button>
     </div>
   </div>`;
 
@@ -4860,8 +5168,8 @@ function grab(){if($('#pp')){P.phone=$('#pp').value;P.city=$('#pc').value;P.note
 function vProf(){const p=curP();const ro=PREVIEW_PARTICIPANT&&!!PREVIEW_SINGER;return`<div class="c"><div class="row"><div class="ph">${okImg(p.photo)?`<img src="${p.photo}">`:'<span class="m">No photo</span>'}</div>
 <div><h2>${e(p.singer||p.name||'')}</h2>
 <div class="row" style="gap:6px;margin-top:4px">${ro
-  ? `<button class="pri" onclick="showNotice('Switch preview to &quot;My own account&quot; to update your own photo, or edit this singer via Admin → Profile.')">📷 ${p.photo?'Change':'Upload'} Photo</button>`
-  : `<label class="up" style="background:var(--btn-pri-bg);color:#fff;border-color:transparent">📷 ${p.photo?'Change':'Upload'} Photo<input type="file" accept="image/*" hidden onchange="pic(this)"></label>${p.photo?'<button onclick="rmPic()">Remove</button>':''}`
+  ? `<button class="pri" onclick="showNotice('Switch preview to &quot;My own account&quot; to update your own photo, or edit this singer via Admin → Profile.')">${p.photo?'Change':'Upload'} Photo</button>`
+  : `<label class="up" style="background:var(--btn-pri-bg);color:#fff;border-color:transparent">${p.photo?'Change':'Upload'} Photo<input type="file" accept="image/*" hidden onchange="pic(this)"></label>${p.photo?'<button onclick="rmPic()">Remove</button>':''}`
 }</div>${ro?'<span class="m" style="display:block;margin-top:4px">Previewing participant profile</span>':''}</div></div>
 <div class="f"><label>Phone / WhatsApp<input id="pp" value="${e(p.phone||'')}" ${ro?'readonly':''}></label><label>City<input id="pc" value="${e(p.city||'')}" ${ro?'readonly':''}></label>${bdSel('pb',p.dob)}</div>
 <label class="m" style="flex-direction:row;align-items:center;gap:10px;margin:8px 0"><input type="checkbox" id="pbs" class="chk" ${(p.bshow!==undefined?p.bshow:BD.some(b=>b.id==(p.id||U.uid)))?'checked':''} ${ro?'disabled':''}><span>Show my birthday (day and month only) to everyone in the app, so they can wish me.</span></label>
@@ -4994,7 +5302,7 @@ window.addEventListener('hashchange',()=>{showAbout=location.hash=='#about';draw
 
 function vEdU(){const u=AU.find(x=>x.id==EDU);if(!u)return '';
   return `<div class="c"><b>Profile – ${e(u.name||idOf(u.email))}</b><p class="m">${e(idOf(u.email))} · ${e(u.status||'')}</p>
-<div class="row" style="margin:8px 0"><div class="ph">${okImg(u.photo)?`<img src="${u.photo}">`:'<span class="m">No photo</span>'}</div><div><label class="up">📷 Change photo<input type="file" accept="image/*" hidden onchange="picU(this)"></label> ${u.photo?'<button onclick="rmPicU()">Remove</button>':''}</div></div>
+<div class="row" style="margin:8px 0"><div class="ph">${okImg(u.photo)?`<img src="${u.photo}">`:'<span class="m">No photo</span>'}</div><div><label class="up">Change photo<input type="file" accept="image/*" hidden onchange="picU(this)"></label> ${u.photo?'<button onclick="rmPicU()">Remove</button>':''}</div></div>
 <div class="f"><label>Name<input id="eu_n" value="${e(u.name||'')}"></label><label>Linked singer<input id="eu_s" list="eul" value="${e(u.singer||'')}"><datalist id="eul">${((PUB&&PUB.singers)||[]).map(n=>`<option value="${e(n)}">`).join('')}</datalist></label><label>Phone<input id="eu_p" value="${e(u.phone||'')}"></label><label>City<input id="eu_c" value="${e(u.city||'')}"></label>${bdSel('eb',u.dob)}</div>
 <label class="m" style="flex-direction:row;align-items:center;gap:10px;margin:8px 0"><input type="checkbox" id="ebs" class="chk" ${(u.bshow!==undefined?u.bshow:BD.some(b=>b.id==u.id))?'checked':''}><span>Show this birthday (day and month) to everyone in the app</span></label>
 <label class="m">Notes<textarea id="eu_t" rows="3" style="width:100%">${e(u.note||'')}</textarea></label>
@@ -5007,39 +5315,39 @@ window.picU=el=>{const f=el.files[0];if(!f)return;const u=grabU();const r=new Fi
 window.saveU=async()=>{const u=grabU();if(!u)return;try{await updateDoc(doc(fs,'users',u.id),{name:u.name||'',singer:u.singer||'',phone:u.phone||'',city:u.city||'',note:u.note||'',photo:u.photo||'',dob:u.dob||'',updatedAt:Date.now()});await setBd(u.id,u.singer||u.name||'',u.dob,u.bshow);showNotice('Saved');EDU='';await loadAdm();draw()}catch(x){showNotice('Could not save ('+(x.code||'error')+')')}};
 
 const SIGN='– Manoj Tikariya<br>Director, B. S. Tikariya Cultural Foundation';
-const BUILTIN=[{id:'b-diwali-2026',icon:'🪔',title:'Happy Diwali!',hi:'शुभ दीपावली',text:'May the festival of lights fill your life and your voice with joy, music and light. Warm wishes to all our singers and their families from the SING FROM HOME family.',from:'2026-11-05',to:'2026-11-12'}];
+const BUILTIN=[{id:'b-diwali-2026',icon:'',title:'Happy Diwali!',hi:'शुभ दीपावली',text:'May the festival of lights fill your life and your voice with joy, music and light. Warm wishes to all our singers and their families from the SING FROM HOME family.',from:'2026-11-05',to:'2026-11-12'}];
 const FEST=[
-{i:'🪔',t:'Happy Diwali!',h:'शुभ दीपावली',x:'May the festival of lights fill your life and your voice with joy, music and light. Warm wishes to all our singers and their families from the SING FROM HOME family.'},
-{i:'🎆',t:'Happy New Year!',h:'नया साल मुबारक',x:'Wishing you and your family a new year full of music, good health and happiness.'},
-{i:'🪁',t:'Happy Makar Sankranti!',h:'तिळगूळ घ्या, गोड गोड बोला',x:'May your voice and your days be sweet and bright. Warm wishes from the SING FROM HOME family.'},
-{i:'🇮🇳',t:'Happy Republic Day!',h:'जय हिंद',x:'Proud to sing together on this Republic Day. Warm wishes from the SING FROM HOME family.'},
-{i:'🕉️',t:'Happy Maha Shivratri!',h:'हर हर महादेव',x:'Wishing you peace and strength on Maha Shivratri.'},
-{i:'🎨',t:'Happy Holi!',h:'शुभ होली',x:'May the colours of Holi fill your life with joy and your songs with new notes.'},
-{i:'🌼',t:'Happy Gudi Padwa!',h:'गुढीपाडव्याच्या शुभेच्छा',x:'Wishing you a bright and prosperous new year.'},
-{i:'🌙',t:'Eid Mubarak!',h:'ईद मुबारक',x:'Wishing you and your family joy, peace and blessings.'},
-{i:'🚩',t:'Happy Ram Navami!',h:'जय श्री राम',x:'Wishing you and your family a blessed Ram Navami.'},
-{i:'🇮🇳',t:'Happy Independence Day!',h:'जय हिंद',x:'Let us celebrate freedom with music. Warm wishes from the SING FROM HOME family.'},
-{i:'🎀',t:'Happy Raksha Bandhan!',h:'रक्षाबंधन की शुभकामनाएँ',x:'Wishing all brothers and sisters a day full of love and music.'},
-{i:'🐘',t:'Happy Ganesh Chaturthi!',h:'गणपती बाप्पा मोरया',x:'May Bappa bless you and your family with happiness and good health.'},
-{i:'🪔',t:'Happy Navratri!',h:'शुभ नवरात्रि',x:'Wishing you nine days of joy, music and devotion.'},
-{i:'🏹',t:'Happy Dussehra!',h:'शुभ दशहरा',x:'May good always win. Warm wishes from the SING FROM HOME family.'},
-{i:'🙏',t:'Happy Guru Purnima!',h:'गुरु पौर्णिमा',x:'With gratitude to all our teachers and gurus of music.'},
-{i:'🎄',t:'Merry Christmas!',h:'',x:'Wishing you joy, peace and beautiful music this Christmas.'}];
+{i:'',t:'Happy Diwali!',h:'शुभ दीपावली',x:'May the festival of lights fill your life and your voice with joy, music and light. Warm wishes to all our singers and their families from the SING FROM HOME family.'},
+{i:'',t:'Happy New Year!',h:'नया साल मुबारक',x:'Wishing you and your family a new year full of music, good health and happiness.'},
+{i:'',t:'Happy Makar Sankranti!',h:'तिळगूळ घ्या, गोड गोड बोला',x:'May your voice and your days be sweet and bright. Warm wishes from the SING FROM HOME family.'},
+{i:'',t:'Happy Republic Day!',h:'जय हिंद',x:'Proud to sing together on this Republic Day. Warm wishes from the SING FROM HOME family.'},
+{i:'',t:'Happy Maha Shivratri!',h:'हर हर महादेव',x:'Wishing you peace and strength on Maha Shivratri.'},
+{i:'',t:'Happy Holi!',h:'शुभ होली',x:'May the colours of Holi fill your life with joy and your songs with new notes.'},
+{i:'',t:'Happy Gudi Padwa!',h:'गुढीपाडव्याच्या शुभेच्छा',x:'Wishing you a bright and prosperous new year.'},
+{i:'',t:'Eid Mubarak!',h:'ईद मुबारक',x:'Wishing you and your family joy, peace and blessings.'},
+{i:'',t:'Happy Ram Navami!',h:'जय श्री राम',x:'Wishing you and your family a blessed Ram Navami.'},
+{i:'',t:'Happy Independence Day!',h:'जय हिंद',x:'Let us celebrate freedom with music. Warm wishes from the SING FROM HOME family.'},
+{i:'',t:'Happy Raksha Bandhan!',h:'रक्षाबंधन की शुभकामनाएँ',x:'Wishing all brothers and sisters a day full of love and music.'},
+{i:'',t:'Happy Ganesh Chaturthi!',h:'गणपती बाप्पा मोरया',x:'May Bappa bless you and your family with happiness and good health.'},
+{i:'',t:'Happy Navratri!',h:'शुभ नवरात्रि',x:'Wishing you nine days of joy, music and devotion.'},
+{i:'',t:'Happy Dussehra!',h:'शुभ दशहरा',x:'May good always win. Warm wishes from the SING FROM HOME family.'},
+{i:'',t:'Happy Guru Purnima!',h:'गुरु पौर्णिमा',x:'With gratitude to all our teachers and gurus of music.'},
+{i:'',t:'Merry Christmas!',h:'',x:'Wishing you joy, peace and beautiful music this Christmas.'}];
 async function loadGreet(){try{const q=await getDocs(collection(fs,'greet'));GRT=q.docs.map(x=>({id:x.id,...x.data()}))}catch(x){GRT=[]}}
 async function loadBd(){try{const q=await getDocs(collection(fs,'birthdays'));BD=q.docs.map(x=>{const d=x.data();return {id:x.id,...d,singer:canonSinger(d.singer)}})}catch(x){BD=[]}}
 const mdOf=d=>String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 function showCard(o){const old=document.getElementById('dw');if(old)old.remove();
   const d=document.createElement('div');d.id='dw';
-  d.innerHTML=`<div class="card"${o.bg?` style="background:${o.bg}"`:''}><button class="x" onclick="closeDw()" aria-label="Close">✕</button><div class="diya">${o.icon}</div><h2>${e(o.title)}</h2>${o.sub?`<p style="font-size:20px;font-weight:600;margin:4px 0">${e(o.sub)}</p>`:''}<p style="font-size:15px;line-height:1.6;margin:12px 0;white-space:pre-line">${e(o.text)}</p>${o.sig?`<p style="margin:12px 0 16px;font-size:13px;opacity:0.95">${o.sig}</p>`:''}<button style="background:#fff;color:#0f3460;border:0;border-radius:10px;padding:11px 34px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 15px rgba(0,0,0,0.2)" onclick="closeDw()">Close</button></div>`;
+  d.innerHTML=`<div class="card"${o.bg?` style="background:${o.bg}"`:''}><button class="x" onclick="closeDw()" aria-label="Close">✕</button>${o.icon ? `<div class="diya">${e(o.icon)}</div>` : ''}<h2>${e(o.title)}</h2>${o.sub?`<p style="font-size:20px;font-weight:600;margin:4px 0">${e(o.sub)}</p>`:''}<p style="font-size:15px;line-height:1.6;margin:12px 0;white-space:pre-line">${e(o.text)}</p>${o.sig?`<p style="margin:12px 0 16px;font-size:13px;opacity:0.95">${o.sig}</p>`:''}<button style="background:#fff;color:#0f3460;border:0;border-radius:10px;padding:11px 34px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 15px rgba(0,0,0,0.2)" onclick="closeDw()">Close</button></div>`;
   d.onclick=ev=>{if(ev.target===d)closeDw()};document.body.appendChild(d)}
 function seenMap(){try{return JSON.parse(localStorage.getItem('sfh_cards')||'{}')}catch(x){return {}}}
 function nextCard(){if(document.getElementById('dw'))return;const c=GQ.shift();if(!c)return;const m=seenMap();m[c.key]=tdy();try{localStorage.setItem('sfh_cards',JSON.stringify(m))}catch(x){}showCard(c)}
 window.closeDw=()=>{const d=document.getElementById('dw');if(d)d.remove();nextCard()};
 function runCards(){if(isExternalJudgeOnly())return;const t=tdy(),m=seenMap(),due=[];
-  [...BUILTIN,...GRT].forEach(g=>{const k='g-'+(g.id||g.title);if(g.from<=t&&t<=g.to&&m[k]!==t)due.push({key:k,icon:g.icon||'🎉',title:g.title,sub:g.hi,text:g.text,sig:SIGN})});
+  [...BUILTIN,...GRT].forEach(g=>{const k='g-'+(g.id||g.title);if(g.from<=t&&t<=g.to&&m[k]!==t)due.push({key:k,icon:'',title:g.title,sub:g.hi,text:g.text,sig:SIGN})});
   if(U&&P&&(ADM||P.status=='approved')){const md=t.slice(5),bl=BD.filter(b=>b.md==md);
     if(bl.length&&m['bd-'+t]!==t){const mine=bl.some(b=>b.id==U.uid),names=bl.map(b=>b.singer).join(', ');
-      due.push({key:'bd-'+t,icon:'🎂',title:mine?'Happy Birthday!':'Birthday today',sub:mine?'':names,
+      due.push({key:'bd-'+t,icon:'',title:mine?'Happy Birthday!':'Birthday today',sub:mine?'':names,
         text:mine?'Wishing you a wonderful birthday'+(bl.find(b=>b.id==U.uid).singer?', '+bl.find(b=>b.id==U.uid).singer:'')+'! May your year be full of music, health and joy.':'Let us wish '+names+' a very happy birthday today!',
         sig:mine?'– The SING FROM HOME family':'',bg:'linear-gradient(150deg,#0f3460 0%,#1e4a7a 50%,#2563eb 100%)'})}}
   GQ=due;nextCard()}
@@ -5052,10 +5360,10 @@ const bdSel=(id,dob)=>{const [mm,dd]=(dob||'').split('-');return `<label>Birthda
 const bdRead=id=>{const d=$('#'+id+'d'),m=$('#'+id+'m');return d&&m&&d.value&&m.value?m.value+'-'+d.value:''};
 async function setBd(uid,name,dob,show){try{if(show&&dob)await setDoc(doc(fs,'birthdays',uid),{singer:name||'',md:dob,ts:Date.now()});else await deleteDoc(doc(fs,'birthdays',uid))}catch(x){}await loadBd()}
 window.fillFest=v=>{if(v==='')return;const f=FEST[+v];$('#gt').value=f.t;$('#gh').value=f.h;$('#gx').value=f.x;$('#gt').dataset.i=f.i};
-window.prevGreet=()=>{const t=$('#gt').value.trim(),x=$('#gx').value.trim();if(!t||!x){showNotice('Write a title and a message first');return}showCard({icon:$('#gt').dataset.i||'🎉',title:t,sub:$('#gh').value.trim(),text:x,sig:SIGN})};
+window.prevGreet=()=>{const t=$('#gt').value.trim(),x=$('#gx').value.trim();if(!t||!x){showNotice('Write a title and a message first');return}showCard({icon:'',title:t,sub:$('#gh').value.trim(),text:x,sig:SIGN})};
 window.addGreet=async()=>{const t=$('#gt').value.trim(),x=$('#gx').value.trim(),fr=$('#gfrom').value,to=$('#gto').value;
   if(!t||!x||!fr||!to){showNotice('Fill the title, message and both dates');return}if(to<fr){showNotice('The end date is before the start date');return}
-  try{await addDoc(collection(fs,'greet'),{title:t,hi:$('#gh').value.trim(),text:x,from:fr,to,icon:$('#gt').dataset.i||'🎉',ts:Date.now()});await loadGreet();draw();showNotice('Greeting added. It shows to everyone from '+fd(fr)+' to '+fd(to)+'.');}
+  try{await addDoc(collection(fs,'greet'),{title:t,hi:$('#gh').value.trim(),text:x,from:fr,to,icon:'',ts:Date.now()});await loadGreet();draw();showNotice('Greeting added. It shows to everyone from '+fd(fr)+' to '+fd(to)+'.');}
   catch(y){showNotice('Could not save ('+(y.code||'error')+'). Check that the latest rules are published.')}};
 window.delGreet=async id=>{showConfirm('Delete this greeting?', async () => {try{await deleteDoc(doc(fs,'greet',id));await loadGreet();draw()}catch(y){showNotice('Failed ('+(y.code||'error')+')')}})};
 
@@ -5170,7 +5478,7 @@ function vAdm(){
   </div>` : '';
 
   return `${EDU?vEdU():''}${effSuper()?`<div class="c"><b>Publish Data / Restore Master Backup</b><p class="m">${PUB?'Last updated: '+e(PUB.ts||''):'Nothing published yet.'} (${SONGS.length} songs). Upload any timestamped <code>SFH_Master_Backup_*.json</code> file here to restore all data even after a full flush.</p>
-<label class="up">⬆ Choose Master Backup or Host JSON File<input type="file" accept=".json,application/json" hidden onchange="pubUp(this)"></label></div>`:''}
+<label class="up">Choose Master Backup or Host JSON File<input type="file" accept=".json,application/json" hidden onchange="pubUp(this)"></label></div>`:''}
 ${mergeCard}
 ${residualCard}
 ${effSuper()?`<div class="c"><b>Zoom link</b><input id="zl" style="width:100%" value="${e(CONF.zoom||'')}"><p style="margin-top:10px"><button onclick="saveZ()">Save link</button></p></div>`:''}
@@ -5182,7 +5490,7 @@ ${AM.length?`<div class="c"><b>Sent messages</b>${AM.slice(0,20).map(m=>`<p styl
 <div class="c"><b>Waiting for approval (${pend.length})</b>${pend.length ? '' : '<p class="m" style="margin:4px 0 0">No pending requests.</p>'}</div>
 ${pend.map(u=>{const dispName=String(u.name||u.singer||idOf(u.email)||'this user').replace(/'/g,"\\'");return `<div class="c"><div class="row">${img(u)}<div><b>${e(u.name||'(no name)')}</b><br><span class="m">${e(idOf(u.email))} · pending</span></div></div>
 <div class="f"><select id="lk_${e(u.id)}">${opt}</select><input id="lt_${e(u.id)}" placeholder="or type singer name"></div>
-<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"><button class="pri" onclick="appr('${e(u.id)}')">Approve</button><button onclick="rej('${e(u.id)}')">Reject</button><button onclick="editU('${e(u.id)}')">Profile</button><button style="border-color:#dc2626;color:#dc2626" onclick="deleteUserAccount('${e(u.id)}','${e(dispName)}')">🗑️ Delete</button></div></div>`;}).join('')}
+<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"><button class="pri" onclick="appr('${e(u.id)}')">Approve</button><button onclick="rej('${e(u.id)}')">Reject</button><button onclick="editU('${e(u.id)}')">Profile</button><button style="border-color:#dc2626;color:#dc2626" onclick="deleteUserAccount('${e(u.id)}','${e(dispName)}')">Delete</button></div></div>`;}).join('')}
 ${revoked.length ? `<div class="c">
   <div class="row" style="justify-content:space-between">
     <b>Revoked / Rejected (${revoked.length})</b>
@@ -5199,7 +5507,7 @@ ${revoked.length ? `<div class="c">
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
         <button class="pri" style="font-size:12px;padding:5px 10px" onclick="appr('${e(u.id)}')">Restore Access</button>
         <button style="font-size:12px;padding:5px 10px" onclick="editU('${e(u.id)}')">Profile</button>
-        <button style="font-size:12px;padding:5px 10px;border-color:#dc2626;color:#dc2626" onclick="deleteUserAccount('${e(u.id)}','${e(dispName)}')">🗑️ Delete Permanently</button>
+        <button style="font-size:12px;padding:5px 10px;border-color:#dc2626;color:#dc2626" onclick="deleteUserAccount('${e(u.id)}','${e(dispName)}')">Delete Permanently</button>
       </div>
     </div>`;
   }).join('')}</div>` : `<p class="m" style="margin:4px 0 0">${revoked.length} revoked account(s). Tap "Show" to restore or permanently delete.</p>`}
@@ -5270,7 +5578,7 @@ function renderApprovedParticipantCards(okList, queryStr) {
           ) : ''}
           <button style="font-size:12px;padding:4px 9px" onclick="editU('${e(u.id)}')">Profile</button>
           <button style="font-size:12px;padding:4px 9px;border-color:#d97706;color:#b45309" onclick="rej('${e(u.id)}')">Revoke</button>
-          <button style="font-size:12px;padding:4px 9px;border-color:#dc2626;color:#dc2626" onclick="deleteUserAccount('${e(u.id)}','${e(dispName)}')">🗑️ Remove</button>
+          <button style="font-size:12px;padding:4px 9px;border-color:#dc2626;color:#dc2626" onclick="deleteUserAccount('${e(u.id)}','${e(dispName)}')">Remove</button>
         `}
       </div>
     </div>`;
