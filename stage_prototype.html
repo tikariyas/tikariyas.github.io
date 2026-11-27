@@ -63,10 +63,23 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
 .stage-screen{
   position:relative;border-radius:11px;overflow:hidden;background:#08162c;
-  aspect-ratio:16/9;border:2px solid var(--ac);display:flex;align-items:center;justify-content:center;
-  color:#fff;
+  aspect-ratio:9/16;max-width:340px;width:100%;margin:0 auto;
+  border:2px solid var(--ac);display:flex;align-items:center;justify-content:center;
+  color:#fff;transition:max-width .2s ease;
+}
+.stage-screen.landscape{
+  aspect-ratio:16/9;max-width:100%;
 }
 .stage-screen video{width:100%;height:100%;object-fit:cover;display:none}
+.stage-screen video.mirrored,.p-stage-box video.mirrored{transform:scaleX(-1)}
+.p-stage-box{
+  position:relative;overflow:hidden;background:#08162c;color:#fff;border-radius:9px;
+  border:1.5px solid var(--ac);display:flex;align-items:center;justify-content:center;
+  text-align:center;margin:0 auto;
+}
+.p-stage-box.portrait{aspect-ratio:9/16;max-width:230px;width:100%}
+.p-stage-box.landscape{aspect-ratio:16/9;width:100%}
+.p-stage-box video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
 .stage-placeholder{text-align:center;padding:16px;max-width:420px}
 .stage-avatar{
   width:72px;height:72px;border-radius:50%;margin:0 auto 8px;
@@ -271,16 +284,25 @@ button:disabled{opacity:.5;cursor:not-allowed}
         <div class="row" style="justify-content:space-between;margin-top:8px">
           <div class="row">
             <button class="pri" id="btn_media" onclick="toggleLocalMedia()">Test Camera &amp; Mic</button>
-            <button id="btn_synth_tone" onclick="toggleBackingTone()">Test Stage Audio</button>
-            <button class="on" id="btn_music_mode" onclick="toggleMusicMode()">Original Sound: ON</button>
-            <button id="btn_host_mic" onclick="toggleHostMic()">Host Mic: Off</button>
+            <button id="btn_orientation" class="soft" onclick="toggleVideoOrientation()">Portrait 9:16</button>
+            <select id="sel_camera" onchange="onCameraSelectChange(this.value)" title="Select Camera" style="max-width:210px">
+              <option value="facing:user">Front Camera (Selfie)</option>
+              <option value="facing:environment">Rear Camera (Back)</option>
+            </select>
+            <button id="btn_flip_camera" onclick="flipCamera()">Flip Camera</button>
+            <button id="btn_mirror" class="soft" onclick="toggleMirrorVideo()">Mirror: ON</button>
           </div>
           <div class="row">
             <button class="pri" onclick="nextSingerOnStage()">Next Singer →</button>
           </div>
         </div>
+        <div class="row" style="margin-top:6px">
+          <button id="btn_synth_tone" onclick="toggleBackingTone()">Test Stage Audio</button>
+          <button class="on" id="btn_music_mode" onclick="toggleMusicMode()">Original Sound: ON</button>
+          <button id="btn_host_mic" onclick="toggleHostMic()">Host Mic: Off</button>
+        </div>
         <div class="m" id="media_status_note" style="margin-top:5px">
-          Musician audio ready: <code>echoCancellation: false</code>, <code>noiseSuppression: false</code>, <code>autoGainControl: false</code>, <code>48 kHz / 128 kbps</code>.
+          Portrait 9:16 video + Musician audio ready: <code>echoCancellation: false</code>, <code>noiseSuppression: false</code>, <code>autoGainControl: false</code>, <code>48 kHz / 128 kbps</code>.
         </div>
 
         <!-- AUDIO REACTIONS SOUNDBOARD -->
@@ -540,6 +562,10 @@ let autoSimTimerIds = [];
 let autoSimRunning = false;
 
 let localStream = null;
+let videoOrientation = 'portrait'; // 'portrait' (9:16) or 'landscape' (16:9)
+let selectedCamera = 'facing:user'; // 'facing:user' | 'facing:environment' | 'device:<id>'
+let mirrorVideo = true;
+let availableCameras = [];
 let vuAudioCtx = null;
 let vuTimer = null;
 let backingCtx = null;
@@ -648,6 +674,7 @@ onAuthStateChanged(fbAuth, (user) => {
     gateRoot.style.display = 'none';
     appRoot.style.display = 'block';
     ensureHostAtFirst();
+    refreshCameraList();
     renderAll();
     recalcBandwidth();
   } else {
@@ -917,18 +944,25 @@ function renderParticipantView() {
     `;
   }
 
-  // Live Stage Feed Preview inside Participant View
+  // Live Stage Feed Preview inside Participant View (Portrait 9:16 / Landscape 16:9)
   h += `
     <div class="c" style="padding:8px;margin-bottom:8px">
-      <div style="background:#08162c;color:#fff;border-radius:9px;padding:12px;text-align:center;position:relative;border:1.5px solid var(--ac)">
-        <div class="row" style="justify-content:space-between;margin-bottom:8px">
-          <span class="stage-tag"><span class="live-dot"></span> ${amIOnStage ? 'YOUR CAMERA LIVE' : 'LIVE STAGE'}</span>
-          <span class="stage-tag">${STATE.hostMicOn ? 'Host Speaking' : '128 kbps Music'}</span>
+      <div class="p-stage-box ${videoOrientation}" id="p_stage_box">
+        <video id="p_stage_video" autoplay playsinline muted class="${mirrorVideo ? 'mirrored' : ''}"></video>
+        <div style="position:absolute;top:7px;left:7px;right:7px;display:flex;justify-content:space-between;gap:5px;z-index:2;pointer-events:none;flex-wrap:wrap">
+          <span class="stage-tag" style="font-size:10px;padding:2px 6px"><span class="live-dot"></span> ${amIOnStage ? 'YOUR CAMERA LIVE' : 'LIVE STAGE'}</span>
+          <span class="stage-tag" style="font-size:10px;padding:2px 6px">${STATE.hostMicOn ? 'Host Speaking' : (videoOrientation === 'portrait' ? 'Portrait 9:16' : 'Landscape 16:9')}</span>
         </div>
-        <div class="stage-avatar" style="width:54px;height:54px;font-size:20px;margin-bottom:6px">${cur ? initials(cur.name) : 'SFH'}</div>
-        <div style="font-weight:800;font-size:14.5px">${cur ? e(cur.name) : 'Waiting for Singer'}</div>
-        <div style="font-size:12px;color:#cbd5e1;margin-top:2px">${e(curSong)}</div>
-        ${STATE.lastSfxBanner ? `<div style="margin-top:7px;display:inline-block;background:rgba(255,255,255,0.14);padding:2px 9px;border-radius:6px;font-size:11px;font-weight:700">${e(STATE.lastSfxBanner)}</div>` : ''}
+        <div id="p_stage_placeholder" style="padding:14px;position:relative;z-index:1;display:${localStream ? 'none' : 'block'}">
+          <div class="stage-avatar" style="width:54px;height:54px;font-size:20px;margin-bottom:6px">${cur ? initials(cur.name) : 'SFH'}</div>
+          <div style="font-weight:800;font-size:14.5px">${cur ? e(cur.name) : 'Waiting for Singer'}</div>
+          <div style="font-size:11.5px;color:#cbd5e1;margin-top:2px">${e(curSong)}</div>
+          ${STATE.lastSfxBanner ? `<div style="margin-top:7px;display:inline-block;background:rgba(255,255,255,0.14);padding:2px 9px;border-radius:6px;font-size:10.5px;font-weight:700">${e(STATE.lastSfxBanner)}</div>` : ''}
+        </div>
+        <div style="position:absolute;left:7px;right:7px;bottom:7px;z-index:2;background:rgba(8,22,44,0.82);padding:4px 8px;border-radius:6px;font-size:11px;display:${localStream ? 'flex' : 'none'};justify-content:space-between;align-items:center">
+          <b style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cur ? e(cur.name) : ''}</b>
+          <span style="opacity:.85;font-size:10px;white-space:nowrap">${e(STATE.lastSfxBanner || ('Round ' + rnd))}</span>
+        </div>
       </div>
       <div class="row" style="justify-content:space-between;margin-top:8px">
         <div class="row" style="gap:5px">
@@ -1019,6 +1053,7 @@ function renderParticipantView() {
   `;
 
   document.getElementById('participant_view_body').innerHTML = h;
+  syncVideoUI();
 }
 
 // ============================================================================
@@ -1668,6 +1703,118 @@ window.toggleBackingTone = () => {
   pulseVu();
 };
 
+function syncVideoUI() {
+  const screen = document.getElementById('stage_screen');
+  if (screen) {
+    screen.classList.toggle('landscape', videoOrientation === 'landscape');
+  }
+  const btnOri = document.getElementById('btn_orientation');
+  if (btnOri) {
+    btnOri.textContent = videoOrientation === 'portrait' ? 'Portrait 9:16' : 'Landscape 16:9';
+  }
+  const btnMir = document.getElementById('btn_mirror');
+  if (btnMir) {
+    btnMir.textContent = mirrorVideo ? 'Mirror: ON' : 'Mirror: OFF';
+    btnMir.className = mirrorVideo ? 'soft' : '';
+  }
+  const vid = document.getElementById('local_video');
+  if (vid) vid.classList.toggle('mirrored', mirrorVideo);
+
+  const pVid = document.getElementById('p_stage_video');
+  if (pVid) {
+    pVid.classList.toggle('mirrored', mirrorVideo);
+    if (localStream) {
+      if (pVid.srcObject !== localStream) pVid.srcObject = localStream;
+      pVid.style.display = 'block';
+    } else {
+      pVid.srcObject = null;
+      pVid.style.display = 'none';
+    }
+  }
+}
+
+async function refreshCameraList() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    availableCameras = devices.filter(d => d.kind === 'videoinput');
+    const sel = document.getElementById('sel_camera');
+    if (!sel) return;
+    const opts = [
+      { value: 'facing:user', label: 'Front Camera (Selfie)' },
+      { value: 'facing:environment', label: 'Rear Camera (Back)' },
+      ...availableCameras.map((d, i) => ({
+        value: 'device:' + d.deviceId,
+        label: d.label || `Camera ${i + 1}`
+      }))
+    ];
+    sel.innerHTML = opts.map(o => `<option value="${e(o.value)}"${o.value === selectedCamera ? ' selected' : ''}>${e(o.label)}</option>`).join('');
+    if (!opts.some(o => o.value === selectedCamera)) {
+      selectedCamera = 'facing:user';
+      sel.value = selectedCamera;
+    }
+  } catch (_) {}
+}
+
+if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+  navigator.mediaDevices.addEventListener('devicechange', refreshCameraList);
+}
+
+window.toggleVideoOrientation = async () => {
+  videoOrientation = videoOrientation === 'portrait' ? 'landscape' : 'portrait';
+  syncVideoUI();
+  logEvent(`Stage video orientation switched to ${videoOrientation === 'portrait' ? 'Portrait (9:16)' : 'Landscape (16:9)'}.`);
+  saveState();
+  renderAll();
+  syncVideoUI();
+  if (localStream) {
+    stopLocalMedia();
+    await window.toggleLocalMedia();
+  }
+};
+
+window.toggleMirrorVideo = () => {
+  mirrorVideo = !mirrorVideo;
+  syncVideoUI();
+};
+
+window.onCameraSelectChange = async (val) => {
+  selectedCamera = val || 'facing:user';
+  // Naturally mirror front/selfie camera, unmirror rear/back camera
+  const low = (availableCameras.find(c => 'device:' + c.deviceId === selectedCamera)?.label || '').toLowerCase();
+  if (selectedCamera === 'facing:environment' || low.includes('back') || low.includes('rear') || low.includes('environment')) {
+    mirrorVideo = false;
+  } else if (selectedCamera === 'facing:user' || low.includes('front') || low.includes('facetime') || low.includes('selfie')) {
+    mirrorVideo = true;
+  }
+  syncVideoUI();
+  const sel = document.getElementById('sel_camera');
+  const camName = sel && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex].text : selectedCamera;
+  logEvent(`Selected camera: ${camName}.`);
+  saveState();
+  renderAll();
+  syncVideoUI();
+  if (localStream) {
+    stopLocalMedia();
+    await window.toggleLocalMedia();
+  }
+};
+
+window.flipCamera = async () => {
+  if (selectedCamera === 'facing:user') {
+    await window.onCameraSelectChange('facing:environment');
+  } else if (selectedCamera === 'facing:environment') {
+    await window.onCameraSelectChange('facing:user');
+  } else if (availableCameras.length > 1) {
+    const curId = selectedCamera.replace('device:', '');
+    const idx = availableCameras.findIndex(c => c.deviceId === curId);
+    const next = availableCameras[(idx + 1) % availableCameras.length];
+    await window.onCameraSelectChange('device:' + next.deviceId);
+  } else {
+    await window.onCameraSelectChange('facing:user');
+  }
+};
+
 function stopLocalMedia() {
   if (vuTimer) { clearInterval(vuTimer); vuTimer = null; }
   if (vuAudioCtx) { try { vuAudioCtx.close(); } catch (_) {} vuAudioCtx = null; }
@@ -1682,6 +1829,24 @@ function stopLocalMedia() {
   document.getElementById('btn_media').textContent = 'Test Camera & Mic';
   document.getElementById('btn_media').className = 'pri';
   document.getElementById('vu_fill').style.width = '10%';
+  syncVideoUI();
+}
+
+function buildVideoConstraints() {
+  const isPortrait = videoOrientation === 'portrait';
+  const base = isPortrait
+    ? { width: { ideal: 480 }, height: { ideal: 854 }, aspectRatio: { ideal: 9 / 16 }, frameRate: { ideal: 24 } }
+    : { width: { ideal: 854 }, height: { ideal: 480 }, aspectRatio: { ideal: 16 / 9 }, frameRate: { ideal: 24 } };
+
+  if (selectedCamera.startsWith('device:')) {
+    const devId = selectedCamera.slice('device:'.length);
+    if (devId) base.deviceId = { exact: devId };
+  } else if (selectedCamera === 'facing:environment') {
+    base.facingMode = { ideal: 'environment' };
+  } else {
+    base.facingMode = { ideal: 'user' };
+  }
+  return base;
 }
 
 window.toggleLocalMedia = async () => {
@@ -1689,6 +1854,7 @@ window.toggleLocalMedia = async () => {
     stopLocalMedia();
     logEvent('Stopped local camera & microphone test.');
     renderAll();
+    syncVideoUI();
     return;
   }
   const note = document.getElementById('media_status_note');
@@ -1700,16 +1866,24 @@ window.toggleLocalMedia = async () => {
     const audioConstraints = STATE.musicModeOn
       ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 2, sampleRate: 48000 }
       : { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
-    localStream = await navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 854 }, height: { ideal: 480 }, frameRate: { ideal: 24 } },
-      audio: audioConstraints
-    });
+    const videoConstraints = buildVideoConstraints();
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: audioConstraints });
+    } catch (firstErr) {
+      // Fallback without exact deviceId/aspectRatio if hardware rejects strict constraint
+      const fallbackVideo = selectedCamera === 'facing:environment'
+        ? { facingMode: 'environment' }
+        : { facingMode: 'user' };
+      localStream = await navigator.mediaDevices.getUserMedia({ video: fallbackVideo, audio: audioConstraints });
+    }
     const vid = document.getElementById('local_video');
     vid.srcObject = localStream;
     vid.style.display = 'block';
     document.getElementById('stage_placeholder').style.display = 'none';
     document.getElementById('btn_media').textContent = 'Stop Camera & Mic';
     document.getElementById('btn_media').className = 'danger';
+
+    await refreshCameraList();
 
     vuAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const src = vuAudioCtx.createMediaStreamSource(localStream);
@@ -1723,11 +1897,15 @@ window.toggleLocalMedia = async () => {
       document.getElementById('vu_fill').style.width = Math.min(100, Math.max(6, Math.round((avg / 90) * 100))) + '%';
     }, 70);
 
+    const vTrack = localStream.getVideoTracks()[0];
+    const vs = vTrack && vTrack.getSettings ? vTrack.getSettings() : {};
     const aTrack = localStream.getAudioTracks()[0];
-    const s = aTrack && aTrack.getSettings ? aTrack.getSettings() : {};
-    note.innerHTML = `<b>Live Mic Active:</b> ${STATE.musicModeOn ? 'Original Sound Musician Mode' : 'Standard Speech Mode'} · ${s.sampleRate || 48000} Hz · Echo Cancel: <b>${s.echoCancellation ? 'ON' : 'OFF'}</b> · Noise Suppress: <b>${s.noiseSuppression ? 'ON' : 'OFF'}</b>`;
-    logEvent('Real Camera & Musician Mic stream started locally.');
+    const as = aTrack && aTrack.getSettings ? aTrack.getSettings() : {};
+    const camLabel = (vTrack && vTrack.label) || (selectedCamera === 'facing:environment' ? 'Rear Camera' : 'Front Camera');
+    note.innerHTML = `<b>Live Stream:</b> ${e(camLabel)} (${vs.width || (videoOrientation === 'portrait' ? 480 : 854)}×${vs.height || (videoOrientation === 'portrait' ? 854 : 480)}) · ${STATE.musicModeOn ? 'Original Sound' : 'Speech Mode'} · Echo Cancel: <b>${as.echoCancellation ? 'ON' : 'OFF'}</b>`;
+    logEvent(`Camera started: ${camLabel} (${videoOrientation === 'portrait' ? 'Portrait 9:16' : 'Landscape 16:9'}).`);
     renderAll();
+    syncVideoUI();
   } catch (err) {
     note.innerHTML = `<span style="color:#b45309"><b>Note:</b> Camera/mic permission was blocked or unavailable (${e(err.name || 'blocked')}). Use <b>Test Stage Audio</b> or allow camera/mic in browser settings.</span>`;
   }
